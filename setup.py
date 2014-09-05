@@ -13,7 +13,7 @@ setup(
     author='Andrey Kislyuk',
     author_email='kislyuk@gmail.com',
     description='A sane XML Signature (xmldsig) extension for defusedxml ElementTree',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
     install_requires=install_requires,
     packages = find_packages(exclude=['test']),
     include_package_data=True,
