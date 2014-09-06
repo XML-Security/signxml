@@ -17,7 +17,9 @@ class TestSignXML(unittest.TestCase):
 
     def test_basic_signxml_statements(self):
         tree = etree.parse(self.example_xml_file)
-        print(sign(tree))
+#        signature = sign(tree)
+        #x = etree.Element(
+        print(etree.tostring(xmldsig(tree).sign()))
 #        parser.feed(open(self.example_xml_file).read())
 #        tree = parser.close()
 #        print(tree.sign())

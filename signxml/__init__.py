@@ -1,28 +1,60 @@
-import hashlib
+from __future__ import print_function, unicode_literals
+
+import hashlib, base64, hmac
 
 from collections import namedtuple, Mapping, Iterable
-from lxml import etree, Element
-#from lxml import ElementTree, Element, TreeBuilder, XMLParser
+from lxml import etree
+from lxml.etree import Element
 
 # TODO: use https://pypi.python.org/pypi/defusedxml/#defusedxml-lxml
 
-__all__ = ['sign', 'verify']
+XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 
-def build_signature():
-    sig_root = Element("Signature")
-    
+class xmldsig(object):
+    def __init__(self, data, digest_algorithm="sha1", signature_algorithm="hmac-sha1"):
+        self.digest_algo = digest_algorithm
+        self.signature_algo = signature_algorithm
+        self.data = data
+        self.hasher = hashlib.new(self.digest_algo)
 
-def sign(tree, digest_algorithm="sha1", encoding="base64"):
-    c14n = etree.tostring(tree, method="c14n")
-    print("C14n:")
-    print(c14n)
-    hasher = hashlib.new(digest_algorithm)
-    hasher.update(c14n)
-    print("Digest:")
-    print(hasher.hexdigest())
+    def sign(self):
+        c14n = etree.tostring(self.data, method="c14n", with_comments=False, exclusive=True)
+        self.hasher.update(c14n)
+        self.digest = base64.b64encode(self.hasher.digest())
+        signature = self._build_signature()
+        payload = Element("Object", Id="object")
+        payload.append(self.data.getroot())
+        signature.append(payload)
+        return signature
 
-def verify(tree):
-    pass
+    def _build_signature(self):
+        sig_root = Element("Signature", xmlns=XMLDSIG_NS)
+        signed_info = Element("SignedInfo")
+        sig_root.append(signed_info)
+        canonicalization_method = Element("CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
+        signed_info.append(canonicalization_method)
+        signature_method = Element("SignatureMethod", Algorithm=XMLDSIG_NS + self.signature_algo)
+        signed_info.append(signature_method)
+        reference = Element("Reference", URI="#object")
+        signed_info.append(reference)
+        digest_method = Element("DigestMethod", Algorithm=XMLDSIG_NS + self.digest_algo)
+        reference.append(digest_method)
+        digest_value = Element("DigestValue")
+        digest_value.text = self.digest
+        reference.append(digest_value)
+        signature_value = Element("SignatureValue")
+        if self.signature_algo == "hmac-sha1":
+            k = b"secret"
+            #k = 73 65 63 72 65 74
+            hasher = hmac.new(key=k,
+                              msg=etree.tostring(signed_info, method="c14n"),
+                              digestmod=hashlib.sha1)
+            signature_value.text = base64.b64encode(hasher.digest())
+            sig_root.append(signature_value)
+        return sig_root
+
+    def verify(self):
+        pass
 
 #class SigningElement(Element, XMLDSigMixin):
 #    pass
