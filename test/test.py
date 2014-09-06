@@ -19,7 +19,7 @@ class TestSignXML(unittest.TestCase):
         tree = etree.parse(self.example_xml_file)
 #        signature = sign(tree)
         #x = etree.Element(
-        print(etree.tostring(xmldsig(tree).sign()))
+        print(etree.tostring(xmldsig(tree.getroot()).sign()))
 #        parser.feed(open(self.example_xml_file).read())
 #        tree = parser.close()
 #        print(tree.sign())

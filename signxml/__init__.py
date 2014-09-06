@@ -18,18 +18,27 @@ class xmldsig(object):
         self.hasher = hashlib.new(self.digest_algo)
 
     def sign(self):
-        c14n = etree.tostring(self.data, method="c14n", with_comments=False, exclusive=True)
+        self.payload = Element("Object", Id="object")
+        from collections import OrderedDict
+        #self.payload.set("xmlns", XMLDSIG_NS)
+        self.payload.text = """some text
+  with spaces and CR-LF."""
+#        self.payload.append(self.data)
+        sig_root = Element("Signature", xmlns=XMLDSIG_NS)
+
+        c14n = etree.tostring(self.payload, method="c14n", with_comments=False, exclusive=True)
+        c14n = c14n.replace("<Object", '<Object xmlns="{}"'.format(XMLDSIG_NS))
+        print("BEGIN C14N")
+        print(c14n)
+        print("END C14N")
         self.hasher.update(c14n)
         self.digest = base64.b64encode(self.hasher.digest())
-        signature = self._build_signature()
-        payload = Element("Object", Id="object")
-        payload.append(self.data.getroot())
-        signature.append(payload)
-        return signature
+        print(self.digest)
 
-    def _build_signature(self):
-        sig_root = Element("Signature", xmlns=XMLDSIG_NS)
-        signed_info = Element("SignedInfo")
+        #print("PARENT:", self.payload.getparent().get("xmlns"))
+
+
+        signed_info = Element("SignedInfo", xmlns=XMLDSIG_NS)
         sig_root.append(signed_info)
         canonicalization_method = Element("CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
         signed_info.append(canonicalization_method)
@@ -51,6 +60,7 @@ class xmldsig(object):
                               digestmod=hashlib.sha1)
             signature_value.text = base64.b64encode(hasher.digest())
             sig_root.append(signature_value)
+        sig_root.append(self.payload)
         return sig_root
 
     def verify(self):
