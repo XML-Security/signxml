@@ -1,1 +1,3 @@
 lxml==3.3.6
+eight==0.3.0
+pycrypto==2.6.1
