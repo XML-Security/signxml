@@ -12,14 +12,6 @@ from lxml.etree import Element, SubElement
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 
-def pack_bigint(i):
-    # See http://stackoverflow.com/questions/14764237
-    b = bytearray()
-    while i:
-        b.append(i & 0xFF)
-        i >>= 8
-    return b
-
 class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha1"):
         self.digest_algo = digest_algorithm
