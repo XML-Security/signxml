@@ -11,12 +11,12 @@ from lxml.etree import Element, SubElement
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 
-class SignXMLInvalidSignature(Exception):
+class InvalidSignature(Exception):
     """
     Raised when signature validation fails.
     """
 
-class SignXMLInvalidInput(ValueError):
+class InvalidInput(ValueError):
     pass
 
 class xmldsig(object):
@@ -30,7 +30,7 @@ class xmldsig(object):
         if enveloped_signature:
             self.payload = self.data
             if isinstance(self.data, str):
-                raise SignXMLInvalidInput("When using enveloped signature, **data** must be an XML element")
+                raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             self._reference_uri = ""
         else:
             self.payload = Element("Object", Id="object")
@@ -59,7 +59,7 @@ class xmldsig(object):
         self.digest = base64.b64encode(hasher.digest())
 
         signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
-        canonicalization_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
+        c14n_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
         signature_method = SubElement(signed_info, "SignatureMethod", Algorithm=XMLDSIG_NS + self.signature_algo)
         reference = SubElement(signed_info, "Reference", URI=self._reference_uri)
         if enveloped_signature:
@@ -128,4 +128,45 @@ class xmldsig(object):
             return self.sig_root
 
     def verify(self):
-        pass
+        ns = {"xmldsig": XMLDSIG_NS}
+        print("Will verify", len(self.data))
+        root = etree.fromstring(self.data)
+
+        if root.tag == "{" + XMLDSIG_NS + "}Signature":
+            enveloped_signature = False
+            signature = root
+        else:
+            enveloped_signature = True
+            signature = root.find("xmldsig:Signature", namespaces=ns)
+
+        signed_info = signature.find("xmldsig:SignedInfo", namespaces=ns)
+        c14n_method = signed_info.find("xmldsig:CanonicalizationMethod", namespaces=ns)
+        if c14n_method.get("Algorithm").endswith("#WithComments"):
+            with_comments = True
+        else:
+            with_comments = False
+        signed_info_c14n = etree.tostring(signed_info, method="c14n", with_comments=with_comments, exclusive=True)
+        reference = signed_info.find("xmldsig:Reference", namespaces=ns)
+        digest_method = reference.find("xmldsig:DigestMethod", namespaces=ns)
+        digest_value = reference.find("xmldsig:DigestValue", namespaces=ns)
+
+        if enveloped_signature:
+            payload = root
+            payload.remove(signature)
+        else:
+            # TODO: find a better way to do this
+            payload = signature.find('xmldsig:Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")), namespaces=ns)
+
+        if not digest_method.get("Algorithm").startswith(XMLDSIG_NS):
+            raise InvalidInput("Expected DigestMethod#Algorithm to start with "+XMLDSIG_NS)
+        hasher = hashlib.new(digest_method.get("Algorithm").split("#", 1)[1])
+        payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
+        hasher.update(payload_c14n)
+        if digest_value.text != base64.b64encode(hasher.digest()):
+            raise InvalidSignature("Digest mismatch")
+
+        signature_method = signed_info.find("xmldsig:SignatureMethod", namespaces=ns)
+        if not signature_method.get("Algorithm").startswith(XMLDSIG_NS):
+            raise InvalidInput("Expected SignatureMethod#Algorithm to start with "+XMLDSIG_NS)
+            
+        key_info = signature.find("xmldsig:KeyInfo", namespaces=ns)

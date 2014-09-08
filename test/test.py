@@ -21,7 +21,7 @@ class TestSignXML(unittest.TestCase):
                          dsa=DSA.generate(512))
 
     def test_basic_signxml_statements(self):
-        with self.assertRaisesRegexp(SignXMLInvalidInput, "must be an XML element"):
+        with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
             xmldsig("x").sign(enveloped_signature=True)
 
         tree = etree.parse(self.example_xml_file)
@@ -40,6 +40,7 @@ class TestSignXML(unittest.TestCase):
                                              key=self.keys[alg],
                                              enveloped_signature=enveloped_signature)
                     print(etree.tostring(signed))
+                    xmldsig(etree.tostring(signed)).verify()
 
 if __name__ == '__main__':
     unittest.main()
