@@ -4,7 +4,6 @@ import hashlib, base64, hmac
 
 from eight import *
 
-from collections import namedtuple, Mapping, Iterable
 from lxml import etree
 from lxml.etree import Element, SubElement
 
@@ -12,16 +11,26 @@ from lxml.etree import Element, SubElement
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 
+class SignXMLInvalidSignature(Exception):
+    """
+    Raised when signature validation fails.
+    """
+
+class SignXMLInvalidInput(ValueError):
+    pass
+
 class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha1"):
         self.digest_algo = digest_algorithm
         self.signature_algo = None
         self.data = data
-        self.hasher = hashlib.new(self.digest_algo)
+        self.hash_factory = None
 
     def _get_payload_c14n(self, enveloped_signature, with_comments):
         if enveloped_signature:
             self.payload = self.data
+            if isinstance(self.data, str):
+                raise SignXMLInvalidInput("When using enveloped signature, **data** must be an XML element")
             self._reference_uri = ""
         else:
             self.payload = Element("Object", Id="object")
@@ -38,14 +47,16 @@ class xmldsig(object):
         if not enveloped_signature:
             self.payload_c14n = self.payload_c14n.replace("<Object", '<Object xmlns="{}"'.format(XMLDSIG_NS))
 
-    def sign(self, algorithm="dsa-sha1", key=None, passphrase=None, with_comments=False, enveloped_signature=False):
+    def sign(self, algorithm="dsa-sha1", key=None, passphrase=None, with_comments=False, enveloped_signature=False, hash_factory=None):
         self.signature_algo = algorithm
         self.key = key
+        self.hash_factory = hash_factory
 
         self._get_payload_c14n(enveloped_signature, with_comments)
 
-        self.hasher.update(self.payload_c14n)
-        self.digest = base64.b64encode(self.hasher.digest())
+        hasher = self.hash_factory() if self.hash_factory else hashlib.sha1()
+        hasher.update(self.payload_c14n)
+        self.digest = base64.b64encode(hasher.digest())
 
         signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
         canonicalization_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
@@ -60,33 +71,37 @@ class xmldsig(object):
         signature_value = SubElement(self.sig_root, "SignatureValue")
 
         signed_info_payload = etree.tostring(signed_info, method="c14n")
-        if self.signature_algo == "hmac-sha1":
-            hasher = hmac.new(key=self.key,
+        if self.signature_algo.startswith("hmac-"):
+            signer = hmac.new(key=self.key,
                               msg=signed_info_payload,
-                              digestmod=hashlib.sha1)
-            signature_value.text = base64.b64encode(hasher.digest())
+                              digestmod=self.hash_factory if self.hash_factory else hashlib.sha1)
+            signature_value.text = base64.b64encode(signer.digest())
             self.sig_root.append(signature_value)
-        elif self.signature_algo in ("dsa-sha1", "rsa-sha1"):
+        elif self.signature_algo.startswith("dsa-") or self.signature_algo.startswith("rsa-"):
             from Crypto.PublicKey import RSA, DSA
-            from Crypto.Hash import SHA
             from Crypto.Util.number import long_to_bytes
             from Crypto.Signature import PKCS1_v1_5
             from Crypto.Random import random
 
-            SA = DSA if self.signature_algo == "dsa-sha1" else RSA
+            SA = DSA if self.signature_algo.startswith("dsa-") else RSA
             if isinstance(self.key, str):
                 key = SA.importKey(self.key, passphrase=passphrase)
             else:
                 key = self.key
 
-            digest = SHA.new(signed_info_payload)
+            if self.hash_factory is None:
+                from Crypto.Hash import SHA
+                self.hash_factory = SHA.new
+
+            hasher = self.hash_factory()
+            hasher.update(signed_info_payload)
 
             if SA is RSA:
-                signature = PKCS1_v1_5.new(key).sign(digest)
+                signature = PKCS1_v1_5.new(key).sign(hasher)
                 signature_value.text = base64.b64encode(signature)
             else:
                 k = random.StrongRandom().randint(1, key.q - 1)
-                signature = key.sign(digest.digest(), k)
+                signature = key.sign(hasher.digest(), k)
                 signature_value.text = base64.b64encode(long_to_bytes(signature[0]) + long_to_bytes(signature[1]))
 
             key_info = SubElement(self.sig_root, "KeyInfo")
