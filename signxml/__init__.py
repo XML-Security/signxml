@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 
-import hashlib, base64, hmac
+import hashlib, hmac
+from base64 import b64encode, b64decode
 
 from eight import *
 
@@ -56,7 +57,7 @@ class xmldsig(object):
 
         hasher = self.hash_factory() if self.hash_factory else hashlib.sha1()
         hasher.update(self.payload_c14n)
-        self.digest = base64.b64encode(hasher.digest())
+        self.digest = b64encode(hasher.digest())
 
         signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
         c14n_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
@@ -70,12 +71,12 @@ class xmldsig(object):
         digest_value.text = self.digest
         signature_value = SubElement(self.sig_root, "SignatureValue")
 
-        signed_info_payload = etree.tostring(signed_info, method="c14n")
+        signed_info_c14n = etree.tostring(signed_info, method="c14n")
         if self.signature_algo.startswith("hmac-"):
             signer = hmac.new(key=self.key,
-                              msg=signed_info_payload,
+                              msg=signed_info_c14n,
                               digestmod=self.hash_factory if self.hash_factory else hashlib.sha1)
-            signature_value.text = base64.b64encode(signer.digest())
+            signature_value.text = b64encode(signer.digest())
             self.sig_root.append(signature_value)
         elif self.signature_algo.startswith("dsa-") or self.signature_algo.startswith("rsa-"):
             from Crypto.PublicKey import RSA, DSA
@@ -94,15 +95,15 @@ class xmldsig(object):
                 self.hash_factory = SHA.new
 
             hasher = self.hash_factory()
-            hasher.update(signed_info_payload)
+            hasher.update(signed_info_c14n)
 
             if SA is RSA:
                 signature = PKCS1_v1_5.new(key).sign(hasher)
-                signature_value.text = base64.b64encode(signature)
+                signature_value.text = b64encode(signature)
             else:
                 k = random.StrongRandom().randint(1, key.q - 1)
                 signature = key.sign(hasher.digest(), k)
-                signature_value.text = base64.b64encode(long_to_bytes(signature[0]) + long_to_bytes(signature[1]))
+                signature_value.text = b64encode(long_to_bytes(signature[0]) + long_to_bytes(signature[1]))
 
             key_info = SubElement(self.sig_root, "KeyInfo")
             key_value = SubElement(key_info, "KeyValue")
@@ -110,14 +111,14 @@ class xmldsig(object):
             if SA is RSA:
                 rsa_key_value = SubElement(key_value, "RSAKeyValue")
                 modulus = SubElement(rsa_key_value, "Modulus")
-                modulus.text = base64.b64encode(long_to_bytes(key.n))
+                modulus.text = b64encode(long_to_bytes(key.n))
                 exponent = SubElement(rsa_key_value, "Exponent")
-                exponent.text = base64.b64encode(long_to_bytes(key.e))
+                exponent.text = b64encode(long_to_bytes(key.e))
             else:
                 dsa_key_value = SubElement(key_value, "DSAKeyValue")
                 for field in "p", "q", "g", "y":
                     e = SubElement(dsa_key_value, field.upper())
-                    e.text = base64.b64encode(long_to_bytes(getattr(key, field)))
+                    e.text = b64encode(long_to_bytes(getattr(key, field)))
         else:
             raise NotImplementedError()
         if enveloped_signature:
@@ -127,9 +128,8 @@ class xmldsig(object):
             self.sig_root.append(self.payload)
             return self.sig_root
 
-    def verify(self):
-        ns = {"xmldsig": XMLDSIG_NS}
-        print("Will verify", len(self.data))
+    def verify(self, key=None):
+        self.key = key
         root = etree.fromstring(self.data)
 
         if root.tag == "{" + XMLDSIG_NS + "}Signature":
@@ -137,36 +137,79 @@ class xmldsig(object):
             signature = root
         else:
             enveloped_signature = True
-            signature = root.find("xmldsig:Signature", namespaces=ns)
+            signature = self._find(root, "Signature")
 
-        signed_info = signature.find("xmldsig:SignedInfo", namespaces=ns)
-        c14n_method = signed_info.find("xmldsig:CanonicalizationMethod", namespaces=ns)
+        signed_info = self._find(signature, "SignedInfo")
+        c14n_method = self._find(signed_info, "CanonicalizationMethod")
         if c14n_method.get("Algorithm").endswith("#WithComments"):
             with_comments = True
         else:
             with_comments = False
         signed_info_c14n = etree.tostring(signed_info, method="c14n", with_comments=with_comments, exclusive=True)
-        reference = signed_info.find("xmldsig:Reference", namespaces=ns)
-        digest_method = reference.find("xmldsig:DigestMethod", namespaces=ns)
-        digest_value = reference.find("xmldsig:DigestValue", namespaces=ns)
+        reference = self._find(signed_info, "Reference")
+        digest_method = self._find(reference, "DigestMethod")
+        digest_value = self._find(reference, "DigestValue")
 
         if enveloped_signature:
             payload = root
             payload.remove(signature)
         else:
             # TODO: find a better way to do this
-            payload = signature.find('xmldsig:Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")), namespaces=ns)
+            payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
         if not digest_method.get("Algorithm").startswith(XMLDSIG_NS):
             raise InvalidInput("Expected DigestMethod#Algorithm to start with "+XMLDSIG_NS)
         hasher = hashlib.new(digest_method.get("Algorithm").split("#", 1)[1])
         payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
         hasher.update(payload_c14n)
-        if digest_value.text != base64.b64encode(hasher.digest()):
+        if digest_value.text != b64encode(hasher.digest()):
             raise InvalidSignature("Digest mismatch")
 
-        signature_method = signed_info.find("xmldsig:SignatureMethod", namespaces=ns)
+        signature_method = self._find(signed_info, "SignatureMethod")
+        signature_value = self._find(signature, "SignatureValue")
         if not signature_method.get("Algorithm").startswith(XMLDSIG_NS):
             raise InvalidInput("Expected SignatureMethod#Algorithm to start with "+XMLDSIG_NS)
-            
-        key_info = signature.find("xmldsig:KeyInfo", namespaces=ns)
+
+        signature_algo = signature_method.get("Algorithm").split("#", 1)[1]
+        if signature_algo.startswith("hmac-sha"):
+            if self.key is None:
+                raise InvalidInput('Parameter "key" is required when verifying a HMAC signature')
+            signer = hmac.new(key=self.key,
+                              msg=signed_info_c14n,
+                              digestmod=getattr(hashlib, signature_algo.split("-")[1]))
+            if signature_value.text != b64encode(signer.digest()):
+                raise InvalidSignature("Signature mismatch (HMAC)")
+        elif signature_algo.startswith("dsa-") or signature_algo.startswith("rsa-"):
+            from Crypto.PublicKey import RSA, DSA
+            from Crypto.Signature import PKCS1_v1_5
+            key_info = self._find(signature, "KeyInfo")
+            key_value = self._find(key_info, "KeyValue")
+            if signature_algo.startswith("dsa-"):
+                dsa_key_value = self._find(key_value, "DSAKeyValue")
+                p = self._get_long(dsa_key_value, "P")
+                q = self._get_long(dsa_key_value, "Q")
+                g = self._get_long(dsa_key_value, "G", require=False)
+                y = self._get_long(dsa_key_value, "Y")
+                key = DSA.construct((y, g, p, q))
+                signature = b64decode(signature_value.text)
+            else:
+                rsa_key_value = self._find(key_value, "RSAKeyValue")
+                modulus = self._get_long(rsa_key_value, "Modulus")
+                exponent = self._get_long(rsa_key_value, "Exponent")
+                key = PKCS1_v1_5.new(RSA.construct((modulus, exponent)))
+                signature = b64decode(signature_value.text)
+            if not key.verify(signed_info_c14n, signature):
+                raise InvalidSignature("Signature mismatch")
+
+    def _get_long(self, element, query, require=True):
+        result = self._find(element, query, require=require)
+        if result is not None:
+            from Crypto.Util.number import bytes_to_long
+            result = bytes_to_long(b64decode(result.text))
+        return result
+
+    def _find(self, element, query, require=True):
+        result = element.find("xmldsig:" + query, namespaces={"xmldsig": XMLDSIG_NS})
+        if require and result is None:
+            raise InvalidInput("Expected to find {} in {}".format(query, element.tag))
+        return result

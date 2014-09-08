@@ -40,7 +40,8 @@ class TestSignXML(unittest.TestCase):
                                              key=self.keys[alg],
                                              enveloped_signature=enveloped_signature)
                     print(etree.tostring(signed))
-                    xmldsig(etree.tostring(signed)).verify()
+                    key = self.keys["hmac"] if alg == "hmac" else None
+                    xmldsig(etree.tostring(signed)).verify(key=key)
 
 if __name__ == '__main__':
     unittest.main()
