@@ -7,13 +7,12 @@ SignXML: XML Signature in Python
 Python. This standard is used to provide payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among
 other uses. *SignXML* implements all of the required components of the standard.
 
- The following development goals are
-emphasized:
+The following development goals are emphasized:
 
 * Modern Python compatibility (2.7-3.4+ and PyPy)
 * Minimal dependency footprint: ``lxml``, ``pycrypto``, ``eight``
 * Safe cryptographic and XML processing choices
-* A comprehensive test matrix
+* Comprehensive and continuous testing
 * Simplicity, compactness, readability, and extensibility
 
 Installation
@@ -41,6 +40,7 @@ Links
 * `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.org/en/latest/>`_
 * `Package distribution (PyPI) <https://warehouse.python.org/project/signxml/>`_
+* `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 
 Bugs
 ~~~~
