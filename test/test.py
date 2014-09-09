@@ -25,23 +25,33 @@ class TestSignXML(unittest.TestCase):
             xmldsig("x").sign(enveloped_signature=True)
 
         tree = etree.parse(self.example_xml_file)
-        data = [tree.getroot(), "x y \n z t\n"]
+        data = [tree.getroot(), "x y \n z t\n я\n"]
         for alg in "hmac", "dsa", "rsa":
             for enveloped_signature in True, False:
                 for d in data:
+                    if isinstance(d, str) and enveloped_signature is True:
+                        continue
+                    print(alg, enveloped_signature, type(d))
                     try:
                         d.remove(d.find("Signature"))
                     except:
                         pass
-                    if isinstance(d, str) and enveloped_signature is True:
-                        continue
-                    print("\n----", alg, enveloped_signature, type(d), "-------\n")
                     signed = xmldsig(d).sign(algorithm=alg + "-sha1",
                                              key=self.keys[alg],
                                              enveloped_signature=enveloped_signature)
-                    print(etree.tostring(signed))
+                    # print(etree.tostring(signed))
+                    signed_data = etree.tostring(signed)
                     key = self.keys["hmac"] if alg == "hmac" else None
-                    xmldsig(etree.tostring(signed)).verify(key=key)
+                    xmldsig(signed_data).verify(key=key)
+
+                    with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                        xmldsig(signed_data.replace("Austria", "Mongolia").replace("x y", "a b")).verify(key=key)
+
+                    with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                        xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(key=key)
+
+                    with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
+                        xmldsig(signed_data.replace("<SignatureValue>", "<SignatureValue>z")).verify(key=key)
 
 if __name__ == '__main__':
     unittest.main()
