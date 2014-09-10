@@ -9,7 +9,7 @@ other uses. *SignXML* implements all of the required components of the standard.
 
 * Modern Python compatibility (2.7-3.4+ and PyPy)
 * Minimal and reliable dependency footprint: ``lxml``, ``pycrypto``, ``eight``
-* Comprehensive and continuous testing
+* Comprehensive testing and [CI](https://travis-ci.org/kislyuk/signxml)
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
 
