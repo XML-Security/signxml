@@ -8,7 +8,7 @@ Python. This standard is used to provide payload security in `SAML 2.0 <http://e
 other uses. *SignXML* implements all of the required components of the standard. Its features are:
 
 * Modern Python compatibility (2.7-3.4+ and PyPy)
-* Minimal and reliable dependency footprint: ``lxml``, ``pycrypto``, ``eight``
+* Minimal and reliable dependency footprint: `lxml <https://github.com/lxml/lxml>`_, `pycrypto <https://github.com/dlitz/pycrypto>`_, `eight <https://github.com/kislyuk/eight>`_
 * Comprehensive testing and `CI <https://travis-ci.org/kislyuk/signxml>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
