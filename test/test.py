@@ -4,8 +4,6 @@
 from __future__ import print_function, unicode_literals
 
 import os, sys, unittest, collections, copy, re
-#import xml.etree.ElementTree as ET
-from io import open
 from lxml import etree
 from Crypto.PublicKey import RSA, DSA
 from eight import *
@@ -26,32 +24,40 @@ class TestSignXML(unittest.TestCase):
 
         tree = etree.parse(self.example_xml_file)
         data = [tree.getroot(), "x y \n z t\n я\n"]
-        for alg in "hmac", "dsa", "rsa":
-            for enveloped_signature in True, False:
-                for d in data:
-                    if isinstance(d, str) and enveloped_signature is True:
-                        continue
-                    print(alg, enveloped_signature, type(d))
-                    try:
-                        d.remove(d.find("Signature"))
-                    except:
-                        pass
-                    signed = xmldsig(d).sign(algorithm=alg + "-sha1",
-                                             key=self.keys[alg],
-                                             enveloped_signature=enveloped_signature)
-                    # print(etree.tostring(signed))
-                    signed_data = etree.tostring(signed)
-                    key = self.keys["hmac"] if alg == "hmac" else None
-                    xmldsig(signed_data).verify(key=key)
+        for sa in "hmac", "dsa", "rsa":
+            for ha in "sha1", "sha256":
+                for enveloped_signature in True, False:
+                    for d in data:
+                        if isinstance(d, str) and enveloped_signature is True:
+                            continue
+                        print(sa, ha, enveloped_signature, type(d))
+                        try:
+                            d.remove(d.find("Signature"))
+                        except:
+                            pass
+                        signed = xmldsig(d).sign(algorithm="-".join([sa, ha]),
+                                                 key=self.keys[sa],
+                                                 enveloped_signature=enveloped_signature)
+                        # print(etree.tostring(signed))
+                        signed_data = etree.tostring(signed)
+                        key = self.keys["hmac"] if sa == "hmac" else None
+                        xmldsig(signed_data).verify(key=key)
 
-                    with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                        xmldsig(signed_data.replace("Austria", "Mongolia").replace("x y", "a b")).verify(key=key)
+                        with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                            xmldsig(signed_data.replace("Austria", "Mongolia").replace("x y", "a b")).verify(key=key)
 
-                    with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                        xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(key=key)
+                        with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                            xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(key=key)
 
-                    with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
-                        xmldsig(signed_data.replace("<SignatureValue>", "<SignatureValue>z")).verify(key=key)
+                        with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
+                            xmldsig(signed_data.replace("<SignatureValue>", "<SignatureValue>z")).verify(key=key)
 
+                        with self.assertRaises(etree.XMLSyntaxError):
+                            xmldsig("").verify(key=key)
+
+                        if sa == "hmac":
+                            with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
+                                xmldsig(signed_data).verify(key=b"SECRET")
+                            
 if __name__ == '__main__':
     unittest.main()
