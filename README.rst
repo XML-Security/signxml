@@ -10,7 +10,7 @@ other uses. *SignXML* implements all of the required components of the standard.
 The following development goals are emphasized:
 
 * Modern Python compatibility (2.7-3.4+ and PyPy)
-* Minimal dependency footprint: ``lxml``, ``pycrypto``, ``eight``
+* Minimal and widely used dependency footprint: ``lxml``, ``pycrypto``, ``eight``
 * Safe cryptographic and XML processing choices
 * Comprehensive and continuous testing
 * Simplicity, compactness, readability, and extensibility
