@@ -9,7 +9,7 @@ Python. This standard (also known as XMLDSig) is used to provide payload securit
 standard. Its features are:
 
 * Modern Python compatibility (2.7-3.4+ and PyPy)
-* Minimal and reliable dependency footprint: `lxml <https://github.com/lxml/lxml>`_, `pycrypto <https://github.com/dlitz/pycrypto>`_, `eight <https://github.com/kislyuk/eight>`_
+* Minimal and reliable dependency footprint: `lxml <https://github.com/lxml/lxml>`_, `pycrypto <https://github.com/dlitz/pycrypto>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
 * Comprehensive testing and `continuous integration <https://travis-ci.org/kislyuk/signxml>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
