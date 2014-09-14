@@ -123,10 +123,13 @@ from OpenSSL.crypto import load_certificate, FILETYPE_PEM
 class InvalidCertificate(Exception):
     pass
 
+import certifi
+
 def _verify_x509_cert(cert):
         from OpenSSL import SSL
         context = SSL.Context(SSL.TLSv1_METHOD)
-        context.set_default_verify_paths()
+        #context.set_default_verify_paths()
+        context.load_verify_locations(certifi.where())
         store = context.get_cert_store()
         store_ctx = SSL._lib.X509_STORE_CTX_new()
         _store_ctx = SSL._ffi.gc(store_ctx, SSL._lib.X509_STORE_CTX_free)
@@ -138,7 +141,7 @@ def _verify_x509_cert(cert):
             msg = SSL._ffi.string(SSL._lib.X509_verify_cert_error_string(e))
             raise InvalidCertificate(msg)
 
-cert = load_certificate(FILETYPE_PEM, chain[0])
+cert = load_certificate(FILETYPE_PEM, chain[2])
 #cert = load_certificate(FILETYPE_PEM, root_cert_pem)
 
 _verify_x509_cert(cert)
