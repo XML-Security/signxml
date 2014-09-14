@@ -117,31 +117,11 @@ w/njVbKMXrvc83qmTdGl3TAM0fxQIpqgcglFLveEBgzn
 -----END CERTIFICATE-----
 """
 
-from OpenSSL import SSL
 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
-
-class InvalidCertificate(Exception):
-    pass
-
-import certifi
-
-def _verify_x509_cert(cert):
-        from OpenSSL import SSL
-        context = SSL.Context(SSL.TLSv1_METHOD)
-        #context.set_default_verify_paths()
-        context.load_verify_locations(certifi.where())
-        store = context.get_cert_store()
-        store_ctx = SSL._lib.X509_STORE_CTX_new()
-        _store_ctx = SSL._ffi.gc(store_ctx, SSL._lib.X509_STORE_CTX_free)
-        SSL._lib.X509_STORE_CTX_init(store_ctx, store._store, cert._x509, SSL._ffi.NULL)
-        result = SSL._lib.X509_verify_cert(_store_ctx)
-        SSL._lib.X509_STORE_CTX_cleanup(_store_ctx)
-        if result <= 0:
-            e = SSL._lib.X509_STORE_CTX_get_error(_store_ctx)
-            msg = SSL._ffi.string(SSL._lib.X509_verify_cert_error_string(e))
-            raise InvalidCertificate(msg)
 
 cert = load_certificate(FILETYPE_PEM, chain[2])
 #cert = load_certificate(FILETYPE_PEM, root_cert_pem)
 
-_verify_x509_cert(cert)
+from signxml import verify_x509_cert_chain
+
+verify_x509_cert_chain([load_certificate(FILETYPE_PEM, c) for c in chain[::-1]])

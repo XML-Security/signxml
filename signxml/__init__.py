@@ -86,7 +86,7 @@ class xmldsig(object):
 
         return import_module("Crypto.Hash." + algorithm.upper())
 
-    def sign(self, algorithm="dsa-sha1", key=None, passphrase=None, with_comments=False, enveloped_signature=False, hash_factory=None):
+    def sign(self, algorithm="dsa-sha1", key=None, passphrase=None, cert_chain=None, with_comments=False, enveloped_signature=False, hash_factory=None):
         self.signature_alg = algorithm
         self.key = key
         self.hash_factory = hash_factory
@@ -130,30 +130,40 @@ class xmldsig(object):
 
             hasher = self._get_hash_factory(self.signature_alg).new(signed_info_c14n)
 
-            key_info = SubElement(self.sig_root, "KeyInfo")
-            key_value = SubElement(key_info, "KeyValue")
-#            if key_value is None:
-
             if SA is RSA:
                 signature = PKCS1_v1_5.new(key).sign(hasher)
                 signature_value.text = b64encode(signature)
-
-                rsa_key_value = SubElement(key_value, "RSAKeyValue")
-                modulus = SubElement(rsa_key_value, "Modulus")
-                modulus.text = b64encode(long_to_bytes(key.n))
-                exponent = SubElement(rsa_key_value, "Exponent")
-                exponent.text = b64encode(long_to_bytes(key.e))
             else:
                 k = random.StrongRandom().randint(1, key.q - 1)
                 signature = key.sign(hasher.digest(), k)
                 signature_value.text = b64encode(long_to_bytes(signature[0]) + long_to_bytes(signature[1]))
 
-                dsa_key_value = SubElement(key_value, "DSAKeyValue")
-                for field in "p", "q", "g", "y":
-                    e = SubElement(dsa_key_value, field.upper())
-                    e.text = b64encode(long_to_bytes(getattr(key, field)))
+            key_info = SubElement(self.sig_root, "KeyInfo")
+            if cert_chain is None:
+                key_value = SubElement(key_info, "KeyValue")
+                if SA is RSA:
+                    rsa_key_value = SubElement(key_value, "RSAKeyValue")
+                    modulus = SubElement(rsa_key_value, "Modulus")
+                    modulus.text = b64encode(long_to_bytes(key.n))
+                    exponent = SubElement(rsa_key_value, "Exponent")
+                    exponent.text = b64encode(long_to_bytes(key.e))
+                else:
+                    dsa_key_value = SubElement(key_value, "DSAKeyValue")
+                    for field in "p", "q", "g", "y":
+                        e = SubElement(dsa_key_value, field.upper())
+                        e.text = b64encode(long_to_bytes(getattr(key, field)))
+            else:
+                x509_data = SubElement(key_info, "X509Data")
+                for cert in cert_chain:
+                    x509_certificate = SubElement(x509_data, "X509Certificate")
+                    if isinstance(cert, (str, bytes)):
+                        x509_certificate.text = cert
+                    else:
+                        from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
+                        x509_certificate.text = dump_certificate(FILETYPE_PEM, cert)
         else:
             raise NotImplementedError()
+
         if enveloped_signature:
             self.payload.append(self.sig_root)
             return self.payload
@@ -256,15 +266,26 @@ class xmldsig(object):
             raise InvalidInput("Expected to find {} in {}".format(query, element.tag))
         return result
 
-    def _verify_x509_cert(self, cert):
-        from OpenSSL import SSL
-        context = SSL.Context(SSL.TLSv1_METHOD)
-        context.set_default_verify_paths()
-        store = context.get_cert_store()
+def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
+    from OpenSSL import SSL
+    context = SSL.Context(SSL.TLSv1_METHOD)
+    if ca_pem_file is None and ca_path is None:
+        import certifi
+        ca_pem_file = certifi.where()
+    context.load_verify_locations(ca_pem_file, capath=ca_path)
+    store = context.get_cert_store()
+    for cert in cert_chain:
+        # The following certificate chain verification code uses an internal pyOpenSSL API with guidance from
+        # https://github.com/pyca/pyopenssl/pull/155
+        # TODO: Update this to use the public API once the PR lands.
         store_ctx = SSL._lib.X509_STORE_CTX_new()
         _store_ctx = SSL._ffi.gc(store_ctx, SSL._lib.X509_STORE_CTX_free)
         SSL._lib.X509_STORE_CTX_init(store_ctx, store._store, cert._x509, SSL._ffi.NULL)
         result = SSL._lib.X509_verify_cert(_store_ctx)
         SSL._lib.X509_STORE_CTX_cleanup(_store_ctx)
         if result <= 0:
-            raise InvalidCertificate()
+            e = SSL._lib.X509_STORE_CTX_get_error(_store_ctx)
+            msg = SSL._ffi.string(SSL._lib.X509_verify_cert_error_string(e))
+            raise InvalidCertificate(msg)
+        else:
+            store.add_cert(cert)
