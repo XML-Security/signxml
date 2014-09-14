@@ -17,11 +17,16 @@ class InvalidSignature(Exception):
     Raised when signature validation fails.
     """
 
+class InvalidCertificate(InvalidSignature):
+    """
+    Raised when certificate validation fails.
+    """
+
 class InvalidInput(ValueError):
     pass
 
 #rsa_key = RSA.importKey(subjectPublicKeyInfo)
-
+# Use ssl.PEM_cert_to_DER_cert()
 def pem2der(cert):
     from binascii import a2b_base64
     from Crypto.Util.asn1 import DerSequence
@@ -127,6 +132,7 @@ class xmldsig(object):
 
             key_info = SubElement(self.sig_root, "KeyInfo")
             key_value = SubElement(key_info, "KeyValue")
+#            if key_value is None:
 
             if SA is RSA:
                 signature = PKCS1_v1_5.new(key).sign(hasher)
@@ -249,3 +255,16 @@ class xmldsig(object):
         if require and result is None:
             raise InvalidInput("Expected to find {} in {}".format(query, element.tag))
         return result
+
+    def _verify_x509_cert(self, cert):
+        from OpenSSL import SSL
+        context = SSL.Context(SSL.TLSv1_METHOD)
+        context.set_default_verify_paths()
+        store = context.get_cert_store()
+        store_ctx = SSL._lib.X509_STORE_CTX_new()
+        _store_ctx = SSL._ffi.gc(store_ctx, SSL._lib.X509_STORE_CTX_free)
+        SSL._lib.X509_STORE_CTX_init(store_ctx, store._store, cert._x509, SSL._ffi.NULL)
+        result = SSL._lib.X509_verify_cert(_store_ctx)
+        SSL._lib.X509_STORE_CTX_cleanup(_store_ctx)
+        if result <= 0:
+            raise InvalidCertificate()
