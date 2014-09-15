@@ -25,23 +25,6 @@ class InvalidCertificate(InvalidSignature):
 class InvalidInput(ValueError):
     pass
 
-#rsa_key = RSA.importKey(subjectPublicKeyInfo)
-# Use ssl.PEM_cert_to_DER_cert()
-def pem2der(cert):
-    from binascii import a2b_base64
-    from Crypto.Util.asn1 import DerSequence
-
-    lines = cert.replace(" ",'').split()
-    der = a2b_base64(''.join(lines[1:-1]))
-
-    # Extract subjectPublicKeyInfo field from X.509 certificate (see RFC3280)
-    cert = DerSequence()
-    cert.decode(der)
-    tbsCertificate = DerSequence()
-    tbsCertificate.decode(cert[0])
-    subjectPublicKeyInfo = tbsCertificate[6]
-    return subjectPublicKeyInfo
-
 class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha1"):
         self.digest_alg = digest_algorithm

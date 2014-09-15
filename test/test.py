@@ -58,6 +58,25 @@ class TestSignXML(unittest.TestCase):
                         if sa == "hmac":
                             with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
                                 xmldsig(signed_data).verify(key=b"SECRET")
+
+    def test_x509_certs(self):
+        tree = etree.parse(self.example_xml_file)
+        with open(os.path.join(os.path.dirname(__file__), "example-ca.crt")) as fh:
+            ca = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.crt")) as fh:
+            crt = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.key")) as fh:
+            key = fh.read()
+        for ha in "sha1", "sha256":
+            for enveloped_signature in True, False:
+                signed = xmldsig(tree).sign(algorithm="rsa-" + ha,
+                                         key=key,
+                                         cert_chain=[crt],
+                                         enveloped_signature=enveloped_signature)
+                signed_data = etree.tostring(signed)
+                xmldsig(signed_data).verify()
+                # TODO: verify with external cert (overrides supplied cert)
+                # TODO: negative: verify with wrong cert, wrong CA
                             
 if __name__ == '__main__':
     unittest.main()
