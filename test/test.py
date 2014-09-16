@@ -69,10 +69,10 @@ class TestSignXML(unittest.TestCase):
             key = fh.read()
         for ha in "sha1", "sha256":
             for enveloped_signature in True, False:
-                signed = xmldsig(tree).sign(algorithm="rsa-" + ha,
-                                         key=key,
-                                         cert_chain=[crt],
-                                         enveloped_signature=enveloped_signature)
+                signed = xmldsig(tree.getroot()).sign(algorithm="rsa-" + ha,
+                                                      key=key,
+                                                      cert_chain=[crt],
+                                                      enveloped_signature=enveloped_signature)
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify()
                 # TODO: verify with external cert (overrides supplied cert)
