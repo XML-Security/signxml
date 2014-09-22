@@ -40,17 +40,14 @@ def _get_schema():
 
 class xmldsig(object):
     """
-    This class is the main entry point to the functionality of the module.
+    Create a new XML Signature object. This is the main entry point to the functionality of the module.
+
+    :param data: Data that the signature will operate on
+    :type data: String or XML ElementTree Element API compatible object
+    :param digest_algorithm: Digest algorithm that will be used to hash the data during signature generation
+    :type digest_algorithm: string
     """
     def __init__(self, data, digest_algorithm="sha1"):
-        """
-        Create a new XML Signature object.
-
-        :param data: Data that the signature will operate on
-        :type data: String or XML ElementTree Element API compatible object
-        :param digest_algorithm: Digest algorithm that will be used to hash the data during signature generation
-        :type digest_algorithm: string
-        """
         self.digest_alg = digest_algorithm
         self.signature_alg = None
         self.data = data
