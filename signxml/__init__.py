@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 
-import os, sys
+import os, sys, textwrap
 from base64 import b64encode, b64decode
 from collections import OrderedDict
 from importlib import import_module
@@ -12,6 +12,8 @@ from lxml.etree import Element, SubElement
 # TODO: use https://pypi.python.org/pypi/defusedxml/#defusedxml-lxml
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
+PEM_HEADER = "-----BEGIN CERTIFICATE-----"
+PEM_FOOTER = "-----END CERTIFICATE-----"
 
 class InvalidSignature(Exception):
     """
@@ -229,18 +231,28 @@ class xmldsig(object):
 
             key_info = self._find(signature, "KeyInfo")
             key_value = self._find(key_info, "KeyValue", require=False)
+            verifiable = hasher
+            signature = b64decode(signature_value.text)
             if key_value is None:
+                from Crypto.Util.asn1 import DerSequence
                 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
+                from binascii import a2b_base64
+
                 x509_data = self._find(key_info, "X509Data")
                 if x509_data is None:
                     raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
-                chain = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
-                chain = ["-----BEGIN CERTIFICATE-----\n{}-----END CERTIFICATE-----".format(cert) for cert in chain]
-                chain = [load_certificate(FILETYPE_PEM, cert) for cert in chain]
-                verify_x509_cert_chain(chain, ca_pem_file=bytes(ca_pem_file), ca_path=ca_path)
-                key = PKCS1_v1_5.new(chain[-1].get_pubkey())
-                # FIXME: key needs to be transformed into an RSA pubkey class
-                
+                certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+                def format_pem(cert):
+                    return PEM_HEADER + "\n" + textwrap.fill(cert, 64) + "\n" + PEM_FOOTER
+                chain = [load_certificate(FILETYPE_PEM, format_pem(cert)) for cert in certs]
+                verify_x509_cert_chain(chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
+
+                cert = DerSequence()
+                cert.decode(a2b_base64(certs[-1]))
+                tbsCertificate = DerSequence()
+                tbsCertificate.decode(cert[0])
+                subjectPublicKeyInfo = tbsCertificate[6]
+                key = PKCS1_v1_5.new(RSA.importKey(subjectPublicKeyInfo))
             elif signature_alg.startswith("dsa-"):
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
@@ -248,17 +260,14 @@ class xmldsig(object):
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
                 key = DSA.construct((y, g, p, q))
-
-                s = b64decode(signature_value.text)
-                signature = (bytes_to_long(s[:len(s)/2]), bytes_to_long(s[len(s)/2:]))
+                signature = (bytes_to_long(signature[:len(signature)/2]),
+                             bytes_to_long(signature[len(signature)/2:]))
                 verifiable = hasher.digest()
             else:
                 rsa_key_value = self._find(key_value, "RSAKeyValue")
                 modulus = self._get_long(rsa_key_value, "Modulus")
                 exponent = self._get_long(rsa_key_value, "Exponent")
                 key = PKCS1_v1_5.new(RSA.construct((modulus, exponent)))
-                signature = b64decode(signature_value.text)
-                verifiable = hasher
 
             if not key.verify(verifiable, signature):
                 raise InvalidSignature("Signature mismatch")

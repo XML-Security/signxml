@@ -1,10 +1,3 @@
-UNDER DEVELOPMENT
-
-TODO:
-
-* schema validation at parse time and in test
-* custom ns tests
-
 SignXML: XML Signature in Python
 ================================
 

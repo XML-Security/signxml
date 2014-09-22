@@ -11,6 +11,12 @@ from eight import *
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from signxml import *
 
+def reset_tree(t):
+    try:
+        t.remove(t.find("Signature"))
+    except:
+        pass
+
 class TestSignXML(unittest.TestCase):
     def setUp(self):
         self.example_xml_file = os.path.join(os.path.dirname(__file__), "example.xml")
@@ -31,10 +37,7 @@ class TestSignXML(unittest.TestCase):
                         if isinstance(d, str) and enveloped_signature is True:
                             continue
                         print(sa, ha, enveloped_signature, type(d))
-                        try:
-                            d.remove(d.find("Signature"))
-                        except:
-                            pass
+                        reset_tree(d)
                         signed = xmldsig(d).sign(algorithm="-".join([sa, ha]),
                                                  key=self.keys[sa],
                                                  enveloped_signature=enveloped_signature)
@@ -61,21 +64,27 @@ class TestSignXML(unittest.TestCase):
 
     def test_x509_certs(self):
         tree = etree.parse(self.example_xml_file)
-        ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem")
+        ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "example-ca.pem"))
         with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
             crt = "".join(l for l in fh.readlines() if not l.startswith("-----"))
         with open(os.path.join(os.path.dirname(__file__), "example.key")) as fh:
             key = fh.read()
         for ha in "sha1", "sha256":
             for enveloped_signature in True, False:
-                signed = xmldsig(tree.getroot()).sign(algorithm="rsa-" + ha,
-                                                      key=key,
-                                                      cert_chain=[crt],
-                                                      enveloped_signature=enveloped_signature)
+                print(ha, enveloped_signature)
+                data = tree.getroot()
+                reset_tree(data)
+                signed = xmldsig(data).sign(algorithm="rsa-" + ha,
+                                            key=key,
+                                            cert_chain=[crt],
+                                            enveloped_signature=enveloped_signature)
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
+
+                with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
+                    xmldsig(signed_data).verify()
                 # TODO: verify with external cert (overrides supplied cert)
                 # TODO: negative: verify with wrong cert, wrong CA
-                            
+
 if __name__ == '__main__':
     unittest.main()
