@@ -39,6 +39,9 @@ def _get_schema():
     return _schema
 
 class xmldsig(object):
+    """
+    This class is the main entry point to the functionality of the module.
+    """
     def __init__(self, data, digest_algorithm="sha1"):
         """
         Create a new XML Signature object.
