@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 
+import os, sys
 from base64 import b64encode, b64decode
 from collections import OrderedDict
 from importlib import import_module
@@ -24,6 +25,16 @@ class InvalidCertificate(InvalidSignature):
 
 class InvalidInput(ValueError):
     pass
+
+_schema = None
+
+def _get_schema():
+    global _schema
+    if _schema is None:
+        schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig_schema.xsd")
+        with open(schema_file) as fh:
+            _schema = etree.XMLSchema(etree.parse(fh))
+    return _schema
 
 class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha1"):
@@ -143,6 +154,9 @@ class xmldsig(object):
                         x509_certificate.text = cert
                     else:
                         from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
+                        print("BEGIN DUMP")
+                        print(dump_certificate(FILETYPE_PEM, cert))
+                        print("END DUMP")
                         x509_certificate.text = dump_certificate(FILETYPE_PEM, cert)
         else:
             raise NotImplementedError()
@@ -154,7 +168,7 @@ class xmldsig(object):
             self.sig_root.append(self.payload)
             return self.sig_root
 
-    def verify(self, key=None):
+    def verify(self, key=None, validate_schema=True, ca_pem_file=None, ca_path=None):
         self.key = key
         root = etree.fromstring(self.data)
 
@@ -164,6 +178,9 @@ class xmldsig(object):
         else:
             enveloped_signature = True
             signature = self._find(root, "Signature")
+
+        if validate_schema:
+            _get_schema().assertValid(signature)
 
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
@@ -211,8 +228,20 @@ class xmldsig(object):
             hasher = self._get_hash_factory(signature_alg).new(signed_info_c14n)
 
             key_info = self._find(signature, "KeyInfo")
-            key_value = self._find(key_info, "KeyValue")
-            if signature_alg.startswith("dsa-"):
+            key_value = self._find(key_info, "KeyValue", require=False)
+            if key_value is None:
+                from OpenSSL.crypto import load_certificate, FILETYPE_PEM
+                x509_data = self._find(key_info, "X509Data")
+                if x509_data is None:
+                    raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
+                chain = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+                chain = ["-----BEGIN CERTIFICATE-----\n{}-----END CERTIFICATE-----".format(cert) for cert in chain]
+                chain = [load_certificate(FILETYPE_PEM, cert) for cert in chain]
+                verify_x509_cert_chain(chain, ca_pem_file=bytes(ca_pem_file), ca_path=ca_path)
+                key = PKCS1_v1_5.new(chain[-1].get_pubkey())
+                # FIXME: key needs to be transformed into an RSA pubkey class
+                
+            elif signature_alg.startswith("dsa-"):
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
                 q = self._get_long(dsa_key_value, "Q")
@@ -246,11 +275,15 @@ class xmldsig(object):
     def _find(self, element, query, require=True):
         result = element.find("xmldsig:" + query, namespaces={"xmldsig": XMLDSIG_NS})
         if require and result is None:
-            raise InvalidInput("Expected to find {} in {}".format(query, element.tag))
+            raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
         return result
+
+    def _findall(self, element, query):
+        return element.findall("xmldsig:" + query, namespaces={"xmldsig": XMLDSIG_NS})
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     from OpenSSL import SSL
+    from OpenSSL.crypto import load_certificate
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
