@@ -107,7 +107,7 @@ class xmldsig(object):
         :param enveloped_signature: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
         :type enveloped_signature: boolean
         :param hash_factory: TODO
-        :type hash_factory: TODO
+        :type hash_factory: callable
 
         :returns: A :py:mod:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
         """
@@ -217,7 +217,7 @@ class xmldsig(object):
         :param ca_pem_file: Filename (as bytes) of a PEM file containing certificate authority information to use when verifying certificate-based signatures.
         :param ca_path: Path to a directory containing PEM-formatted certificate authority files to use when verifying certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle provided by :py:mod:`certifi` will be loaded.
         :type ca_path: string
-        :param require_x509: Whether to require a valid X509 certificate-based signature.
+        :param require_x509: If `True`, a valid X509 certificate-based signature is required to pass validation. If `False`, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
         """
         self.key = key
