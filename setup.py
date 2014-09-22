@@ -7,12 +7,12 @@ install_requires = [line.rstrip() for line in open(os.path.join(os.path.dirname(
 
 setup(
     name='signxml',
-    version='0.1.0',
+    version='0.1.1',
     url='https://github.com/kislyuk/signxml',
     license='Apache Software License',
     author='Andrey Kislyuk',
     author_email='kislyuk@gmail.com',
-    description='A sane XML Signature (xmldsig) extension for defusedxml ElementTree',
+    description='Python XML Signature library',
     long_description=open('README.rst').read(),
     install_requires=install_requires,
     packages = find_packages(exclude=['test']),
