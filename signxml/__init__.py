@@ -238,7 +238,7 @@ class xmldsig(object):
                 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
                 from binascii import a2b_base64
 
-                x509_data = self._find(key_info, "X509Data")
+                x509_data = self._find(key_info, "X509Data", require=False)
                 if x509_data is None:
                     raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
