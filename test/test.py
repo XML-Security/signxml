@@ -66,7 +66,7 @@ class TestSignXML(unittest.TestCase):
         tree = etree.parse(self.example_xml_file)
         ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "example-ca.pem"))
         with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
-            crt = "".join(l for l in fh.readlines() if not l.startswith("-----"))
+            crt = fh.read()
         with open(os.path.join(os.path.dirname(__file__), "example.key")) as fh:
             key = fh.read()
         for ha in "sha1", "sha256":
@@ -76,7 +76,7 @@ class TestSignXML(unittest.TestCase):
                 reset_tree(data)
                 signed = xmldsig(data).sign(algorithm="rsa-" + ha,
                                             key=key,
-                                            cert_chain=[crt],
+                                            cert=crt,
                                             enveloped_signature=enveloped_signature)
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)

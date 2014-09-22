@@ -27,8 +27,11 @@ Synopsis
 
     from signxml import xmldsig
 
-    xmldsig(d).sign()
-    xmldsig(d).verify()
+    cert = open("example.pem").read()
+    key = open("example.key").read()
+    root = ElementTree.fromstring(data)
+    xmldsig(root).sign(key=key, cert=cert)
+    xmldsig(root).verify()
 
 Authors
 -------

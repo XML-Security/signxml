@@ -40,6 +40,14 @@ def _get_schema():
 
 class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha1"):
+        """
+        Create a new XML Signature object.
+
+        :param data: Data that the signature will operate on
+        :type data: String or XML ElementTree Element API compatible object
+        :param digest_algorithm: Digest algorithm that will be used to hash the data during signature generation
+        :type digest_algorithm: string
+        """
         self.digest_alg = digest_algorithm
         self.signature_alg = None
         self.data = data
@@ -82,10 +90,35 @@ class xmldsig(object):
 
         return import_module("Crypto.Hash." + algorithm.upper())
 
-    def sign(self, algorithm="dsa-sha1", key=None, passphrase=None, cert_chain=None, with_comments=False, enveloped_signature=False, hash_factory=None):
+    def sign(self, algorithm="rsa-sha1", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False, hash_factory=None):
+        """
+        Sign the data and return the root element of the resulting XML tree.
+
+        :param algorithm: Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest algorithm, separated by a hyphen. For the signature algorithm, HMAC, RSA, and DSA are supported. For the digest algorithm, any :py:mod:`Crypto.Hash` submodule is supported.
+        :type algorithm: string
+        :param key: Key to be used for signing. When signing with a certificate or RSA or DSA key, this can be a string containing a PEM-formatted key, or a :py:mod:`Crypto.PublicKey.RSA` or :py:mod:`Crypto.PublicKey.DSA` object. When signing with a HMAC, this should be a string containing the shared secret.
+        :type key: string, :py:mod:`Crypto.PublicKey.RSA` or :py:mod:`Crypto.PublicKey.DSA` object
+        :param passphrase: Passphrase to use to decrypt the key, if any.
+        :type passphrase: string
+        :param cert: X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an array containing the certificate and a chain of intermediate certificates.
+        :type cert: string or array of strings
+        :param with_comments: Whether to canonicalize (c14n) the payload with comments or without.
+        :type with_comments: boolean
+        :param enveloped_signature: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
+        :type enveloped_signature: boolean
+        :param hash_factory: TODO
+        :type hash_factory: TODO
+
+        :returns: A :py:mod:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
+        """
         self.signature_alg = algorithm
         self.key = key
         self.hash_factory = hash_factory
+
+        if isinstance(cert, (str, bytes)):
+            cert_chain = [cert]
+        else:
+            cert_chain = cert
 
         self._get_payload_c14n(enveloped_signature, with_comments)
 
@@ -153,7 +186,10 @@ class xmldsig(object):
                 for cert in cert_chain:
                     x509_certificate = SubElement(x509_data, "X509Certificate")
                     if isinstance(cert, (str, bytes)):
-                        x509_certificate.text = cert
+                        x509_certificate.text = ""
+                        for line in cert.splitlines():
+                            if line != PEM_HEADER and line != PEM_FOOTER:
+                                x509_certificate.text += line
                     else:
                         from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
                         print("BEGIN DUMP")
@@ -170,7 +206,20 @@ class xmldsig(object):
             self.sig_root.append(self.payload)
             return self.sig_root
 
-    def verify(self, key=None, validate_schema=True, ca_pem_file=None, ca_path=None):
+    def verify(self, key=None, validate_schema=True, ca_pem_file=None, ca_path=None, require_x509=False):
+        """
+        Verify the XML signature supplied in the data, or raise an exception.
+
+        :param key: If using HMAC, a string containing the shared secret.
+        :type algorithm: string
+        :param validate_schema: Whether to validate **data** against the XML Signature schema.
+        :type validate_schema: boolean
+        :param ca_pem_file: Filename (as bytes) of a PEM file containing certificate authority information to use when verifying certificate-based signatures.
+        :param ca_path: Path to a directory containing PEM-formatted certificate authority files to use when verifying certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle provided by :py:mod:`certifi` will be loaded.
+        :type ca_path: string
+        :param require_x509: Whether to require a valid X509 certificate-based signature.
+        :type require_x509: boolean
+        """
         self.key = key
         root = etree.fromstring(self.data)
 
@@ -213,6 +262,7 @@ class xmldsig(object):
             raise InvalidInput("Expected SignatureMethod#Algorithm to start with "+XMLDSIG_NS)
 
         signature_alg = signature_method.get("Algorithm").split("#", 1)[1]
+        using_x509 = False
         if signature_alg.startswith("hmac-sha"):
             if self.key is None:
                 raise InvalidInput('Parameter "key" is required when verifying a HMAC signature')
@@ -253,6 +303,7 @@ class xmldsig(object):
                 tbsCertificate.decode(cert[0])
                 subjectPublicKeyInfo = tbsCertificate[6]
                 key = PKCS1_v1_5.new(RSA.importKey(subjectPublicKeyInfo))
+                using_x509 = True
             elif signature_alg.startswith("dsa-"):
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
@@ -273,6 +324,9 @@ class xmldsig(object):
                 raise InvalidSignature("Signature mismatch")
         else:
             raise NotImplementedError()
+
+        if require_x509 and not using_x509:
+            raise InvalidSignature("Signature was valid, but not X509-based")
 
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
