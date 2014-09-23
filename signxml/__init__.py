@@ -219,6 +219,8 @@ class xmldsig(object):
         :type ca_path: string
         :param require_x509: Whether to require a valid X509 certificate-based signature.
         :type require_x509: boolean
+
+        :raises: TODO
         """
         self.key = key
         root = etree.fromstring(self.data)
