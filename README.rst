@@ -33,6 +33,8 @@ Synopsis
     xmldsig(root).sign(key=key, cert=cert)
     xmldsig(root).verify()
 
+See the `API documentation <https://signxml.readthedocs.org/en/latest/#module-signxml>`_ for more.
+
 Authors
 -------
 * Andrey Kislyuk
