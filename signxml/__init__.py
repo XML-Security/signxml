@@ -206,9 +206,13 @@ class xmldsig(object):
             self.sig_root.append(self.payload)
             return self.sig_root
 
-    def verify(self, key=None, validate_schema=True, ca_pem_file=None, ca_path=None, require_x509=False):
+    def verify(self, key=None, validate_schema=True, ca_pem_file=None, ca_path=None, require_x509=True):
         """
-        Verify the XML signature supplied in the data, or raise an exception.
+        Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
+        be generated using a valid X509 certificate. To enable other means of signature validation, set the
+        **require_x509** argument to `False`.
+
+        TODO: CN verification
 
         :param key: If using HMAC, a string containing the shared secret.
         :type algorithm: string
@@ -221,6 +225,7 @@ class xmldsig(object):
         :type require_x509: boolean
 
         :raises: TODO
+
         """
         self.key = key
         root = etree.fromstring(self.data)
