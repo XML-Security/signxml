@@ -62,3 +62,5 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
         :target: https://warehouse.python.org/project/signxml/
 .. image:: https://pypip.in/d/signxml/badge.png
         :target: https://warehouse.python.org/project/signxml/
+.. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
+        :target: https://signxml.readthedocs.org/
