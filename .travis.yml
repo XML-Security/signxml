@@ -17,3 +17,7 @@ script:
 after_success:
     - pip install --quiet coveralls
     - coveralls
+
+matrix:
+  allow_failures:
+    - python: pypy3
