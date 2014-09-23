@@ -1,3 +1,7 @@
+Version 0.1.3 (2014-09-23)
+--------------------------
+- Require x509 for verification by default.
+
 Version 0.1.2 (2014-09-22)
 --------------------------
 - Documentation fixes.
