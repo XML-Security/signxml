@@ -12,6 +12,9 @@ from lxml.etree import Element, SubElement
 # TODO: use https://pypi.python.org/pypi/defusedxml/#defusedxml-lxml
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
+XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
+XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
+XMLDSIG_MORE_NS = "http://www.w3.org/2001/04/xmldsig-more#"
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
 
@@ -52,6 +55,50 @@ class xmldsig(object):
         self.signature_alg = None
         self.data = data
         self.hash_factory = None
+
+    known_digest_methods = {
+        XMLDSIG_NS + "sha1": "Crypto.Hash.SHA",
+        XMLENC_NS + "sha256": "Crypto.Hash.SHA256",
+        XMLDSIG_MORE_NS + "sha224": "Crypto.Hash.SHA224",
+        XMLDSIG_MORE_NS + "sha384": "Crypto.Hash.SHA384",
+        XMLENC_NS + "sha512": "Crypto.Hash.SHA512"
+    }
+
+    known_hmac_digest_methods = {
+        XMLDSIG_NS + "hmac-sha1": "Crypto.Hash.SHA",
+        XMLDSIG_MORE_NS + "hmac-sha256": "Crypto.Hash.SHA256",
+        XMLDSIG_MORE_NS + "hmac-sha384": "Crypto.Hash.SHA384",
+        XMLDSIG_MORE_NS + "hmac-sha512": "Crypto.Hash.SHA512",
+        XMLDSIG_MORE_NS + "hmac-sha224": "Crypto.Hash.SHA224",
+    }
+
+    known_signature_digest_methods = {
+        XMLDSIG_MORE_NS + "rsa-sha256": "Crypto.Hash.SHA256",
+        XMLDSIG_MORE_NS + "ecdsa-sha256": "Crypto.Hash.SHA256",
+        XMLDSIG_NS + "dsa-sha1": "Crypto.Hash.SHA",
+        XMLDSIG_NS + "rsa-sha1": "Crypto.Hash.SHA",
+        XMLDSIG_MORE_NS + "rsa-sha224": "Crypto.Hash.SHA224",
+        XMLDSIG_MORE_NS + "rsa-sha384": "Crypto.Hash.SHA384",
+        XMLDSIG_MORE_NS + "rsa-sha512": "Crypto.Hash.SHA512",
+        XMLDSIG_MORE_NS + "ecdsa-sha1": "Crypto.Hash.SHA",
+        XMLDSIG_MORE_NS + "ecdsa-sha224": "Crypto.Hash.SHA224",
+        XMLDSIG_MORE_NS + "ecdsa-sha384": "Crypto.Hash.SHA384",
+        XMLDSIG_MORE_NS + "ecdsa-sha512": "Crypto.Hash.SHA512",
+        XMLDSIG11_NS + "dsa-sha256": "Crypto.Hash.SHA256"
+    }
+
+    def _get_digest_method(self, digest_algorithm_id, methods=None):
+        if methods is None:
+            methods = self.known_digest_methods
+        if digest_algorithm_id not in methods:
+            raise InvalidInput('Algorithm "{}" is not supported'.format(digest_algorithm_id))
+        return import_module(methods[digest_algorithm_id])
+
+    def _get_hmac_digest_method(self, hmac_algorithm_id):
+        return self._get_digest_method(hmac_algorithm_id, methods=self.known_hmac_digest_methods)
+
+    def _get_signature_digest_method(self, signature_algorithm_id):
+        return self._get_digest_method(signature_algorithm_id, methods=self.known_signature_digest_methods)
 
     def _get_payload_c14n(self, enveloped_signature, with_comments):
         if enveloped_signature:
