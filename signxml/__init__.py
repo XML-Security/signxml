@@ -273,7 +273,11 @@ class xmldsig(object):
 
         """
         self.key = key
-        root = etree.fromstring(self.data)
+
+        if isinstance(self.data, (str, bytes)):
+            root = etree.fromstring(self.data)
+        else:
+            root = self.data
 
         if root.tag == "{" + XMLDSIG_NS + "}Signature":
             enveloped_signature = False
