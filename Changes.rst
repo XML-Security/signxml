@@ -1,3 +1,7 @@
+Version 0.1.7 (2014-09-25)
+--------------------------
+- Packaging fix.
+
 Version 0.1.6 (2014-09-25)
 --------------------------
 - Accept etree elements in verify.

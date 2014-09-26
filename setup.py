@@ -7,7 +7,7 @@ install_requires = [line.rstrip() for line in open(os.path.join(os.path.dirname(
 
 setup(
     name='signxml',
-    version='0.1.6',
+    version='0.1.7',
     url='https://github.com/kislyuk/signxml',
     license='Apache Software License',
     author='Andrey Kislyuk',
@@ -16,9 +16,10 @@ setup(
     long_description=open('README.rst').read(),
     install_requires=install_requires,
     packages = find_packages(exclude=['test']),
-    include_package_data=True,
     platforms=['MacOS X', 'Posix'],
     package_data={'signxml': ['schemas/*.xsd']},
+    zip_safe=False,
+    include_package_data=True,
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
