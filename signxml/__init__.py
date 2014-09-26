@@ -54,7 +54,6 @@ class xmldsig(object):
         self.digest_alg = digest_algorithm
         self.signature_alg = None
         self.data = data
-        self.hash_factory = None
 
     known_digest_methods = {
         XMLDSIG_NS + "sha1": "Crypto.Hash.SHA",
@@ -86,19 +85,37 @@ class xmldsig(object):
         XMLDSIG_MORE_NS + "ecdsa-sha512": "Crypto.Hash.SHA512",
         XMLDSIG11_NS + "dsa-sha256": "Crypto.Hash.SHA256"
     }
+    known_digest_tags = {method.split("#")[1]: method for method in known_digest_methods}
+    known_hmac_digest_tags = {method.split("#")[1]: method for method in known_hmac_digest_methods}
+    known_signature_digest_tags = {method.split("#")[1]: method for method in known_signature_digest_methods}
 
     def _get_digest_method(self, digest_algorithm_id, methods=None):
         if methods is None:
             methods = self.known_digest_methods
         if digest_algorithm_id not in methods:
-            raise InvalidInput('Algorithm "{}" is not supported'.format(digest_algorithm_id))
+            raise InvalidInput('Algorithm "{}" is not recognized'.format(digest_algorithm_id))
         return import_module(methods[digest_algorithm_id])
+
+    def _get_digest_method_by_tag(self, digest_algorithm_tag, methods=None, known_tags=None):
+        if known_tags is None:
+            known_tags = self.known_digest_tags
+        if digest_algorithm_tag not in known_tags:
+            raise InvalidInput('Algorithm tag "{}" is not recognized'.format(digest_algorithm_tag))
+        return self._get_digest_method(known_tags[digest_algorithm_tag], methods=methods)
 
     def _get_hmac_digest_method(self, hmac_algorithm_id):
         return self._get_digest_method(hmac_algorithm_id, methods=self.known_hmac_digest_methods)
 
+    def _get_hmac_digest_method_by_tag(self, hmac_algorithm_tag):
+        return self._get_digest_method_by_tag(hmac_algorithm_tag, methods=self.known_hmac_digest_methods,
+                                              known_tags=self.known_hmac_digest_tags)
+
     def _get_signature_digest_method(self, signature_algorithm_id):
         return self._get_digest_method(signature_algorithm_id, methods=self.known_signature_digest_methods)
+
+    def _get_signature_digest_method_by_tag(self, signature_algorithm_tag):
+        return self._get_digest_method_by_tag(signature_algorithm_tag, methods=self.known_signature_digest_methods,
+                                              known_tags=self.known_signature_digest_tags)
 
     def _get_payload_c14n(self, enveloped_signature, with_comments):
         if enveloped_signature:
@@ -117,27 +134,7 @@ class xmldsig(object):
         self.sig_root = Element("Signature", xmlns=XMLDSIG_NS)
         self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=True)
 
-    def _get_hash_factory(self, tag, use_pycrypto=False):
-        if self.hash_factory is not None:
-            return self.hash_factory
-
-        if isinstance(tag, (str, bytes)):
-            algorithm = tag
-            if "-" in tag:
-                algorithm = tag.split("-", 1)[1]
-        else:
-            if tag.get("Algorithm") is None:
-                raise InvalidInput('Expected {} to contain a tag "Algorithm"'.format(tag.text))
-            if not tag.get("Algorithm").startswith(XMLDSIG_NS):
-                raise InvalidInput("Expected {}#Algorithm to start with {}".format(tag.text, XMLDSIG_NS))
-            algorithm = tag.get("Algorithm").split("#", 1)[1]
-
-        if algorithm == "sha1":
-            algorithm = "SHA"
-
-        return import_module("Crypto.Hash." + algorithm.upper())
-
-    def sign(self, algorithm="rsa-sha1", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False, hash_factory=None):
+    def sign(self, algorithm="rsa-sha1", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -153,14 +150,11 @@ class xmldsig(object):
         :type with_comments: boolean
         :param enveloped_signature: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
         :type enveloped_signature: boolean
-        :param hash_factory: TODO
-        :type hash_factory: callable
 
         :returns: A :py:mod:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
         """
         self.signature_alg = algorithm
         self.key = key
-        self.hash_factory = hash_factory
 
         if isinstance(cert, (str, bytes)):
             cert_chain = [cert]
@@ -169,17 +163,21 @@ class xmldsig(object):
 
         self._get_payload_c14n(enveloped_signature, with_comments)
 
-        hasher = self._get_hash_factory(self.digest_alg)
+        hasher = self._get_digest_method_by_tag(self.digest_alg)
         self.digest = b64encode(hasher.new(self.payload_c14n).digest())
 
         signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
         c14n_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
-        signature_method = SubElement(signed_info, "SignatureMethod", Algorithm=XMLDSIG_NS + self.signature_alg)
+        if self.signature_alg.startswith("hmac-"):
+            algorithm_id = self.known_hmac_digest_tags[self.signature_alg]
+        else:
+            algorithm_id = self.known_signature_digest_tags[self.signature_alg]
+        signature_method = SubElement(signed_info, "SignatureMethod", Algorithm=algorithm_id)
         reference = SubElement(signed_info, "Reference", URI=self._reference_uri)
         if enveloped_signature:
             transforms = SubElement(reference, "Transforms")
             SubElement(transforms, "Transform", Algorithm=XMLDSIG_NS + "enveloped-signature")
-        digest_method = SubElement(reference, "DigestMethod", Algorithm=XMLDSIG_NS + self.digest_alg)
+        digest_method = SubElement(reference, "DigestMethod", Algorithm=self.known_digest_tags[self.digest_alg])
         digest_value = SubElement(reference, "DigestValue")
         digest_value.text = self.digest
         signature_value = SubElement(self.sig_root, "SignatureValue")
@@ -189,7 +187,7 @@ class xmldsig(object):
             from Crypto.Hash import HMAC
             signer = HMAC.new(key=self.key,
                               msg=signed_info_c14n,
-                              digestmod=self._get_hash_factory(self.signature_alg))
+                              digestmod=self._get_hmac_digest_method_by_tag(self.signature_alg))
             signature_value.text = b64encode(signer.digest())
             self.sig_root.append(signature_value)
         elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-"):
@@ -204,7 +202,7 @@ class xmldsig(object):
             else:
                 key = self.key
 
-            hasher = self._get_hash_factory(self.signature_alg).new(signed_info_c14n)
+            hasher = self._get_signature_digest_method_by_tag(self.signature_alg).new(signed_info_c14n)
 
             if SA is RSA:
                 signature = PKCS1_v1_5.new(key).sign(hasher)
@@ -295,7 +293,7 @@ class xmldsig(object):
             with_comments = False
         signed_info_c14n = etree.tostring(signed_info, method="c14n", with_comments=with_comments, exclusive=True)
         reference = self._find(signed_info, "Reference")
-        digest_method = self._find(reference, "DigestMethod")
+        digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
 
         if enveloped_signature:
@@ -304,34 +302,29 @@ class xmldsig(object):
         else:
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
-        if not digest_method.get("Algorithm").startswith(XMLDSIG_NS):
-            raise InvalidInput("Expected DigestMethod#Algorithm to start with "+XMLDSIG_NS)
         payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
-        if digest_value.text != b64encode(self._get_hash_factory(digest_method).new(payload_c14n).digest()):
+        if digest_value.text != b64encode(self._get_digest_method(digest_algorithm).new(payload_c14n).digest()):
             raise InvalidSignature("Digest mismatch")
 
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
-        if not signature_method.get("Algorithm").startswith(XMLDSIG_NS):
-            raise InvalidInput("Expected SignatureMethod#Algorithm to start with "+XMLDSIG_NS)
-
-        signature_alg = signature_method.get("Algorithm").split("#", 1)[1]
+        signature_alg = signature_method.get("Algorithm")
         using_x509 = False
-        if signature_alg.startswith("hmac-sha"):
+        if "hmac-sha" in signature_alg:
             if self.key is None:
                 raise InvalidInput('Parameter "key" is required when verifying a HMAC signature')
             from Crypto.Hash import HMAC
             signer = HMAC.new(key=self.key,
                               msg=signed_info_c14n,
-                              digestmod=self._get_hash_factory(signature_alg))
+                              digestmod=self._get_hmac_digest_method(signature_alg))
             if signature_value.text != b64encode(signer.digest()):
                 raise InvalidSignature("Signature mismatch (HMAC)")
-        elif signature_alg.startswith("dsa-") or signature_alg.startswith("rsa-"):
+        elif "dsa-" in signature_alg or "rsa-" in signature_alg:
             from Crypto.PublicKey import RSA, DSA
             from Crypto.Signature import PKCS1_v1_5
             from Crypto.Util.number import bytes_to_long
 
-            hasher = self._get_hash_factory(signature_alg).new(signed_info_c14n)
+            hasher = self._get_signature_digest_method(signature_alg).new(signed_info_c14n)
 
             key_info = self._find(signature, "KeyInfo")
             key_value = self._find(key_info, "KeyValue", require=False)
@@ -358,7 +351,7 @@ class xmldsig(object):
                 subjectPublicKeyInfo = tbsCertificate[6]
                 key = PKCS1_v1_5.new(RSA.importKey(subjectPublicKeyInfo))
                 using_x509 = True
-            elif signature_alg.startswith("dsa-"):
+            elif "dsa-" in signature_alg:
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
                 q = self._get_long(dsa_key_value, "Q")
