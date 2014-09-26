@@ -36,7 +36,7 @@ _schema = None
 def _get_schema():
     global _schema
     if _schema is None:
-        schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig_schema.xsd")
+        schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig-core-schema.xsd")
         with open(schema_file) as fh:
             _schema = etree.XMLSchema(etree.parse(fh))
     return _schema
