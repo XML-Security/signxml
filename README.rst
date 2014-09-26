@@ -7,7 +7,6 @@ Python (both `"Second Edition" <http://www.w3.org/TR/xmldsig-core/>`_ and `Versi
 `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among other uses. *SignXML* implements all of the required
 components of the standard. Its features are:
 
-* Extensions to allow the use of stronger hash functions (e.g. SHA256 instead of SHA1)
 * Extensions to allow signing with and verifying X.509 certificate chains, including hostname/CN validation
 * Modern Python compatibility (2.7-3.4+ and PyPy)
 * Minimal and reliable dependency footprint: `lxml <https://github.com/lxml/lxml>`_, `pycrypto <https://github.com/dlitz/pycrypto>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
