@@ -50,7 +50,7 @@ class xmldsig(object):
     :param digest_algorithm: Digest algorithm that will be used to hash the data during signature generation
     :type digest_algorithm: string
     """
-    def __init__(self, data, digest_algorithm="sha1"):
+    def __init__(self, data, digest_algorithm="sha256"):
         self.digest_alg = digest_algorithm
         self.signature_alg = None
         self.data = data
@@ -134,7 +134,7 @@ class xmldsig(object):
         self.sig_root = Element("Signature", xmlns=XMLDSIG_NS)
         self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=True)
 
-    def sign(self, algorithm="rsa-sha1", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False):
+    def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False):
         """
         Sign the data and return the root element of the resulting XML tree.
 
