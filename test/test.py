@@ -33,37 +33,39 @@ class TestSignXML(unittest.TestCase):
         for sa in "hmac", "dsa", "rsa":
             for ha in "sha1", "sha256":
                 for enveloped_signature in True, False:
-                    for d in data:
-                        if isinstance(d, str) and enveloped_signature is True:
-                            continue
-                        print(sa, ha, enveloped_signature, type(d))
-                        reset_tree(d)
-                        signed = xmldsig(d).sign(algorithm="-".join([sa, ha]),
-                                                 key=self.keys[sa],
-                                                 enveloped_signature=enveloped_signature)
-                        # print(etree.tostring(signed))
-                        signed_data = etree.tostring(signed)
-                        key = self.keys["hmac"] if sa == "hmac" else None
-                        xmldsig(signed_data).verify(key=key, require_x509=False)
+                    for with_comments in True, False:
+                        for d in data:
+                            if isinstance(d, str) and enveloped_signature is True:
+                                continue
+                            print(sa, ha, enveloped_signature, type(d))
+                            reset_tree(d)
+                            signed = xmldsig(d).sign(algorithm="-".join([sa, ha]),
+                                                     key=self.keys[sa],
+                                                     enveloped_signature=enveloped_signature,
+                                                     with_comments=with_comments)
+                            # print(etree.tostring(signed))
+                            signed_data = etree.tostring(signed)
+                            key = self.keys["hmac"] if sa == "hmac" else None
+                            xmldsig(signed_data).verify(key=key, require_x509=False)
 
-                        with self.assertRaisesRegexp(InvalidSignature, "valid, but not X509"):
-                            xmldsig(signed_data).verify(key=key)
+                            with self.assertRaisesRegexp(InvalidSignature, "valid, but not X509"):
+                                xmldsig(signed_data).verify(key=key)
 
-                        with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                            xmldsig(signed_data.replace("Austria", "Mongolia").replace("x y", "a b")).verify(key=key, require_x509=False)
+                            with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                                xmldsig(signed_data.replace("Austria", "Mongolia").replace("x y", "a b")).verify(key=key, require_x509=False)
 
-                        with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                            xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(key=key, require_x509=False)
+                            with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                                xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(key=key, require_x509=False)
 
-#                        with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
-#                            xmldsig(signed_data.replace("<SignatureValue>", "<SignatureValue>z")).verify(key=key)
+                            #with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
+                            #    xmldsig(signed_data.replace("<SignatureValue>", "<SignatureValue>z")).verify(key=key)
 
-                        with self.assertRaises(etree.XMLSyntaxError):
-                            xmldsig("").verify(key=key, require_x509=False)
+                            with self.assertRaises(etree.XMLSyntaxError):
+                                xmldsig("").verify(key=key, require_x509=False)
 
-                        if sa == "hmac":
-                            with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
-                                xmldsig(signed_data).verify(key=b"SECRET", require_x509=False)
+                            if sa == "hmac":
+                                with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
+                                    xmldsig(signed_data).verify(key=b"SECRET", require_x509=False)
 
     def test_x509_certs(self):
         tree = etree.parse(self.example_xml_file)

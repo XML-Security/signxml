@@ -167,7 +167,10 @@ class xmldsig(object):
         self.digest = b64encode(hasher.new(self.payload_c14n).digest())
 
         signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
-        c14n_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm="http://www.w3.org/2006/12/xml-c14n11")
+        c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
+        if with_comments:
+            c14n_algorithm += "#WithComments"
+        c14n_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm=c14n_algorithm)
         if self.signature_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.signature_alg]
         else:

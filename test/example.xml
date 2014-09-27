@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <data>
+    <!-- This comment is very important! -->
     <country name="Liechtenstein">
         <rank>1</rank>
         <year>2008</year>
