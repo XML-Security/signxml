@@ -87,7 +87,7 @@ class TestSignXML(unittest.TestCase):
                                             enveloped_signature=enveloped_signature)
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
-                xmldsig(signed_data).verify(external_x509_cert=crt)
+                xmldsig(signed_data).verify(x509_cert=crt)
 
                 with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
                     xmldsig(signed_data).verify()

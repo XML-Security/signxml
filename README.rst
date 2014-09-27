@@ -37,7 +37,13 @@ Using a SAML metadata file:
 
 .. code-block:: python
 
-    TODO
+    from signxml import xmldsig
+
+    with open("metadata.xml", "rb") as fh:
+        cert = etree.parse(fh).find("//ds:X509Certificate").text
+
+    root = ElementTree.fromstring(data)
+    xmldsig(root).verify(x509_cert=cert)
 
 See the `API documentation <https://signxml.readthedocs.org/en/latest/#module-signxml>`_ for more.
 
