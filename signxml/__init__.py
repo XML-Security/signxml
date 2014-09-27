@@ -41,6 +41,13 @@ def _get_schema():
             _schema = etree.XMLSchema(etree.parse(fh))
     return _schema
 
+def _strip_pem_header(cert):
+    bare_cert = ""
+    for line in cert.splitlines():
+        if line != PEM_HEADER and line != PEM_FOOTER:
+            bare_cert += line
+    return bare_cert
+
 class xmldsig(object):
     """
     Create a new XML Signature object. This is the main entry point to the functionality of the module.
@@ -234,10 +241,7 @@ class xmldsig(object):
                 for cert in cert_chain:
                     x509_certificate = SubElement(x509_data, "X509Certificate")
                     if isinstance(cert, (str, bytes)):
-                        x509_certificate.text = ""
-                        for line in cert.splitlines():
-                            if line != PEM_HEADER and line != PEM_FOOTER:
-                                x509_certificate.text += line
+                        x509_certificate.text = _strip_pem_header(cert)
                     else:
                         from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
                         print("BEGIN DUMP")
@@ -254,7 +258,7 @@ class xmldsig(object):
             self.sig_root.append(self.payload)
             return self.sig_root
 
-    def verify(self, key=None, validate_schema=True, ca_pem_file=None, ca_path=None, require_x509=True):
+    def verify(self, external_x509_cert=None, hmac_key=None, validate_schema=True, ca_pem_file=None, ca_path=None, require_x509=True):
         """
         Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
         be generated using a valid X509 certificate. To enable other means of signature validation, set the
@@ -262,11 +266,14 @@ class xmldsig(object):
 
         TODO: CN verification
 
-        :param key: If using HMAC, a string containing the shared secret.
-        :type algorithm: string
+        :param external_x509_cert: An external X509 certificate, given as PEM-formatted string, to use for verification. Overrides any X509 certificate supplied by the signature. Implies **require_x509=True**.
+        :type external_x509_cert: string
+        :param hmac_key: If using HMAC, a string containing the shared secret.
+        :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :type validate_schema: boolean
         :param ca_pem_file: Filename (as bytes) of a PEM file containing certificate authority information to use when verifying certificate-based signatures.
+        :type ca_pem_file: bytes
         :param ca_path: Path to a directory containing PEM-formatted certificate authority files to use when verifying certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle provided by :py:mod:`certifi` will be loaded.
         :type ca_path: string
         :param require_x509: If `True`, a valid X509 certificate-based signature is required to pass validation. If `False`, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
@@ -275,7 +282,10 @@ class xmldsig(object):
         :raises: TODO
 
         """
-        self.key = key
+        self.hmac_key = hmac_key
+        self.external_x509_cert = external_x509_cert
+        if external_x509_cert:
+            require_x509 = True
 
         if isinstance(self.data, (str, bytes)):
             root = etree.fromstring(self.data)
@@ -318,10 +328,10 @@ class xmldsig(object):
         signature_alg = signature_method.get("Algorithm")
         using_x509 = False
         if "hmac-sha" in signature_alg:
-            if self.key is None:
-                raise InvalidInput('Parameter "key" is required when verifying a HMAC signature')
+            if self.hmac_key is None:
+                raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
             from Crypto.Hash import HMAC
-            signer = HMAC.new(key=self.key,
+            signer = HMAC.new(key=self.hmac_key,
                               msg=signed_info_c14n,
                               digestmod=self._get_hmac_digest_method(signature_alg))
             if signature_value.text != b64encode(signer.digest()):
@@ -342,14 +352,17 @@ class xmldsig(object):
                 from OpenSSL.crypto import load_certificate, FILETYPE_PEM
                 from binascii import a2b_base64
 
-                x509_data = self._find(key_info, "X509Data", require=False)
-                if x509_data is None:
-                    raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
-                certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
-                def format_pem(cert):
-                    return PEM_HEADER + "\n" + textwrap.fill(cert, 64) + "\n" + PEM_FOOTER
-                chain = [load_certificate(FILETYPE_PEM, format_pem(cert)) for cert in certs]
-                verify_x509_cert_chain(chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
+                if self.external_x509_cert is None:
+                    x509_data = self._find(key_info, "X509Data", require=False)
+                    if x509_data is None:
+                        raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
+                    certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+                    def format_pem(cert):
+                        return PEM_HEADER + "\n" + textwrap.fill(cert, 64) + "\n" + PEM_FOOTER
+                    chain = [load_certificate(FILETYPE_PEM, format_pem(cert)) for cert in certs]
+                    verify_x509_cert_chain(chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
+                else:
+                    certs = [_strip_pem_header(self.external_x509_cert)]
 
                 cert = DerSequence()
                 cert.decode(a2b_base64(certs[-1]))
