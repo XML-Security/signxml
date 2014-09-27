@@ -1,3 +1,7 @@
+Version 0.1.9 (2014-09-27)
+--------------------------
+- Allow use of external X509 certificates for validation; add an example of supplying a cert from SAML metadata.
+
 Version 0.1.8 (2014-09-25)
 --------------------------
 - Packaging fix.
