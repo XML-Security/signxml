@@ -52,7 +52,7 @@ class xmldsig(object):
     """
     Create a new XML Signature object. This is the main entry point to the functionality of the module.
 
-    :param data: Data that the signature will operate on
+    :param data: Data to sign, or signature data to verify
     :type data: String or XML ElementTree Element API compatible object
     :param digest_algorithm: Digest algorithm that will be used to hash the data during signature generation
     :type digest_algorithm: string
