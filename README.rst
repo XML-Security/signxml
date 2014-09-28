@@ -5,7 +5,7 @@ SignXML: XML Signature in Python
 Python (both `"Second Edition" <http://www.w3.org/TR/xmldsig-core/>`_ and `Version 1.1
 <http://www.w3.org/TR/xmldsig-core1/>`_). This standard (also known as XMLDSig) is used to provide payload security in
 `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among other uses. *SignXML* implements all of the required
-components of the standard. Its features are:
+components of the standard, and most recommended ones. Its features are:
 
 * Extensions to allow signing with and verifying X.509 certificate chains, including hostname/CN validation
 * Modern Python compatibility (2.7-3.4+ and PyPy)
