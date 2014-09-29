@@ -8,6 +8,7 @@ from importlib import import_module
 from eight import *
 from lxml import etree
 from lxml.etree import Element, SubElement
+from defusedxml.lxml import fromstring
 
 # TODO: use https://pypi.python.org/pypi/defusedxml/#defusedxml-lxml
 
@@ -289,7 +290,7 @@ class xmldsig(object):
             self.require_x509 = True
 
         if isinstance(self.data, (str, bytes)):
-            root = etree.fromstring(self.data)
+            root = fromstring(self.data)
         else:
             root = self.data
 

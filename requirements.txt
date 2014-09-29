@@ -1,4 +1,5 @@
 lxml==3.3.6
+defusedxml==0.4.1
 eight==0.3.0
 pycrypto==2.6.1
 pyOpenSSL==0.14
