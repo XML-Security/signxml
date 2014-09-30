@@ -10,8 +10,6 @@ from lxml import etree
 from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring
 
-# TODO: use https://pypi.python.org/pypi/defusedxml/#defusedxml-lxml
-
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
 XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
