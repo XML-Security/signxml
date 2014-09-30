@@ -1,9 +1,9 @@
 SignXML: XML Signature in Python
 ================================
 
-*SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard
-(`RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_) in Python (both `"Second Edition" <http://www.w3.org/TR/xmldsig-core/>`_ and `Version 1.1
-<http://www.w3.org/TR/xmldsig-core1/>`_). This standard (also known as XMLDSig) is used to provide payload security in
+*SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard,
+`version 2.0 <http://www.w3.org/TR/xmldsig-core2/>`_ (backwards compatible with previous versions).
+This standard (also known as XMLDSig) is used to provide payload security in
 `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among other uses. *SignXML* implements all of the required
 components of the standard, and most recommended ones. Its features are:
 
@@ -57,8 +57,9 @@ Links
 * `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.org/en/latest/>`_
 * `Package distribution (PyPI) <https://warehouse.python.org/project/signxml/>`_
-* `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
+* `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_ (`RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_)
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
+* `W3C Recommendation: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
 
 Bugs
 ~~~~
