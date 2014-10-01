@@ -7,7 +7,7 @@ SignXML: XML Signature in Python
 `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among other uses. *SignXML* implements all of the required
 components of the standard, and most recommended ones. Its features are:
 
-* Protection against common XML-based attacks when verifying signatures, courtesy of ``defusedxml.lxml``
+* Use of `defusedxml.lxml <https://bitbucket.org/tiran/defusedxml>`_ to protect against common XML-based attacks when verifying signatures
 * Extensions to allow signing with and verifying X.509 certificate chains, including hostname/CN validation
 * Modern Python compatibility (2.7-3.4+ and PyPy)
 * Minimal and reliable dependency footprint: `lxml <https://github.com/lxml/lxml>`_, `defusedxml <https://bitbucket.org/tiran/defusedxml>`_, `pycrypto <https://github.com/dlitz/pycrypto>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
