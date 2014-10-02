@@ -10,7 +10,7 @@ components of the standard, and most recommended ones. Its features are:
 * Protection against common XML-based attacks when verifying signatures, courtesy of ``defusedxml.lxml``
 * Extensions to allow signing with and verifying X.509 certificate chains, including hostname/CN validation
 * Modern Python compatibility (2.7-3.4+ and PyPy)
-* Minimal and reliable dependency footprint: `lxml <https://github.com/lxml/lxml>`_, `defusedxml <https://bitbucket.org/tiran/defusedxml>`_, `pycrypto <https://github.com/dlitz/pycrypto>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
+* Well-supported and reliable dependencies: `lxml <https://github.com/lxml/lxml>`_, `defusedxml <https://bitbucket.org/tiran/defusedxml>`_, `cryptography <https://github.com/pyca/cryptography>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
 * Comprehensive testing and `continuous integration <https://travis-ci.org/kislyuk/signxml>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility

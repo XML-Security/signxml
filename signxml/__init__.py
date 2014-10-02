@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 
-import os, sys, textwrap
+import os, sys
 from base64 import b64encode, b64decode
 from collections import OrderedDict
 from importlib import import_module
@@ -10,14 +10,15 @@ from lxml import etree
 from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring
 
-# TODO: use https://pypi.python.org/pypi/defusedxml/#defusedxml-lxml
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
+
+from .utils import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
 XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
 XMLDSIG_MORE_NS = "http://www.w3.org/2001/04/xmldsig-more#"
-PEM_HEADER = "-----BEGIN CERTIFICATE-----"
-PEM_FOOTER = "-----END CERTIFICATE-----"
 
 class InvalidSignature(Exception):
     """
@@ -42,13 +43,6 @@ def _get_schema():
             _schema = etree.XMLSchema(etree.parse(fh))
     return _schema
 
-def _strip_pem_header(cert):
-    bare_cert = ""
-    for line in cert.splitlines():
-        if line != PEM_HEADER and line != PEM_FOOTER:
-            bare_cert += line
-    return bare_cert
-
 class xmldsig(object):
     """
     Create a new XML Signature object. This is the main entry point to the functionality of the module.
@@ -64,45 +58,50 @@ class xmldsig(object):
         self.data = data
 
     known_digest_methods = {
-        XMLDSIG_NS + "sha1": "Crypto.Hash.SHA",
-        XMLENC_NS + "sha256": "Crypto.Hash.SHA256",
-        XMLDSIG_MORE_NS + "sha224": "Crypto.Hash.SHA224",
-        XMLDSIG_MORE_NS + "sha384": "Crypto.Hash.SHA384",
-        XMLENC_NS + "sha512": "Crypto.Hash.SHA512"
+        XMLDSIG_NS + "sha1": SHA1,
+        XMLENC_NS + "sha256": SHA256,
+        XMLDSIG_MORE_NS + "sha224": SHA224,
+        XMLDSIG_MORE_NS + "sha384": SHA384,
+        XMLENC_NS + "sha512": SHA512,
     }
 
     known_hmac_digest_methods = {
-        XMLDSIG_NS + "hmac-sha1": "Crypto.Hash.SHA",
-        XMLDSIG_MORE_NS + "hmac-sha256": "Crypto.Hash.SHA256",
-        XMLDSIG_MORE_NS + "hmac-sha384": "Crypto.Hash.SHA384",
-        XMLDSIG_MORE_NS + "hmac-sha512": "Crypto.Hash.SHA512",
-        XMLDSIG_MORE_NS + "hmac-sha224": "Crypto.Hash.SHA224",
+        XMLDSIG_NS + "hmac-sha1": SHA1,
+        XMLDSIG_MORE_NS + "hmac-sha256": SHA256,
+        XMLDSIG_MORE_NS + "hmac-sha384": SHA384,
+        XMLDSIG_MORE_NS + "hmac-sha512": SHA512,
+        XMLDSIG_MORE_NS + "hmac-sha224": SHA224,
     }
 
     known_signature_digest_methods = {
-        XMLDSIG_MORE_NS + "rsa-sha256": "Crypto.Hash.SHA256",
-        XMLDSIG_MORE_NS + "ecdsa-sha256": "Crypto.Hash.SHA256",
-        XMLDSIG_NS + "dsa-sha1": "Crypto.Hash.SHA",
-        XMLDSIG_NS + "rsa-sha1": "Crypto.Hash.SHA",
-        XMLDSIG_MORE_NS + "rsa-sha224": "Crypto.Hash.SHA224",
-        XMLDSIG_MORE_NS + "rsa-sha384": "Crypto.Hash.SHA384",
-        XMLDSIG_MORE_NS + "rsa-sha512": "Crypto.Hash.SHA512",
-        XMLDSIG_MORE_NS + "ecdsa-sha1": "Crypto.Hash.SHA",
-        XMLDSIG_MORE_NS + "ecdsa-sha224": "Crypto.Hash.SHA224",
-        XMLDSIG_MORE_NS + "ecdsa-sha384": "Crypto.Hash.SHA384",
-        XMLDSIG_MORE_NS + "ecdsa-sha512": "Crypto.Hash.SHA512",
-        XMLDSIG11_NS + "dsa-sha256": "Crypto.Hash.SHA256"
+        XMLDSIG_MORE_NS + "rsa-sha256": SHA256,
+        XMLDSIG_MORE_NS + "ecdsa-sha256": SHA256,
+        XMLDSIG_NS + "dsa-sha1": SHA1,
+        XMLDSIG_NS + "rsa-sha1": SHA1,
+        XMLDSIG_MORE_NS + "rsa-sha224": SHA224,
+        XMLDSIG_MORE_NS + "rsa-sha384": SHA384,
+        XMLDSIG_MORE_NS + "rsa-sha512": SHA512,
+        XMLDSIG_MORE_NS + "ecdsa-sha1": SHA1,
+        XMLDSIG_MORE_NS + "ecdsa-sha224": SHA224,
+        XMLDSIG_MORE_NS + "ecdsa-sha384": SHA384,
+        XMLDSIG_MORE_NS + "ecdsa-sha512": SHA512,
+        XMLDSIG11_NS + "dsa-sha256": SHA256,
     }
     known_digest_tags = {method.split("#")[1]: method for method in known_digest_methods}
     known_hmac_digest_tags = {method.split("#")[1]: method for method in known_hmac_digest_methods}
     known_signature_digest_tags = {method.split("#")[1]: method for method in known_signature_digest_methods}
+
+    def _get_digest(self, data, digest_algorithm):
+        hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
+        hasher.update(data)
+        return b64encode(hasher.finalize())
 
     def _get_digest_method(self, digest_algorithm_id, methods=None):
         if methods is None:
             methods = self.known_digest_methods
         if digest_algorithm_id not in methods:
             raise InvalidInput('Algorithm "{}" is not recognized'.format(digest_algorithm_id))
-        return import_module(methods[digest_algorithm_id])
+        return methods[digest_algorithm_id]()
 
     def _get_digest_method_by_tag(self, digest_algorithm_tag, methods=None, known_tags=None):
         if known_tags is None:
@@ -146,10 +145,10 @@ class xmldsig(object):
         """
         Sign the data and return the root element of the resulting XML tree.
 
-        :param algorithm: Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest algorithm, separated by a hyphen. For the signature algorithm, HMAC, RSA, and DSA are supported. For the digest algorithm, any :py:mod:`Crypto.Hash` submodule is supported.
+        :param algorithm: Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest algorithm, separated by a hyphen. All algorthm IDs listed under the `Algorithm Identifiers and Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
         :type algorithm: string
-        :param key: Key to be used for signing. When signing with a certificate or RSA or DSA key, this can be a string containing a PEM-formatted key, or a :py:mod:`Crypto.PublicKey.RSA` or :py:mod:`Crypto.PublicKey.DSA` object. When signing with a HMAC, this should be a string containing the shared secret.
-        :type key: string, :py:mod:`Crypto.PublicKey.RSA` or :py:mod:`Crypto.PublicKey.DSA` object
+        :param key: Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string containing a PEM-formatted key, or a :py:mod:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:mod:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:mod:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object. When signing with a HMAC, this should be a string containing the shared secret.
+        :type key: string, :py:mod:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:mod:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:mod:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :type passphrase: string
         :param cert: X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an array containing the certificate and a chain of intermediate certificates.
@@ -171,8 +170,7 @@ class xmldsig(object):
 
         self._get_payload_c14n(enveloped_signature, with_comments)
 
-        hasher = self._get_digest_method_by_tag(self.digest_alg)
-        self.digest = b64encode(hasher.new(self.payload_c14n).digest())
+        self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
         signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
         c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
@@ -195,54 +193,64 @@ class xmldsig(object):
 
         signed_info_c14n = etree.tostring(signed_info, method="c14n")
         if self.signature_alg.startswith("hmac-"):
-            from Crypto.Hash import HMAC
-            signer = HMAC.new(key=self.key,
-                              msg=signed_info_c14n,
-                              digestmod=self._get_hmac_digest_method_by_tag(self.signature_alg))
-            signature_value.text = b64encode(signer.digest())
+            from cryptography.hazmat.primitives.hmac import HMAC
+            signer = HMAC(key=self.key,
+                          algorithm=self._get_hmac_digest_method_by_tag(self.signature_alg),
+                          backend=default_backend())
+            signer.update(signed_info_c14n)
+            signature_value.text = b64encode(signer.finalize())
             self.sig_root.append(signature_value)
         elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-"):
-            from Crypto.PublicKey import RSA, DSA
-            from Crypto.Util.number import long_to_bytes
-            from Crypto.Signature import PKCS1_v1_5
-            from Crypto.Random import random
+            from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
+            from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 
-            SA = DSA if self.signature_alg.startswith("dsa-") else RSA
             if isinstance(self.key, (str, bytes)):
-                key = SA.importKey(self.key, passphrase=passphrase)
+                from cryptography.hazmat.primitives.serialization import load_pem_private_key
+                key = load_pem_private_key(self.key, password=passphrase, backend=default_backend())
             else:
                 key = self.key
 
-            hasher = self._get_signature_digest_method_by_tag(self.signature_alg).new(signed_info_c14n)
-
-            if SA is RSA:
-                signature = PKCS1_v1_5.new(key).sign(hasher)
-                signature_value.text = b64encode(signature)
+            hash_alg = self._get_signature_digest_method_by_tag(self.signature_alg)
+            if self.signature_alg.startswith("dsa-"):
+                signer = key.signer(algorithm=hash_alg)
+            elif self.signature_alg.startswith("ecdsa-"):
+                signer = key.signer(signature_algorithm=ec.ECDSA(algorithm=hash_alg))
+            elif self.signature_alg.startswith("rsa-"):
+                signer = key.signer(padding=PKCS1v15(), algorithm=hash_alg)
             else:
-                k = random.StrongRandom().randint(1, key.q - 1)
-                signature = key.sign(hasher.digest(), k)
-                signature_value.text = b64encode(long_to_bytes(signature[0]) + long_to_bytes(signature[1]))
+                raise NotImplementedError()
+            signer.update(signed_info_c14n)
+            signature = signer.finalize()
+            signature_value.text = b64encode(signature)
 
             key_info = SubElement(self.sig_root, "KeyInfo")
             if cert_chain is None:
                 key_value = SubElement(key_info, "KeyValue")
-                if SA is RSA:
+                if self.signature_alg.startswith("rsa-"):
                     rsa_key_value = SubElement(key_value, "RSAKeyValue")
                     modulus = SubElement(rsa_key_value, "Modulus")
-                    modulus.text = b64encode(long_to_bytes(key.n))
+                    modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n))
                     exponent = SubElement(rsa_key_value, "Exponent")
-                    exponent.text = b64encode(long_to_bytes(key.e))
-                else:
+                    exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e))
+                elif self.signature_alg.startswith("dsa-"):
                     dsa_key_value = SubElement(key_value, "DSAKeyValue")
                     for field in "p", "q", "g", "y":
                         e = SubElement(dsa_key_value, field.upper())
-                        e.text = b64encode(long_to_bytes(getattr(key, field)))
+                        
+                        if field == "y":
+                            key_params = key.public_key().public_numbers()
+                        else:
+                            key_params = key.parameters().parameter_numbers()
+
+                        e.text = b64encode(long_to_bytes(getattr(key_params, field)))
+                else:
+                    raise NotImplementedError("FIXME: Serialization of ECDSA keys is not supported")
             else:
                 x509_data = SubElement(key_info, "X509Data")
                 for cert in cert_chain:
                     x509_certificate = SubElement(x509_data, "X509Certificate")
                     if isinstance(cert, (str, bytes)):
-                        x509_certificate.text = _strip_pem_header(cert)
+                        x509_certificate.text = strip_pem_header(cert)
                     else:
                         from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
                         print("BEGIN DUMP")
@@ -322,7 +330,7 @@ class xmldsig(object):
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
         payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
-        if digest_value.text != b64encode(self._get_digest_method(digest_algorithm).new(payload_c14n).digest()):
+        if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidSignature("Digest mismatch")
 
         signature_method = self._find(signed_info, "SignatureMethod")
@@ -332,65 +340,57 @@ class xmldsig(object):
         if "hmac-sha" in signature_alg:
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
-            from Crypto.Hash import HMAC
-            signer = HMAC.new(key=self.hmac_key,
-                              msg=signed_info_c14n,
-                              digestmod=self._get_hmac_digest_method(signature_alg))
-            if signature_value.text != b64encode(signer.digest()):
+
+            from cryptography.hazmat.primitives.hmac import HMAC
+            signer = HMAC(key=self.hmac_key,
+                          algorithm=self._get_hmac_digest_method(signature_alg),
+                          backend=default_backend())
+            signer.update(signed_info_c14n)
+            if signature_value.text != b64encode(signer.finalize()):
                 raise InvalidSignature("Signature mismatch (HMAC)")
-        elif "dsa-" in signature_alg or "rsa-" in signature_alg:
-            from Crypto.PublicKey import RSA, DSA
-            from Crypto.Signature import PKCS1_v1_5
-            from Crypto.Util.number import bytes_to_long
-
-            hasher = self._get_signature_digest_method(signature_alg).new(signed_info_c14n)
-
+        elif "dsa-" in signature_alg or "rsa-" in signature_alg  or "ecdsa-" in signature_alg:
             key_info = self._find(signature, "KeyInfo")
             key_value = self._find(key_info, "KeyValue", require=False)
-            verifiable = hasher
             signature = b64decode(signature_value.text)
             if key_value is None:
-                from Crypto.Util.asn1 import DerSequence
-                from OpenSSL.crypto import load_certificate, FILETYPE_PEM
-                from binascii import a2b_base64
+                from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify
 
                 if self.x509_cert is None:
                     x509_data = self._find(key_info, "X509Data", require=False)
                     if x509_data is None:
                         raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
                     certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
-                    def format_pem(cert):
-                        return PEM_HEADER + "\n" + textwrap.fill(cert, 64) + "\n" + PEM_FOOTER
-                    chain = [load_certificate(FILETYPE_PEM, format_pem(cert)) for cert in certs]
-                    verify_x509_cert_chain(chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
+                    cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
+                    verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
                 else:
-                    certs = [_strip_pem_header(self.x509_cert)]
+                    cert_chain = [load_certificate(FILETYPE_PEM, self.x509_cert)]
 
-                cert = DerSequence()
-                cert.decode(a2b_base64(certs[-1]))
-                tbsCertificate = DerSequence()
-                tbsCertificate.decode(cert[0])
-                subjectPublicKeyInfo = tbsCertificate[6]
-                key = PKCS1_v1_5.new(RSA.importKey(subjectPublicKeyInfo))
+                signature_digest_method = self._get_signature_digest_method(signature_alg).__class__.__name__
+                verify(cert_chain[-1], signature, signed_info_c14n, bytes(signature_digest_method))
                 using_x509 = True
             elif "dsa-" in signature_alg:
+                from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicNumbers, DSAParameterNumbers
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
                 q = self._get_long(dsa_key_value, "Q")
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
-                key = DSA.construct((y, g, p, q))
-                signature = (bytes_to_long(signature[:len(signature)/2]),
-                             bytes_to_long(signature[len(signature)/2:]))
-                verifiable = hasher.digest()
-            else:
+                key = DSAPublicNumbers(y, DSAParameterNumbers(p, q, g)).public_key(backend=default_backend())
+                verifier = key.verifier(signature, self._get_signature_digest_method(signature_alg))
+                verifier.update(signed_info_c14n)
+                verifier.verify()
+            elif "rsa-" in signature_alg:
+                from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+                from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
                 rsa_key_value = self._find(key_value, "RSAKeyValue")
                 modulus = self._get_long(rsa_key_value, "Modulus")
                 exponent = self._get_long(rsa_key_value, "Exponent")
-                key = PKCS1_v1_5.new(RSA.construct((modulus, exponent)))
-
-            if not key.verify(verifiable, signature):
-                raise InvalidSignature("Signature mismatch")
+                key = RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
+                verifier = key.verifier(signature, padding=PKCS1v15(), algorithm=self._get_signature_digest_method(signature_alg))
+                verifier.update(signed_info_c14n)
+                verifier.verify()
+            elif "ecdsa-" in signature_alg:
+                raise NotImplementedError()
         else:
             raise NotImplementedError()
 
@@ -400,7 +400,6 @@ class xmldsig(object):
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
         if result is not None:
-            from Crypto.Util.number import bytes_to_long
             result = bytes_to_long(b64decode(result.text))
         return result
 
@@ -415,7 +414,6 @@ class xmldsig(object):
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     from OpenSSL import SSL
-    from OpenSSL.crypto import load_certificate
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
