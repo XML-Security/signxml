@@ -38,7 +38,7 @@ _schema = None
 def _get_schema():
     global _schema
     if _schema is None:
-        schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig-core-schema.xsd")
+        schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig1-schema.xsd")
         with open(schema_file) as fh:
             _schema = etree.XMLSchema(etree.parse(fh))
     return _schema
@@ -200,7 +200,7 @@ class xmldsig(object):
             signer.update(signed_info_c14n)
             signature_value.text = b64encode(signer.finalize())
             self.sig_root.append(signature_value)
-        elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-"):
+        elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-") or self.signature_alg.startswith("ecdsa-"):
             from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
             from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 
@@ -243,8 +243,11 @@ class xmldsig(object):
                             key_params = key.parameters().parameter_numbers()
 
                         e.text = b64encode(long_to_bytes(getattr(key_params, field)))
-                else:
-                    raise NotImplementedError("FIXME: Serialization of ECDSA keys is not supported")
+                elif self.signature_alg.startswith("ecdsa-"):
+                    ecdsa_key_value = SubElement(key_value, "ECDSAKeyValue", xmlns=XMLDSIG11_NS)
+                    public_key = SubElement(ecdsa_key_value, "PublicKey")
+                    x = SubElement(public_key, "X", Value=str(key.public_key().public_numbers().x))
+                    y = SubElement(public_key, "Y", Value=str(key.public_key().public_numbers().y))
             else:
                 x509_data = SubElement(key_info, "X509Data")
                 for cert in cert_chain:
@@ -368,6 +371,18 @@ class xmldsig(object):
                 signature_digest_method = self._get_signature_digest_method(signature_alg).__class__.__name__
                 verify(cert_chain[-1], signature, signed_info_c14n, bytes(signature_digest_method))
                 using_x509 = True
+            elif "ecdsa-" in signature_alg:
+                from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers, SECP384R1
+                ecdsa_key_value = self._find(key_value, "ECDSAKeyValue", namespace="xmldsig11")
+                public_key = self._find(ecdsa_key_value, "PublicKey", namespace="xmldsig11")
+                x = int(self._find(public_key, "X", namespace="xmldsig11").get("Value"))
+                y = int(self._find(public_key, "Y", namespace="xmldsig11").get("Value"))
+                # TODO: parameterizable curve
+                key = EllipticCurvePublicNumbers(x=x, y=y, curve=SECP384R1()).public_key(backend=default_backend())
+                # FIXME: this doesn't work yet
+                verifier = key.verifier(signature, self._get_signature_digest_method(signature_alg))
+                verifier.update(signed_info_c14n)
+                verifier.verify()
             elif "dsa-" in signature_alg:
                 from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicNumbers, DSAParameterNumbers
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
@@ -403,14 +418,14 @@ class xmldsig(object):
             result = bytes_to_long(b64decode(result.text))
         return result
 
-    def _find(self, element, query, require=True):
-        result = element.find("xmldsig:" + query, namespaces={"xmldsig": XMLDSIG_NS})
+    def _find(self, element, query, require=True, namespace="xmldsig"):
+        result = element.find(namespace + ":" + query, namespaces={"xmldsig": XMLDSIG_NS, "xmldsig11": XMLDSIG11_NS})
         if require and result is None:
             raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
         return result
 
-    def _findall(self, element, query):
-        return element.findall("xmldsig:" + query, namespaces={"xmldsig": XMLDSIG_NS})
+    def _findall(self, element, query, namespace="xmldsig"):
+        return element.findall(namespace + ":" + query, namespaces={"xmldsig": XMLDSIG_NS, "xmldsig11": XMLDSIG11_NS})
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     from OpenSSL import SSL
