@@ -30,7 +30,7 @@ Synopsis
 
     cert = open("example.pem").read()
     key = open("example.key").read()
-    root = ElementTree.fromstring(data)
+    root = ElementTree.fromstring(signature_data)
     xmldsig(root).sign(key=key, cert=cert)
     xmldsig(root).verify()
 
@@ -43,7 +43,7 @@ Using a SAML metadata file:
     with open("metadata.xml", "rb") as fh:
         cert = etree.parse(fh).find("//ds:X509Certificate").text
 
-    root = ElementTree.fromstring(data)
+    root = ElementTree.fromstring(signature_data)
     xmldsig(root).verify(x509_cert=cert)
 
 See the `API documentation <https://signxml.readthedocs.org/en/latest/#module-signxml>`_ for more.
