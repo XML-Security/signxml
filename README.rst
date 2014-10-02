@@ -1,13 +1,13 @@
 SignXML: XML Signature in Python
 ================================
 
-*SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard in
-Python (both `"Second Edition" <http://www.w3.org/TR/xmldsig-core/>`_ and `Version 1.1
+*SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard
+(`RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_) in Python (both `"Second Edition" <http://www.w3.org/TR/xmldsig-core/>`_ and `Version 1.1
 <http://www.w3.org/TR/xmldsig-core1/>`_). This standard (also known as XMLDSig) is used to provide payload security in
 `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among other uses. *SignXML* implements all of the required
 components of the standard, and most recommended ones. Its features are:
 
-* Protection against common XML-based attacks when verifying signatures, courtesy of ``defusedxml.lxml``
+* Use of `defusedxml.lxml <https://bitbucket.org/tiran/defusedxml>`_ to protect against common XML-based attacks when verifying signatures
 * Extensions to allow signing with and verifying X.509 certificate chains, including hostname/CN validation
 * Modern Python compatibility (2.7-3.4+ and PyPy)
 * Well-supported and reliable dependencies: `lxml <https://github.com/lxml/lxml>`_, `defusedxml <https://bitbucket.org/tiran/defusedxml>`_, `cryptography <https://github.com/pyca/cryptography>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
@@ -59,6 +59,7 @@ Links
 * `Package distribution (PyPI) <https://warehouse.python.org/project/signxml/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
+* `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
 
 Bugs
 ~~~~
