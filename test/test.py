@@ -5,6 +5,7 @@ from __future__ import print_function, unicode_literals
 
 import os, sys, unittest, collections, copy, re
 from lxml import etree
+import cryptography.exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
 from eight import *
@@ -35,7 +36,7 @@ class TestSignXML(unittest.TestCase):
         for da in "sha1", "sha224", "sha256", "sha384", "sha512":
             for sa in "hmac", "dsa", "rsa", "ecdsa":
                 for ha in "sha1", "sha256":
-                    if (sa == "dsa" and ha == "sha256") or sa == "ecdsa":
+                    if (sa == "dsa" and ha == "sha256"):
                         print("FIXME", sa, ha)
                         continue
                     for enveloped_signature in True, False:
@@ -63,8 +64,8 @@ class TestSignXML(unittest.TestCase):
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
                                     xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(hmac_key=hmac_key, require_x509=False)
 
-                                #with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
-                                #    xmldsig(signed_data.replace("<SignatureValue>", "<SignatureValue>z")).verify(key=key)
+                                with self.assertRaises(cryptography.exceptions.InvalidSignature):
+                                    xmldsig(re.sub("<SignatureValue>(.)(.)(.)(.)", r"<SignatureValue>\4\3\2\1", signed_data)).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaises(etree.XMLSyntaxError):
                                     xmldsig("").verify(hmac_key=hmac_key, require_x509=False)

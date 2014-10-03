@@ -10,6 +10,7 @@ from lxml import etree
 from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring
 
+import cryptography.exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 
@@ -20,7 +21,7 @@ XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
 XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
 XMLDSIG_MORE_NS = "http://www.w3.org/2001/04/xmldsig-more#"
 
-class InvalidSignature(Exception):
+class InvalidSignature(cryptography.exceptions.InvalidSignature):
     """
     Raised when signature validation fails.
     """
@@ -90,6 +91,24 @@ class xmldsig(object):
     known_digest_tags = {method.split("#")[1]: method for method in known_digest_methods}
     known_hmac_digest_tags = {method.split("#")[1]: method for method in known_hmac_digest_methods}
     known_signature_digest_tags = {method.split("#")[1]: method for method in known_signature_digest_methods}
+
+    from cryptography.hazmat.primitives.asymmetric import ec
+    # See https://tools.ietf.org/html/rfc5656
+    known_ecdsa_curves = {
+        "urn:oid:1.2.840.10045.3.1.7": ec.SECP256R1,
+        "urn:oid:1.3.132.0.34": ec.SECP384R1,
+        "urn:oid:1.3.132.0.35": ec.SECP521R1,
+        "urn:oid:1.3.132.0.1": ec.SECT163K1,
+        "urn:oid:1.2.840.10045.3.1.1": ec.SECP192R1,
+        "urn:oid:1.3.132.0.33": ec.SECP224R1,
+        "urn:oid:1.3.132.0.26": ec.SECT233K1,
+        "urn:oid:1.3.132.0.27": ec.SECT233R1,
+        "urn:oid:1.3.132.0.16": ec.SECT283R1,
+        "urn:oid:1.3.132.0.36": ec.SECT409K1,
+        "urn:oid:1.3.132.0.37": ec.SECT409R1,
+        "urn:oid:1.3.132.0.38": ec.SECT571K1,
+    }
+    known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.iteritems()}
 
     def _get_digest(self, data, digest_algorithm):
         hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
@@ -244,10 +263,12 @@ class xmldsig(object):
 
                         e.text = b64encode(long_to_bytes(getattr(key_params, field)))
                 elif self.signature_alg.startswith("ecdsa-"):
-                    ecdsa_key_value = SubElement(key_value, "ECDSAKeyValue", xmlns=XMLDSIG11_NS)
-                    public_key = SubElement(ecdsa_key_value, "PublicKey")
-                    x = SubElement(public_key, "X", Value=str(key.public_key().public_numbers().x))
-                    y = SubElement(public_key, "Y", Value=str(key.public_key().public_numbers().y))
+                    ec_key_value = SubElement(key_value, "ECKeyValue", xmlns=XMLDSIG11_NS)
+                    named_curve = SubElement(ec_key_value, "NamedCurve", URI=self.known_ecdsa_curve_oids[key.curve.name])
+                    public_key = SubElement(ec_key_value, "PublicKey")
+                    x = key.public_key().public_numbers().x
+                    y = key.public_key().public_numbers().y
+                    public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
             else:
                 x509_data = SubElement(key_info, "X509Data")
                 for cert in cert_chain:
@@ -372,15 +393,16 @@ class xmldsig(object):
                 verify(cert_chain[-1], signature, signed_info_c14n, bytes(signature_digest_method))
                 using_x509 = True
             elif "ecdsa-" in signature_alg:
-                from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicNumbers, SECP384R1
-                ecdsa_key_value = self._find(key_value, "ECDSAKeyValue", namespace="xmldsig11")
-                public_key = self._find(ecdsa_key_value, "PublicKey", namespace="xmldsig11")
-                x = int(self._find(public_key, "X", namespace="xmldsig11").get("Value"))
-                y = int(self._find(public_key, "Y", namespace="xmldsig11").get("Value"))
-                # TODO: parameterizable curve
-                key = EllipticCurvePublicNumbers(x=x, y=y, curve=SECP384R1()).public_key(backend=default_backend())
-                # FIXME: this doesn't work yet
-                verifier = key.verifier(signature, self._get_signature_digest_method(signature_alg))
+                from cryptography.hazmat.primitives.asymmetric import ec
+                ec_key_value = self._find(key_value, "ECKeyValue", namespace="xmldsig11")
+                named_curve = self._find(ec_key_value, "NamedCurve", namespace="xmldsig11")
+                public_key = self._find(ec_key_value, "PublicKey", namespace="xmldsig11")
+                key_data = b64decode(public_key.text)[1:]
+                x = bytes_to_long(key_data[:len(key_data)/2])
+                y = bytes_to_long(key_data[len(key_data)/2:])
+                curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
+                key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
+                verifier = key.verifier(signature, ec.ECDSA(self._get_signature_digest_method(signature_alg)))
                 verifier.update(signed_info_c14n)
                 verifier.verify()
             elif "dsa-" in signature_alg:
@@ -404,7 +426,7 @@ class xmldsig(object):
                 verifier = key.verifier(signature, padding=PKCS1v15(), algorithm=self._get_signature_digest_method(signature_alg))
                 verifier.update(signed_info_c14n)
                 verifier.verify()
-            elif "ecdsa-" in signature_alg:
+            else:
                 raise NotImplementedError()
         else:
             raise NotImplementedError()
