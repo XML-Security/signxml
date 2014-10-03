@@ -161,6 +161,33 @@ class xmldsig(object):
         self.sig_root = Element("Signature", xmlns=XMLDSIG_NS)
         self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=True)
 
+    def _serialize_key_value(self, key, key_info_element):
+        key_value = SubElement(key_info_element, "KeyValue")
+        if self.signature_alg.startswith("rsa-"):
+            rsa_key_value = SubElement(key_value, "RSAKeyValue")
+            modulus = SubElement(rsa_key_value, "Modulus")
+            modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n))
+            exponent = SubElement(rsa_key_value, "Exponent")
+            exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e))
+        elif self.signature_alg.startswith("dsa-"):
+            dsa_key_value = SubElement(key_value, "DSAKeyValue")
+            for field in "p", "q", "g", "y":
+                e = SubElement(dsa_key_value, field.upper())
+
+                if field == "y":
+                    key_params = key.public_key().public_numbers()
+                else:
+                    key_params = key.parameters().parameter_numbers()
+
+                e.text = b64encode(long_to_bytes(getattr(key_params, field)))
+        elif self.signature_alg.startswith("ecdsa-"):
+            ec_key_value = SubElement(key_value, "ECKeyValue", xmlns=XMLDSIG11_NS)
+            named_curve = SubElement(ec_key_value, "NamedCurve", URI=self.known_ecdsa_curve_oids[key.curve.name])
+            public_key = SubElement(ec_key_value, "PublicKey")
+            x = key.public_key().public_numbers().x
+            y = key.public_key().public_numbers().y
+            public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
+
     def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False):
         """
         Sign the data and return the root element of the resulting XML tree.
@@ -242,31 +269,7 @@ class xmldsig(object):
 
             key_info = SubElement(self.sig_root, "KeyInfo")
             if cert_chain is None:
-                key_value = SubElement(key_info, "KeyValue")
-                if self.signature_alg.startswith("rsa-"):
-                    rsa_key_value = SubElement(key_value, "RSAKeyValue")
-                    modulus = SubElement(rsa_key_value, "Modulus")
-                    modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n))
-                    exponent = SubElement(rsa_key_value, "Exponent")
-                    exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e))
-                elif self.signature_alg.startswith("dsa-"):
-                    dsa_key_value = SubElement(key_value, "DSAKeyValue")
-                    for field in "p", "q", "g", "y":
-                        e = SubElement(dsa_key_value, field.upper())
-                        
-                        if field == "y":
-                            key_params = key.public_key().public_numbers()
-                        else:
-                            key_params = key.parameters().parameter_numbers()
-
-                        e.text = b64encode(long_to_bytes(getattr(key_params, field)))
-                elif self.signature_alg.startswith("ecdsa-"):
-                    ec_key_value = SubElement(key_value, "ECKeyValue", xmlns=XMLDSIG11_NS)
-                    named_curve = SubElement(ec_key_value, "NamedCurve", URI=self.known_ecdsa_curve_oids[key.curve.name])
-                    public_key = SubElement(ec_key_value, "PublicKey")
-                    x = key.public_key().public_numbers().x
-                    y = key.public_key().public_numbers().y
-                    public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
+                self._serialize_key_value(key, key_info)
             else:
                 x509_data = SubElement(key_info, "X509Data")
                 for cert in cert_chain:
