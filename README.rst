@@ -56,7 +56,7 @@ Links
 -----
 * `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.org/en/latest/>`_
-* `Package distribution (PyPI) <https://warehouse.python.org/project/signxml/>`_
+* `Package distribution <https://warehouse.python.org/project/signxml/>`_ `(PyPI) <https://pypi.python.org/pypi/signxml>`_
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
 * `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
@@ -76,6 +76,6 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
 .. image:: https://pypip.in/v/signxml/badge.png
         :target: https://warehouse.python.org/project/signxml/
 .. image:: https://pypip.in/d/signxml/badge.png
-        :target: https://warehouse.python.org/project/signxml/
+        :target: https://pypi.python.org/pypi/signxml
 .. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
         :target: https://signxml.readthedocs.org/
