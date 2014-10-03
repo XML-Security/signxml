@@ -11,8 +11,10 @@ from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring
 
 import cryptography.exceptions
-from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
+from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
+from cryptography.hazmat.backends import default_backend
 
 from .utils import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header
 
@@ -92,7 +94,6 @@ class xmldsig(object):
     known_hmac_digest_tags = {method.split("#")[1]: method for method in known_hmac_digest_methods}
     known_signature_digest_tags = {method.split("#")[1]: method for method in known_signature_digest_methods}
 
-    from cryptography.hazmat.primitives.asymmetric import ec
     # See https://tools.ietf.org/html/rfc5656
     known_ecdsa_curves = {
         "urn:oid:1.2.840.10045.3.1.7": ec.SECP256R1,
@@ -220,9 +221,6 @@ class xmldsig(object):
             signature_value.text = b64encode(signer.finalize())
             self.sig_root.append(signature_value)
         elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-") or self.signature_alg.startswith("ecdsa-"):
-            from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
-            from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-
             if isinstance(self.key, (str, bytes)):
                 from cryptography.hazmat.primitives.serialization import load_pem_private_key
                 key = load_pem_private_key(self.key, password=passphrase, backend=default_backend())
@@ -393,7 +391,6 @@ class xmldsig(object):
                 verify(cert_chain[-1], signature, signed_info_c14n, bytes(signature_digest_method))
                 using_x509 = True
             elif "ecdsa-" in signature_alg:
-                from cryptography.hazmat.primitives.asymmetric import ec
                 ec_key_value = self._find(key_value, "ECKeyValue", namespace="xmldsig11")
                 named_curve = self._find(ec_key_value, "NamedCurve", namespace="xmldsig11")
                 public_key = self._find(ec_key_value, "PublicKey", namespace="xmldsig11")
@@ -406,23 +403,20 @@ class xmldsig(object):
                 verifier.update(signed_info_c14n)
                 verifier.verify()
             elif "dsa-" in signature_alg:
-                from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicNumbers, DSAParameterNumbers
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
                 q = self._get_long(dsa_key_value, "Q")
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
-                key = DSAPublicNumbers(y, DSAParameterNumbers(p, q, g)).public_key(backend=default_backend())
+                key = dsa.DSAPublicNumbers(y, dsa.DSAParameterNumbers(p, q, g)).public_key(backend=default_backend())
                 verifier = key.verifier(signature, self._get_signature_digest_method(signature_alg))
                 verifier.update(signed_info_c14n)
                 verifier.verify()
             elif "rsa-" in signature_alg:
-                from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
-                from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
                 rsa_key_value = self._find(key_value, "RSAKeyValue")
                 modulus = self._get_long(rsa_key_value, "Modulus")
                 exponent = self._get_long(rsa_key_value, "Exponent")
-                key = RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
+                key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
                 verifier = key.verifier(signature, padding=PKCS1v15(), algorithm=self._get_signature_digest_method(signature_alg))
                 verifier.update(signed_info_c14n)
                 verifier.verify()
