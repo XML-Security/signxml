@@ -46,7 +46,7 @@ Using a SAML metadata file:
     root = ElementTree.fromstring(signature_data)
     xmldsig(root).verify(x509_cert=cert)
 
-See the `API documentation <https://signxml.readthedocs.org/en/latest/#module-signxml>`_ for more.
+See the `API documentation <https://signxml.readthedocs.org/en/latest/#id1>`_ for more.
 
 Authors
 -------
