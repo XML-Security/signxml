@@ -1,3 +1,11 @@
+Version 0.2.0 (2014-10-02)
+--------------------------
+- Use defusedxml when verifying signatures.
+- Eliminate dependency on PyCrypto.
+- Introduce support for ECDSA asymmetric key encryption.
+- Introduce ability to validate xmldsig11 schema.
+- Expand test suite coverage.
+
 Version 0.1.9 (2014-09-27)
 --------------------------
 - Allow use of external X509 certificates for validation; add an example of supplying a cert from SAML metadata.
