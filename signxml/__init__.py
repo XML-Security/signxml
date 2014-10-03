@@ -389,7 +389,7 @@ class xmldsig(object):
                 else:
                     cert_chain = [load_certificate(FILETYPE_PEM, self.x509_cert)]
 
-                signature_digest_method = self._get_signature_digest_method(signature_alg).__class__.__name__
+                signature_digest_method = self._get_signature_digest_method(signature_alg).name
                 verify(cert_chain[-1], signature, signed_info_c14n, bytes(signature_digest_method))
                 using_x509 = True
             elif "ecdsa-" in signature_alg:
