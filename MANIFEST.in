@@ -1,2 +1,3 @@
 include requirements.txt
 include signxml/schemas/*.xsd
+include test/example*
