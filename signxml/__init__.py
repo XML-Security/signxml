@@ -3,7 +3,6 @@ from __future__ import print_function, unicode_literals
 import os, sys
 from base64 import b64encode, b64decode
 from collections import OrderedDict
-from importlib import import_module
 
 from eight import *
 from lxml import etree
