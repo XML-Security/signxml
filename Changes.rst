@@ -1,3 +1,8 @@
+Version 0.2.1 (2014-10-04)
+--------------------------
+- Always use X509 information even if key value is present
+- Internal refactor to modularize key value handling logic
+
 Version 0.2.0 (2014-10-02)
 --------------------------
 - Use defusedxml when verifying signatures.
