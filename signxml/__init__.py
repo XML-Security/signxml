@@ -290,6 +290,37 @@ class xmldsig(object):
             self.sig_root.append(self.payload)
             return self.sig_root
 
+    def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
+        if "ecdsa-" in signature_alg:
+            ec_key_value = self._find(key_value, "ECKeyValue", namespace="xmldsig11")
+            named_curve = self._find(ec_key_value, "NamedCurve", namespace="xmldsig11")
+            public_key = self._find(ec_key_value, "PublicKey", namespace="xmldsig11")
+            key_data = b64decode(public_key.text)[1:]
+            x = bytes_to_long(key_data[:len(key_data)/2])
+            y = bytes_to_long(key_data[len(key_data)/2:])
+            curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
+            key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
+            verifier = key.verifier(raw_signature, ec.ECDSA(self._get_signature_digest_method(signature_alg)))
+        elif "dsa-" in signature_alg:
+            dsa_key_value = self._find(key_value, "DSAKeyValue")
+            p = self._get_long(dsa_key_value, "P")
+            q = self._get_long(dsa_key_value, "Q")
+            g = self._get_long(dsa_key_value, "G", require=False)
+            y = self._get_long(dsa_key_value, "Y")
+            key = dsa.DSAPublicNumbers(y, dsa.DSAParameterNumbers(p, q, g)).public_key(backend=default_backend())
+            verifier = key.verifier(raw_signature, self._get_signature_digest_method(signature_alg))
+        elif "rsa-" in signature_alg:
+            rsa_key_value = self._find(key_value, "RSAKeyValue")
+            modulus = self._get_long(rsa_key_value, "Modulus")
+            exponent = self._get_long(rsa_key_value, "Exponent")
+            key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
+            verifier = key.verifier(raw_signature, padding=PKCS1v15(), algorithm=self._get_signature_digest_method(signature_alg))
+        else:
+            raise NotImplementedError()
+
+        verifier.update(signed_info_c14n)
+        verifier.verify()
+
     def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True):
         """
         Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
@@ -359,8 +390,24 @@ class xmldsig(object):
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = signature_method.get("Algorithm")
-        using_x509 = False
-        if "hmac-sha" in signature_alg:
+        raw_signature = b64decode(signature_value.text)
+        x509_data = signature.find("xmldsig:KeyInfo/xmldsig:X509Data", namespaces={"xmldsig": XMLDSIG_NS})
+
+        if x509_data is not None or self.require_x509:
+            from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify
+
+            if self.x509_cert is None:
+                if x509_data is None:
+                    raise InvalidInput("Expected a X509 certificate based signature")
+                certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+                cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
+                verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
+            else:
+                cert_chain = [load_certificate(FILETYPE_PEM, self.x509_cert)]
+
+            signature_digest_method = self._get_signature_digest_method(signature_alg).name
+            verify(cert_chain[-1], raw_signature, signed_info_c14n, bytes(signature_digest_method))
+        elif "hmac-sha" in signature_alg:
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
@@ -369,65 +416,14 @@ class xmldsig(object):
                           algorithm=self._get_hmac_digest_method(signature_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)
-            if signature_value.text != b64encode(signer.finalize()):
+            if raw_signature != signer.finalize():
                 raise InvalidSignature("Signature mismatch (HMAC)")
-        elif "dsa-" in signature_alg or "rsa-" in signature_alg  or "ecdsa-" in signature_alg:
-            key_info = self._find(signature, "KeyInfo")
-            key_value = self._find(key_info, "KeyValue", require=False)
-            signature = b64decode(signature_value.text)
-            if key_value is None:
-                from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify
-
-                if self.x509_cert is None:
-                    x509_data = self._find(key_info, "X509Data", require=False)
-                    if x509_data is None:
-                        raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
-                    certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
-                    cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
-                    verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
-                else:
-                    cert_chain = [load_certificate(FILETYPE_PEM, self.x509_cert)]
-
-                signature_digest_method = self._get_signature_digest_method(signature_alg).name
-                verify(cert_chain[-1], signature, signed_info_c14n, bytes(signature_digest_method))
-                using_x509 = True
-            elif "ecdsa-" in signature_alg:
-                ec_key_value = self._find(key_value, "ECKeyValue", namespace="xmldsig11")
-                named_curve = self._find(ec_key_value, "NamedCurve", namespace="xmldsig11")
-                public_key = self._find(ec_key_value, "PublicKey", namespace="xmldsig11")
-                key_data = b64decode(public_key.text)[1:]
-                x = bytes_to_long(key_data[:len(key_data)/2])
-                y = bytes_to_long(key_data[len(key_data)/2:])
-                curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
-                key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
-                verifier = key.verifier(signature, ec.ECDSA(self._get_signature_digest_method(signature_alg)))
-                verifier.update(signed_info_c14n)
-                verifier.verify()
-            elif "dsa-" in signature_alg:
-                dsa_key_value = self._find(key_value, "DSAKeyValue")
-                p = self._get_long(dsa_key_value, "P")
-                q = self._get_long(dsa_key_value, "Q")
-                g = self._get_long(dsa_key_value, "G", require=False)
-                y = self._get_long(dsa_key_value, "Y")
-                key = dsa.DSAPublicNumbers(y, dsa.DSAParameterNumbers(p, q, g)).public_key(backend=default_backend())
-                verifier = key.verifier(signature, self._get_signature_digest_method(signature_alg))
-                verifier.update(signed_info_c14n)
-                verifier.verify()
-            elif "rsa-" in signature_alg:
-                rsa_key_value = self._find(key_value, "RSAKeyValue")
-                modulus = self._get_long(rsa_key_value, "Modulus")
-                exponent = self._get_long(rsa_key_value, "Exponent")
-                key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
-                verifier = key.verifier(signature, padding=PKCS1v15(), algorithm=self._get_signature_digest_method(signature_alg))
-                verifier.update(signed_info_c14n)
-                verifier.verify()
-            else:
-                raise NotImplementedError()
         else:
-            raise NotImplementedError()
+            key_value = signature.find("xmldsig:KeyInfo/xmldsig:KeyValue", namespaces={"xmldsig": XMLDSIG_NS})
+            if key_value is None:
+                raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
-        if self.require_x509 and not using_x509:
-            raise InvalidSignature("Signature was valid, but not X509-based")
+            self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
