@@ -68,4 +68,6 @@ def strip_pem_header(cert):
     return bare_base64_cert
 
 def add_pem_header(bare_base64_cert):
+    if bare_base64_cert.startswith(PEM_HEADER):
+        return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER

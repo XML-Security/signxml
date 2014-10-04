@@ -403,7 +403,7 @@ class xmldsig(object):
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
             else:
-                cert_chain = [load_certificate(FILETYPE_PEM, self.x509_cert)]
+                cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))]
 
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
             verify(cert_chain[-1], raw_signature, signed_info_c14n, bytes(signature_digest_method))
