@@ -192,8 +192,8 @@ class xmldsig(object):
 
         :param algorithm: Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest algorithm, separated by a hyphen. All algorthm IDs listed under the `Algorithm Identifiers and Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
         :type algorithm: string
-        :param key: Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string containing a PEM-formatted key, or a :py:mod:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:mod:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:mod:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object. When signing with a HMAC, this should be a string containing the shared secret.
-        :type key: string, :py:mod:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:mod:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:mod:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object
+        :param key: Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object. When signing with a HMAC, this should be a string containing the shared secret.
+        :type key: string, :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :type passphrase: string
         :param cert: X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an array containing the certificate and a chain of intermediate certificates.
@@ -203,7 +203,7 @@ class xmldsig(object):
         :param enveloped_signature: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
         :type enveloped_signature: boolean
 
-        :returns: A :py:mod:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
+        :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
         """
         self.signature_alg = algorithm
         self.key = key
@@ -342,8 +342,7 @@ class xmldsig(object):
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :type validate_schema: boolean
 
-        :raises: TODO
-
+        :raises: :py:class:`cryptography.exceptions.InvalidSignature`
         """
         self.hmac_key = hmac_key
         self.require_x509 = require_x509
