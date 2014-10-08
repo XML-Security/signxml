@@ -411,7 +411,7 @@ class xmldsig(object):
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
             from cryptography.hazmat.primitives.hmac import HMAC
-            signer = HMAC(key=self.hmac_key,
+            signer = HMAC(key=bytes(self.hmac_key),
                           algorithm=self._get_hmac_digest_method(signature_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)

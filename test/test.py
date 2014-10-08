@@ -114,7 +114,7 @@ class TestSignXML(unittest.TestCase):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
                 try:
-                    xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
+                    xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file, require_x509=False, hmac_key="secret")
                 except Exception as e:
                     print("FIXME:", type(e), e)
 
