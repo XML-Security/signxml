@@ -4,6 +4,8 @@
 from __future__ import print_function, unicode_literals
 
 import os, sys, unittest, collections, copy, re
+from glob import glob
+
 from lxml import etree
 import cryptography.exceptions
 from cryptography.hazmat.backends import default_backend
@@ -98,6 +100,23 @@ class TestSignXML(unittest.TestCase):
                 with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
                     xmldsig(signed_data).verify()
                 # TODO: negative: verify with wrong cert, wrong CA
+
+    def test_xmldsig_interop_examples(self):
+        ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "interop", "cacert.pem"))
+        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
+            print("Verifying", signature_file)
+            with open(signature_file, "rb") as fh:
+                xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
+
+    def test_xmldsig_interop_merlin_23_examples(self):
+        ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "interop", "merlin", "merlin.pem"))
+        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "merlin", "*.xml")):
+            print("Verifying", signature_file)
+            with open(signature_file, "rb") as fh:
+                try:
+                    xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
+                except Exception as e:
+                    print("FIXME:", type(e), e)
 
 if __name__ == '__main__':
     unittest.main()

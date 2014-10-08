@@ -440,7 +440,7 @@ class xmldsig(object):
         return element.findall(namespace + ":" + query, namespaces={"xmldsig": XMLDSIG_NS, "xmldsig11": XMLDSIG11_NS})
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
-    from OpenSSL import SSL
+    from OpenSSL import SSL, crypto
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
@@ -461,4 +461,10 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
             msg = SSL._ffi.string(SSL._lib.X509_verify_cert_error_string(e))
             raise InvalidCertificate(msg)
         else:
-            store.add_cert(cert)
+            try:
+                store.add_cert(cert)
+            except crypto.Error as e:
+                if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
+                    continue
+                else:
+                    raise
