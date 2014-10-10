@@ -15,6 +15,8 @@ components of the standard, and most recommended ones. Its features are:
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
 
+todo: menton cmpliance matrix
+
 Installation
 ------------
 ::
