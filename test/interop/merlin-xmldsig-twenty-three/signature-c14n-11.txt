@@ -1,0 +1,4 @@
+<Reference xmlns="http://www.w3.org/2000/09/xmldsig#" xmlns:foo="http://example.org/foo" Id="reference-2" URI="#reference-1">
+          <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod>
+          <DigestValue>qURlo3LSq4TWQtygBZJ0iXQ9E14=</DigestValue>
+        </Reference>

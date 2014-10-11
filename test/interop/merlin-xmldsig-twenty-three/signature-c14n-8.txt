@@ -1,0 +1,4 @@
+<Reference xmlns="http://www.w3.org/2000/09/xmldsig#" xmlns:foo="http://example.org/foo" Id="reference-1" URI="#manifest-reference-1">
+          <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></DigestMethod>
+          <DigestValue>7/9fR+NIDz9owc1Lfsxu1JBr8uo=</DigestValue>
+        </Reference>
