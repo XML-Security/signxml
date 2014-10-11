@@ -11,11 +11,9 @@ components of the standard, and most recommended ones. Its features are:
 * Extensions to allow signing with and verifying X.509 certificate chains, including hostname/CN validation
 * Modern Python compatibility (2.7-3.4+ and PyPy)
 * Well-supported and reliable dependencies: `lxml <https://github.com/lxml/lxml>`_, `defusedxml <https://bitbucket.org/tiran/defusedxml>`_, `cryptography <https://github.com/pyca/cryptography>`_, `eight <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
-* Comprehensive testing and `continuous integration <https://travis-ci.org/kislyuk/signxml>`_
+* Comprehensive testing (including the XMLDSig interoperability suite) and `continuous integration <https://travis-ci.org/kislyuk/signxml>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
-
-todo: menton cmpliance matrix
 
 Installation
 ------------
@@ -62,6 +60,10 @@ Links
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
 * `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
+* `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
+* `Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
+
+
 
 Bugs
 ~~~~
