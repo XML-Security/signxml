@@ -1,3 +1,7 @@
+Version 0.2.6 (2014-10-13)
+--------------------------
+- Fix typo in ns prefixing code
+
 Version 0.2.5 (2014-10-13)
 --------------------------
 - Fix handling of DER sequences in DSA key serialization
