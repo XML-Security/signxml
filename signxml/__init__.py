@@ -38,8 +38,9 @@ _schema = None
 
 # Note: This regexp is a very ugly way to process XML data, but it's mandated by the standard, which requires that the
 # signature be excised after c14n, leaving behind extra whitespace that needs to be part of the digest.
-# FIXME: extract ns prefix from signature nsmap
-_signature_regex = re.compile(bytes('<(ds:)?Signature[>\s].*?</(ds:)?Signature>'.format(XMLDSIG_NS)), flags=re.DOTALL)
+def _get_signature_regex(ns_prefix):
+    return re.compile(bytes('<{ns}Signature[>\s].*?</{ns}Signature>'.format(ns=":"+ns_prefix if ns_prefix else "")),
+                      flags=re.DOTALL)
 
 def _get_schema():
     global _schema
@@ -165,7 +166,7 @@ class xmldsig(object):
 
         self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=False)
         if enveloped_signature:
-            self.payload_c14n = _signature_regex.sub(b"", self.payload_c14n)
+            self.payload_c14n = _get_signature_regex(ns_prefix=None).sub(b"", self.payload_c14n)
 
     def _serialize_key_value(self, key, key_info_element):
         key_value = SubElement(key_info_element, "KeyValue")
@@ -408,7 +409,7 @@ class xmldsig(object):
         payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
 
         if enveloped_signature:
-            payload_c14n = _signature_regex.sub(b"", payload_c14n)
+            payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidSignature("Digest mismatch")
