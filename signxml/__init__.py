@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 
-import os, sys
+import os, sys, re
 from base64 import b64encode, b64decode
 
 from eight import *
@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
 
-from .utils import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header
+from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
@@ -35,6 +35,10 @@ class InvalidInput(ValueError):
     pass
 
 _schema = None
+
+# Note: This regexp is a very ugly way to process XML data, but it's mandated by the standard, which requires that the
+# signature be excised after c14n, leaving behind extra whitespace that needs to be part of the digest.
+_signature_regex = re.compile(bytes('<Signature[>\s].*?</Signature>'.format(XMLDSIG_NS)), flags=re.DOTALL)
 
 def _get_schema():
     global _schema
@@ -143,11 +147,13 @@ class xmldsig(object):
                                               known_tags=self.known_signature_digest_tags)
 
     def _get_payload_c14n(self, enveloped_signature, with_comments):
+        self.sig_root = Element("Signature", nsmap={None: XMLDSIG_NS})
         if enveloped_signature:
             self.payload = self.data
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             self._reference_uri = ""
+            self.payload.append(self.sig_root)
         else:
             self.payload = Element("Object", nsmap={None: XMLDSIG_NS}, Id="object")
             self._reference_uri = "#object"
@@ -156,8 +162,10 @@ class xmldsig(object):
             else:
                 self.payload.append(self.data)
 
-        self.sig_root = Element("Signature", xmlns=XMLDSIG_NS)
-        self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=True)
+        self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=False)
+        if enveloped_signature:
+            # Note:
+            self.payload_c14n = _signature_regex.sub(b"", self.payload_c14n)
 
     def _serialize_key_value(self, key, key_info_element):
         key_value = SubElement(key_info_element, "KeyValue")
@@ -179,7 +187,7 @@ class xmldsig(object):
 
                 e.text = b64encode(long_to_bytes(getattr(key_params, field)))
         elif self.signature_alg.startswith("ecdsa-"):
-            ec_key_value = SubElement(key_value, "ECKeyValue", xmlns=XMLDSIG11_NS)
+            ec_key_value = SubElement(key_value, "ECKeyValue", nsmap={None: XMLDSIG11_NS})
             named_curve = SubElement(ec_key_value, "NamedCurve", URI=self.known_ecdsa_curve_oids[key.curve.name])
             public_key = SubElement(ec_key_value, "PublicKey")
             x = key.public_key().public_numbers().x
@@ -217,7 +225,7 @@ class xmldsig(object):
 
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
-        signed_info = SubElement(self.sig_root, "SignedInfo", xmlns=XMLDSIG_NS)
+        signed_info = SubElement(self.sig_root, "SignedInfo", nsmap={None: XMLDSIG_NS})
         c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
         if with_comments:
             c14n_algorithm += "#WithComments"
@@ -263,6 +271,12 @@ class xmldsig(object):
                 raise NotImplementedError()
             signer.update(signed_info_c14n)
             signature = signer.finalize()
+            if self.signature_alg.startswith("dsa-"):
+                from .util.asn1 import DerSequence
+                der_seq = DerSequence()
+                der_seq.decode(signature)
+                r, s = der_seq
+                signature = long_to_bytes(r) + long_to_bytes(s)
             signature_value.text = b64encode(signature)
 
             key_info = SubElement(self.sig_root, "KeyInfo")
@@ -284,7 +298,6 @@ class xmldsig(object):
             raise NotImplementedError()
 
         if enveloped_signature:
-            self.payload.append(self.sig_root)
             return self.payload
         else:
             self.sig_root.append(self.payload)
@@ -307,8 +320,12 @@ class xmldsig(object):
             q = self._get_long(dsa_key_value, "Q")
             g = self._get_long(dsa_key_value, "G", require=False)
             y = self._get_long(dsa_key_value, "Y")
-            key = dsa.DSAPublicNumbers(y, dsa.DSAParameterNumbers(p, q, g)).public_key(backend=default_backend())
-            verifier = key.verifier(raw_signature, self._get_signature_digest_method(signature_alg))
+            pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
+            key = pn.public_key(backend=default_backend())
+            from .util.asn1 import DerSequence
+            sig_as_der_seq = DerSequence([bytes_to_long(raw_signature[:len(raw_signature)/2]),
+                                          bytes_to_long(raw_signature[len(raw_signature)/2:])]).encode()
+            verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")
             modulus = self._get_long(rsa_key_value, "Modulus")
@@ -378,11 +395,14 @@ class xmldsig(object):
 
         if enveloped_signature:
             payload = root
-            payload.remove(signature)
         else:
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
         payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
+
+        if enveloped_signature:
+            payload_c14n = _signature_regex.sub(b"", payload_c14n)
+
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidSignature("Digest mismatch")
 

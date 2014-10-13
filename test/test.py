@@ -108,15 +108,21 @@ class TestSignXML(unittest.TestCase):
             with open(signature_file, "rb") as fh:
                 xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
 
-    def test_xmldsig_interop_merlin_23_examples(self):
-        ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "interop", "merlin", "merlin.pem"))
-        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "merlin", "*.xml")):
+    def test_xmldsig_interop_merlin_23(self):
+        #from ssl import DER_cert_to_PEM_cert
+        #with open(os.path.join(os.path.dirname(__file__), "interop", "merlin-xmldsig-twenty-three", "ca.crt")) as fh:
+        #    ca_pem_file = DER_cert_to_PEM_cert(fh.read())
+        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "merlin-xmldsig-twenty-three", "signature*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
                 try:
-                    xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file, require_x509=False, hmac_key="secret")
+                    #xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file, require_x509=False, hmac_key="secret")
+                    xmldsig(fh.read()).verify(require_x509=False, hmac_key="secret")
                 except Exception as e:
-                    print("FIXME:", type(e), e)
+                    if "Expected to find XML element" in str(e) or "EntitiesForbidden" in str(e) or signature_file.endswith("signature-enveloping-hmac-sha1-40.xml") or signature_file.endswith("signature-enveloping-b64-dsa.xml"):
+                        print("IGNORED:", type(e), e)
+                    else:
+                        raise
 
 if __name__ == '__main__':
     unittest.main()
