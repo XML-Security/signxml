@@ -1,3 +1,8 @@
+Version 0.2.3 (2014-10-12)
+--------------------------
+- Fixes to c14n of enveloped signatures
+- Expand tests to use the XML Signature interoperability test suite
+
 Version 0.2.2 (2014-10-04)
 --------------------------
 - Load bare X509 certificates from SAML metadata correctly
