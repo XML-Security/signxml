@@ -38,9 +38,11 @@ _schema = None
 
 # Note: This regexp is a very ugly way to process XML data, but it's mandated by the standard, which requires that the
 # signature be excised after c14n, leaving behind extra whitespace that needs to be part of the digest.
-def _get_signature_regex(ns_prefix):
-    return re.compile(bytes('<{ns}Signature[>\s].*?</{ns}Signature>'.format(ns=":"+ns_prefix if ns_prefix else "")),
-                      flags=re.DOTALL)
+def _get_signature_regex(ns_prefix=None):
+    tag = "Signature"
+    if ns_prefix is not None:
+        tag = ns_prefix + ":" + tag
+    return re.compile(bytes('<{t}[>\s].*?</{t}>'.format(t=tag)), flags=re.DOTALL)
 
 def _get_schema():
     global _schema
