@@ -1,3 +1,8 @@
+Version 0.2.5 (2014-10-13)
+--------------------------
+- Fix handling of DER sequences in DSA key serialization
+- Parameterize excision with ns prefix
+
 Version 0.2.4 (2014-10-12)
 --------------------------
 - Fix excision with ns prefix
