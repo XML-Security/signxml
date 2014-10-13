@@ -272,11 +272,15 @@ class xmldsig(object):
             signer.update(signed_info_c14n)
             signature = signer.finalize()
             if self.signature_alg.startswith("dsa-"):
-                from .util.asn1 import DerSequence
-                der_seq = DerSequence()
-                der_seq.decode(signature)
-                r, s = der_seq
-                signature = long_to_bytes(r).rjust(20) + long_to_bytes(s).rjust(20)
+                # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
+                # Bytes 0-1: DER sequence header and length
+                # Bytes 2-3: DER integer header and length (r_len)
+                # Bytes 4-4+r_len-1: r (first half of DSA signature)
+                # Bytes 4+r_len-5+r_len: DER integer header and length
+                # Bytes 6+r_len to the end: s (second half of DSA signature)
+                r_len = bytes_to_long(signature[3])
+                r, s = signature[4:4+r_len], signature[6+r_len:]
+                signature = r.rjust(32, b"\0") + s.rjust(32, b"\0")
             signature_value.text = b64encode(signature)
 
             key_info = SubElement(self.sig_root, "KeyInfo")
@@ -322,9 +326,12 @@ class xmldsig(object):
             y = self._get_long(dsa_key_value, "Y")
             pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
             key = pn.public_key(backend=default_backend())
-            from .util.asn1 import DerSequence
-            sig_as_der_seq = DerSequence([bytes_to_long(raw_signature[:len(raw_signature)/2]),
-                                          bytes_to_long(raw_signature[len(raw_signature)/2:])]).encode()
+            def as_der_sequence(r, s):
+                return long_to_bytes(0x30) + long_to_bytes(len(r) + len(s)) + r + s
+            def as_der_integer(i):
+                return long_to_bytes(0x02) + long_to_bytes(len(i)) + i
+            sig_as_der_seq = as_der_sequence(as_der_integer(raw_signature[:len(raw_signature)/2]),
+                                             as_der_integer(raw_signature[len(raw_signature)/2:]))
             verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")

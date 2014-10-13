@@ -61,13 +61,19 @@ class TestSignXML(unittest.TestCase):
                                     xmldsig(signed_data).verify(hmac_key=hmac_key)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                                    xmldsig(signed_data.replace("Austria", "Mongolia").replace("x y", "a b")).verify(hmac_key=hmac_key, require_x509=False)
+                                    mangled_sig = signed_data.replace("Austria", "Mongolia").replace("x y", "a b")
+                                    xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                                    xmldsig(signed_data.replace("<DigestValue>", "<DigestValue>!")).verify(hmac_key=hmac_key, require_x509=False)
+                                    mangled_sig = signed_data.replace("<DigestValue>", "<DigestValue>!")
+                                    xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaises(cryptography.exceptions.InvalidSignature):
-                                    xmldsig(re.sub("<SignatureValue>(.)(.)(.)(.)", r"<SignatureValue>\4\3\2\1", signed_data)).verify(hmac_key=hmac_key, require_x509=False)
+                                    sig_value = re.search("<SignatureValue>(.+?)</SignatureValue>", signed_data).group(1)
+                                    mangled_sig = re.sub("<SignatureValue>(.+?)</SignatureValue>",
+                                                         "<SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + "</SignatureValue>",
+                                                         signed_data)
+                                    xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaises(etree.XMLSyntaxError):
                                     xmldsig("").verify(hmac_key=hmac_key, require_x509=False)
