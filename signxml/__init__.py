@@ -38,7 +38,8 @@ _schema = None
 
 # Note: This regexp is a very ugly way to process XML data, but it's mandated by the standard, which requires that the
 # signature be excised after c14n, leaving behind extra whitespace that needs to be part of the digest.
-_signature_regex = re.compile(bytes('<Signature[>\s].*?</Signature>'.format(XMLDSIG_NS)), flags=re.DOTALL)
+# FIXME: extract ns prefix from signature nsmap
+_signature_regex = re.compile(bytes('<(ds:)?Signature[>\s].*?</(ds:)?Signature>'.format(XMLDSIG_NS)), flags=re.DOTALL)
 
 def _get_schema():
     global _schema
@@ -164,7 +165,6 @@ class xmldsig(object):
 
         self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=False)
         if enveloped_signature:
-            # Note:
             self.payload_c14n = _signature_regex.sub(b"", self.payload_c14n)
 
     def _serialize_key_value(self, key, key_info_element):
@@ -276,7 +276,7 @@ class xmldsig(object):
                 der_seq = DerSequence()
                 der_seq.decode(signature)
                 r, s = der_seq
-                signature = long_to_bytes(r) + long_to_bytes(s)
+                signature = long_to_bytes(r).rjust(20) + long_to_bytes(s).rjust(20)
             signature_value.text = b64encode(signature)
 
             key_info = SubElement(self.sig_root, "KeyInfo")
