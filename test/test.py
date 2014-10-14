@@ -31,7 +31,7 @@ class TestSignXML(unittest.TestCase):
 
     def test_basic_signxml_statements(self):
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
-            xmldsig("x").sign(enveloped_signature=True)
+            xmldsig("x").sign(enveloped=True)
 
         tree = etree.parse(self.example_xml_file)
         data = [tree.getroot(), "x y \n z t\n я\n"]
@@ -50,7 +50,7 @@ class TestSignXML(unittest.TestCase):
                                 reset_tree(d)
                                 signed = xmldsig(d, digest_algorithm=da).sign(algorithm="-".join([sa, ha]),
                                                                               key=self.keys[sa],
-                                                                              enveloped_signature=enveloped_signature,
+                                                                              enveloped=enveloped_signature,
                                                                               with_comments=with_comments)
                                 # print(etree.tostring(signed))
                                 signed_data = etree.tostring(signed)
@@ -98,7 +98,7 @@ class TestSignXML(unittest.TestCase):
                 signed = xmldsig(data).sign(algorithm="rsa-" + ha,
                                             key=key,
                                             cert=crt,
-                                            enveloped_signature=enveloped_signature)
+                                            enveloped=enveloped_signature)
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
                 xmldsig(signed_data).verify(x509_cert=crt)

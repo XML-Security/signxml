@@ -150,9 +150,9 @@ class xmldsig(object):
         return self._get_digest_method_by_tag(signature_algorithm_tag, methods=self.known_signature_digest_methods,
                                               known_tags=self.known_signature_digest_tags)
 
-    def _get_payload_c14n(self, enveloped_signature, with_comments):
+    def _get_payload_c14n(self, enveloped, with_comments):
         self.sig_root = Element("Signature", nsmap={None: XMLDSIG_NS})
-        if enveloped_signature:
+        if enveloped:
             self.payload = self.data
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
@@ -167,7 +167,7 @@ class xmldsig(object):
                 self.payload.append(self.data)
 
         self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=False)
-        if enveloped_signature:
+        if enveloped:
             self.payload_c14n = _get_signature_regex(ns_prefix=None).sub(b"", self.payload_c14n)
 
     def _serialize_key_value(self, key, key_info_element):
@@ -197,7 +197,7 @@ class xmldsig(object):
             y = key.public_key().public_numbers().y
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
-    def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, with_comments=False, enveloped_signature=False):
+    def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, with_comments=False, enveloped=True):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -211,8 +211,8 @@ class xmldsig(object):
         :type cert: string or array of strings
         :param with_comments: Whether to canonicalize (c14n) the payload with comments or without.
         :type with_comments: boolean
-        :param enveloped_signature: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
-        :type enveloped_signature: boolean
+        :param enveloped: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
+        :type enveloped: boolean
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
         """
@@ -224,7 +224,7 @@ class xmldsig(object):
         else:
             cert_chain = cert
 
-        self._get_payload_c14n(enveloped_signature, with_comments)
+        self._get_payload_c14n(enveloped, with_comments)
 
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
@@ -239,7 +239,7 @@ class xmldsig(object):
             algorithm_id = self.known_signature_digest_tags[self.signature_alg]
         signature_method = SubElement(signed_info, "SignatureMethod", Algorithm=algorithm_id)
         reference = SubElement(signed_info, "Reference", URI=self._reference_uri)
-        if enveloped_signature:
+        if enveloped:
             transforms = SubElement(reference, "Transforms")
             SubElement(transforms, "Transform", Algorithm=XMLDSIG_NS + "enveloped-signature")
         digest_method = SubElement(reference, "DigestMethod", Algorithm=self.known_digest_tags[self.digest_alg])
@@ -304,7 +304,7 @@ class xmldsig(object):
         else:
             raise NotImplementedError()
 
-        if enveloped_signature:
+        if enveloped:
             return self.payload
         else:
             self.sig_root.append(self.payload)
@@ -383,10 +383,10 @@ class xmldsig(object):
             root = self.data
 
         if root.tag == "{" + XMLDSIG_NS + "}Signature":
-            enveloped_signature = False
+            enveloped = False
             signature = root
         else:
-            enveloped_signature = True
+            enveloped = True
             signature = self._find(root, "Signature")
 
         if validate_schema:
@@ -403,14 +403,14 @@ class xmldsig(object):
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
 
-        if enveloped_signature:
+        if enveloped:
             payload = root
         else:
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
         payload_c14n = etree.tostring(payload, method="c14n", with_comments=with_comments, exclusive=True)
 
-        if enveloped_signature:
+        if enveloped:
             payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
