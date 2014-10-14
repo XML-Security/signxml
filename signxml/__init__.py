@@ -21,6 +21,14 @@ XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
 XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
 XMLDSIG_MORE_NS = "http://www.w3.org/2001/04/xmldsig-more#"
 
+namespaces = dict(ds=XMLDSIG_NS, ds11=XMLDSIG11_NS)
+
+def ds_tag(tag):
+    return "{" + XMLDSIG_NS + "}" + tag
+
+def ds11_tag(tag):
+    return "{" + XMLDSIG11_NS + "}" + tag
+
 class InvalidSignature(cryptography.exceptions.InvalidSignature):
     """
     Raised when signature validation fails.
@@ -151,7 +159,7 @@ class xmldsig(object):
                                               known_tags=self.known_signature_digest_tags)
 
     def _get_payload_c14n(self, enveloped, with_comments):
-        self.sig_root = Element("Signature", nsmap={None: XMLDSIG_NS})
+        self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
         if enveloped:
             self.payload = self.data
             if isinstance(self.data, (str, bytes)):
@@ -159,29 +167,29 @@ class xmldsig(object):
             self._reference_uri = ""
             self.payload.append(self.sig_root)
         else:
-            self.payload = Element("Object", nsmap={None: XMLDSIG_NS}, Id="object")
+            self.payload = Element(ds_tag("Object"), nsmap=dict(ds=XMLDSIG_NS), Id="object")
             self._reference_uri = "#object"
             if isinstance(self.data, (str, bytes)):
                 self.payload.text = self.data
             else:
                 self.payload.append(self.data)
 
-        self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=False)
+        self.payload_c14n = etree.tostring(self.payload, method="c14n", with_comments=with_comments, exclusive=True)
         if enveloped:
-            self.payload_c14n = _get_signature_regex(ns_prefix=None).sub(b"", self.payload_c14n)
+            self.payload_c14n = _get_signature_regex(ns_prefix="ds").sub(b"", self.payload_c14n)
 
     def _serialize_key_value(self, key, key_info_element):
-        key_value = SubElement(key_info_element, "KeyValue")
+        key_value = SubElement(key_info_element, ds_tag("KeyValue"))
         if self.signature_alg.startswith("rsa-"):
-            rsa_key_value = SubElement(key_value, "RSAKeyValue")
-            modulus = SubElement(rsa_key_value, "Modulus")
+            rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
+            modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
             modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n))
-            exponent = SubElement(rsa_key_value, "Exponent")
+            exponent = SubElement(rsa_key_value, ds_tag("Exponent"))
             exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e))
         elif self.signature_alg.startswith("dsa-"):
-            dsa_key_value = SubElement(key_value, "DSAKeyValue")
+            dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
             for field in "p", "q", "g", "y":
-                e = SubElement(dsa_key_value, field.upper())
+                e = SubElement(dsa_key_value, ds_tag(field.upper()))
 
                 if field == "y":
                     key_params = key.public_key().public_numbers()
@@ -190,9 +198,9 @@ class xmldsig(object):
 
                 e.text = b64encode(long_to_bytes(getattr(key_params, field)))
         elif self.signature_alg.startswith("ecdsa-"):
-            ec_key_value = SubElement(key_value, "ECKeyValue", nsmap={None: XMLDSIG11_NS})
-            named_curve = SubElement(ec_key_value, "NamedCurve", URI=self.known_ecdsa_curve_oids[key.curve.name])
-            public_key = SubElement(ec_key_value, "PublicKey")
+            ec_key_value = SubElement(key_value, ds11_tag("ECKeyValue"), nsmap=dict(ds11=XMLDSIG11_NS))
+            named_curve = SubElement(ec_key_value, ds11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name])
+            public_key = SubElement(ec_key_value, ds11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
@@ -228,24 +236,24 @@ class xmldsig(object):
 
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
-        signed_info = SubElement(self.sig_root, "SignedInfo", nsmap={None: XMLDSIG_NS})
+        signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=dict(ds=XMLDSIG_NS))
         c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
         if with_comments:
             c14n_algorithm += "#WithComments"
-        c14n_method = SubElement(signed_info, "CanonicalizationMethod", Algorithm=c14n_algorithm)
+        c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=c14n_algorithm)
         if self.signature_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.signature_alg]
         else:
             algorithm_id = self.known_signature_digest_tags[self.signature_alg]
-        signature_method = SubElement(signed_info, "SignatureMethod", Algorithm=algorithm_id)
-        reference = SubElement(signed_info, "Reference", URI=self._reference_uri)
+        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
+        reference = SubElement(signed_info, ds_tag("Reference"), URI=self._reference_uri)
         if enveloped:
-            transforms = SubElement(reference, "Transforms")
-            SubElement(transforms, "Transform", Algorithm=XMLDSIG_NS + "enveloped-signature")
-        digest_method = SubElement(reference, "DigestMethod", Algorithm=self.known_digest_tags[self.digest_alg])
-        digest_value = SubElement(reference, "DigestValue")
+            transforms = SubElement(reference, ds_tag("Transforms"))
+            SubElement(transforms, ds_tag("Transform"), Algorithm=XMLDSIG_NS + "enveloped-signature")
+        digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
+        digest_value = SubElement(reference, ds_tag("DigestValue"))
         digest_value.text = self.digest
-        signature_value = SubElement(self.sig_root, "SignatureValue")
+        signature_value = SubElement(self.sig_root, ds_tag("SignatureValue"))
 
         signed_info_c14n = etree.tostring(signed_info, method="c14n")
         if self.signature_alg.startswith("hmac-"):
@@ -286,13 +294,13 @@ class xmldsig(object):
                 signature = r.rjust(32, b"\0") + s.rjust(32, b"\0")
             signature_value.text = b64encode(signature)
 
-            key_info = SubElement(self.sig_root, "KeyInfo")
+            key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
             if cert_chain is None:
                 self._serialize_key_value(key, key_info)
             else:
-                x509_data = SubElement(key_info, "X509Data")
+                x509_data = SubElement(key_info, ds_tag("X509Data"))
                 for cert in cert_chain:
-                    x509_certificate = SubElement(x509_data, "X509Certificate")
+                    x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
                     if isinstance(cert, (str, bytes)):
                         x509_certificate.text = strip_pem_header(cert)
                     else:
@@ -312,9 +320,9 @@ class xmldsig(object):
 
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
         if "ecdsa-" in signature_alg:
-            ec_key_value = self._find(key_value, "ECKeyValue", namespace="xmldsig11")
-            named_curve = self._find(ec_key_value, "NamedCurve", namespace="xmldsig11")
-            public_key = self._find(ec_key_value, "PublicKey", namespace="xmldsig11")
+            ec_key_value = self._find(key_value, "ECKeyValue", namespace="ds11")
+            named_curve = self._find(ec_key_value, "NamedCurve", namespace="ds11")
+            public_key = self._find(ec_key_value, "PublicKey", namespace="ds11")
             key_data = b64decode(public_key.text)[1:]
             x = bytes_to_long(key_data[:len(key_data)/2])
             y = bytes_to_long(key_data[len(key_data)/2:])
@@ -382,7 +390,7 @@ class xmldsig(object):
         else:
             root = self.data
 
-        if root.tag == "{" + XMLDSIG_NS + "}Signature":
+        if root.tag == ds_tag("Signature"):
             enveloped = False
             signature = root
         else:
@@ -420,7 +428,7 @@ class xmldsig(object):
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = signature_method.get("Algorithm")
         raw_signature = b64decode(signature_value.text)
-        x509_data = signature.find("xmldsig:KeyInfo/xmldsig:X509Data", namespaces={"xmldsig": XMLDSIG_NS})
+        x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
 
         if x509_data is not None or self.require_x509:
             from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify
@@ -448,7 +456,7 @@ class xmldsig(object):
             if raw_signature != signer.finalize():
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
-            key_value = signature.find("xmldsig:KeyInfo/xmldsig:KeyValue", namespaces={"xmldsig": XMLDSIG_NS})
+            key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
             if key_value is None:
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
@@ -460,14 +468,14 @@ class xmldsig(object):
             result = bytes_to_long(b64decode(result.text))
         return result
 
-    def _find(self, element, query, require=True, namespace="xmldsig"):
-        result = element.find(namespace + ":" + query, namespaces={"xmldsig": XMLDSIG_NS, "xmldsig11": XMLDSIG11_NS})
+    def _find(self, element, query, require=True, namespace="ds"):
+        result = element.find(namespace + ":" + query, namespaces=namespaces)
         if require and result is None:
             raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
         return result
 
-    def _findall(self, element, query, namespace="xmldsig"):
-        return element.findall(namespace + ":" + query, namespaces={"xmldsig": XMLDSIG_NS, "xmldsig11": XMLDSIG11_NS})
+    def _findall(self, element, query, namespace="ds"):
+        return element.findall(namespace + ":" + query, namespaces=namespaces)
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     from OpenSSL import SSL, crypto

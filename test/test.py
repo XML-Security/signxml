@@ -17,8 +17,8 @@ from signxml import *
 
 def reset_tree(t):
     try:
-        t.remove(t.find("Signature"))
-    except:
+        t.remove(t.find("ds:Signature", namespaces=namespaces))
+    except Exception:
         pass
 
 class TestSignXML(unittest.TestCase):
@@ -65,13 +65,13 @@ class TestSignXML(unittest.TestCase):
                                     xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                                    mangled_sig = signed_data.replace("<DigestValue>", "<DigestValue>!")
+                                    mangled_sig = signed_data.replace("<ds:DigestValue>", "<ds:DigestValue>!")
                                     xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaises(cryptography.exceptions.InvalidSignature):
-                                    sig_value = re.search("<SignatureValue>(.+?)</SignatureValue>", signed_data).group(1)
-                                    mangled_sig = re.sub("<SignatureValue>(.+?)</SignatureValue>",
-                                                         "<SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + "</SignatureValue>",
+                                    sig_value = re.search("<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
+                                    mangled_sig = re.sub("<ds:SignatureValue>(.+?)</ds:SignatureValue>",
+                                                         "<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + "</ds:SignatureValue>",
                                                          signed_data)
                                     xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
