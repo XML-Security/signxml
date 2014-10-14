@@ -1,6 +1,6 @@
 from __future__ import print_function, unicode_literals
 
-import os, sys, re
+import os, re
 from base64 import b64encode, b64decode
 
 from eight import *
