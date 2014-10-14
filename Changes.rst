@@ -1,3 +1,7 @@
+Version 0.2.7 (2014-10-13)
+--------------------------
+- Switch default signing method to enveloped signature
+
 Version 0.2.6 (2014-10-13)
 --------------------------
 - Fix typo in ns prefixing code
