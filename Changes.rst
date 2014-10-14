@@ -1,3 +1,7 @@
+Version 0.2.8 (2014-10-13)
+--------------------------
+- Namespace all tags when generating signature
+
 Version 0.2.7 (2014-10-13)
 --------------------------
 - Switch default signing method to enveloped signature
