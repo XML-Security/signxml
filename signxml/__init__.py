@@ -255,7 +255,7 @@ class xmldsig(object):
         digest_value.text = self.digest
         signature_value = SubElement(self.sig_root, ds_tag("SignatureValue"))
 
-        signed_info_c14n = etree.tostring(signed_info, method="c14n")
+        signed_info_c14n = etree.tostring(signed_info, method="c14n", exclusive=True)
         if self.signature_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
             signer = HMAC(key=self.key,
