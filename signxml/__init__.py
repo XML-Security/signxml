@@ -356,7 +356,7 @@ class xmldsig(object):
         verifier.update(signed_info_c14n)
         verifier.verify()
 
-    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True):
+    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, xml_parser=None):
         """
         Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
         be generated using a valid X509 certificate. To enable other means of signature validation, set the
