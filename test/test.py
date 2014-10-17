@@ -15,11 +15,12 @@ from eight import *
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from signxml import *
 
-def reset_tree(t):
+def reset_tree(t, enveloped=True):
     if not isinstance(t, str):
         for s in t.findall("ds:Signature", namespaces=namespaces):
-            if s.get("Id") != "placeholder":
-                t.remove(s)
+            if enveloped and s.get("Id") == "placeholder":
+                continue
+            t.remove(s)
 
 class TestSignXML(unittest.TestCase):
     def setUp(self):
@@ -34,8 +35,6 @@ class TestSignXML(unittest.TestCase):
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
             xmldsig("x").sign(enveloped=True)
 
-        data = [etree.parse(f).getroot() for f in self.example_xml_files]
-        data.append("x y \n z t\n я\n")
         for da in "sha1", "sha224", "sha256", "sha384", "sha512":
             for sa in "hmac", "dsa", "rsa", "ecdsa":
                 for ha in "sha1", "sha256":
@@ -44,11 +43,13 @@ class TestSignXML(unittest.TestCase):
                         continue
                     for enveloped_signature in True, False:
                         for with_comments in True, False:
+                            data = [etree.parse(f).getroot() for f in self.example_xml_files]
+                            data.append("x y \n z t\n я\n")
                             for d in data:
                                 if isinstance(d, str) and enveloped_signature is True:
                                     continue
                                 print(da, sa, ha, "enveloped", enveloped_signature, "comments", with_comments, type(d))
-                                reset_tree(d)
+                                reset_tree(d, enveloped=enveloped_signature)
                                 signed = xmldsig(d, digest_algorithm=da).sign(algorithm="-".join([sa, ha]),
                                                                               key=self.keys[sa],
                                                                               enveloped=enveloped_signature,

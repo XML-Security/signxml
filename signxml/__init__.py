@@ -164,14 +164,11 @@ class xmldsig(object):
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
 
-#            print("Placeholders:", self._findall(self.data, ".//Signature"))
-#            print("DATA:", etree.tostring(self.data))
             signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']")
 
             if len(signature_placeholders) == 0:
                 self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
             elif len(signature_placeholders) == 1:
-                print("*** FOUND PLACEHOLDER!")
                 self.sig_root = signature_placeholders[0]
                 del self.sig_root.attrib["Id"]
             else:
@@ -238,7 +235,7 @@ class xmldsig(object):
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
-        To specify the location of an enveloped signature within **data**, insert a "<Signature placeholder="true"></Signature>"
+        To specify the location of an enveloped signature within **data**, insert a '<Signature Id="placeholder"></Signature>'
         element in **data**. This element will be replaced by the generated signature, and excised when generating the digest.
         """
         self.signature_alg = algorithm
