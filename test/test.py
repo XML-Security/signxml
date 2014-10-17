@@ -16,14 +16,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from signxml import *
 
 def reset_tree(t):
-    try:
-        t.remove(t.find("ds:Signature", namespaces=namespaces))
-    except Exception:
-        pass
+    if not isinstance(t, str):
+        for s in t.findall("ds:Signature", namespaces=namespaces):
+            if s.get("Id") != "placeholder":
+                t.remove(s)
 
 class TestSignXML(unittest.TestCase):
     def setUp(self):
-        self.example_xml_file = os.path.join(os.path.dirname(__file__), "example.xml")
+        self.example_xml_files = (os.path.join(os.path.dirname(__file__), "example.xml"),
+                                  os.path.join(os.path.dirname(__file__), "example2.xml"))
         self.keys = dict(hmac=b"secret",
                          rsa=rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend()),
                          dsa=dsa.generate_private_key(key_size=1024, backend=default_backend()),
@@ -33,8 +34,8 @@ class TestSignXML(unittest.TestCase):
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
             xmldsig("x").sign(enveloped=True)
 
-        tree = etree.parse(self.example_xml_file)
-        data = [tree.getroot(), "x y \n z t\n я\n"]
+        data = [etree.parse(f).getroot() for f in self.example_xml_files]
+        data.append("x y \n z t\n я\n")
         for da in "sha1", "sha224", "sha256", "sha384", "sha512":
             for sa in "hmac", "dsa", "rsa", "ecdsa":
                 for ha in "sha1", "sha256":
@@ -83,11 +84,10 @@ class TestSignXML(unittest.TestCase):
                                         xmldsig(signed_data).verify(hmac_key=b"SECRET", require_x509=False)
 
     def test_x509_certs(self):
-        tree = etree.parse(self.example_xml_file)
+        tree = etree.parse(self.example_xml_files[0])
         ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "example-ca.pem"))
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
             crt = fh.read()
-
         with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
             key = fh.read()
         for ha in "sha1", "sha256":

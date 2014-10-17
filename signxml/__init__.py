@@ -159,14 +159,28 @@ class xmldsig(object):
                                               known_tags=self.known_signature_digest_tags)
 
     def _get_payload_c14n(self, enveloped, with_comments):
-        self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
         if enveloped:
             self.payload = self.data
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
+
+#            print("Placeholders:", self._findall(self.data, ".//Signature"))
+#            print("DATA:", etree.tostring(self.data))
+            signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']")
+
+            if len(signature_placeholders) == 0:
+                self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
+            elif len(signature_placeholders) == 1:
+                print("*** FOUND PLACEHOLDER!")
+                self.sig_root = signature_placeholders[0]
+                del self.sig_root.attrib["Id"]
+            else:
+                raise InvalidInput("Enveloped signature input contains more than one placeholder")
+
             self._reference_uri = ""
             self.payload.append(self.sig_root)
         else:
+            self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
             self.payload = Element(ds_tag("Object"), nsmap=dict(ds=XMLDSIG_NS), Id="object")
             self._reference_uri = "#object"
             if isinstance(self.data, (str, bytes)):
@@ -223,6 +237,9 @@ class xmldsig(object):
         :type enveloped: boolean
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
+
+        To specify the location of an enveloped signature within **data**, insert a "<Signature placeholder="true"></Signature>"
+        element in **data**. This element will be replaced by the generated signature, and excised when generating the digest.
         """
         self.signature_alg = algorithm
         self.key = key
@@ -356,7 +373,7 @@ class xmldsig(object):
         verifier.update(signed_info_c14n)
         verifier.verify()
 
-    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True):
+    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, parser=None):
         """
         Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
         be generated using a valid X509 certificate. To enable other means of signature validation, set the
@@ -376,6 +393,8 @@ class xmldsig(object):
         :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :type validate_schema: boolean
+        :param parser: Whether to validate **data** against the XML Signature schema.
+        :type parser: :py:class:`ElementTree.XMLParser` compatible parser
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
         """
@@ -386,7 +405,7 @@ class xmldsig(object):
             self.require_x509 = True
 
         if isinstance(self.data, (str, bytes)):
-            root = fromstring(self.data)
+            root = fromstring(self.data, parser=parser)
         else:
             root = self.data
 
