@@ -59,7 +59,7 @@ class TestSignXML(unittest.TestCase):
                                 hmac_key = self.keys["hmac"] if sa == "hmac" else None
                                 xmldsig(signed_data).verify(hmac_key=hmac_key, require_x509=False)
 
-                                with self.assertRaisesRegexp(InvalidInput, "Expected a X509 certificate based signature"):
+                                with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
                                     xmldsig(signed_data).verify(hmac_key=hmac_key)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
