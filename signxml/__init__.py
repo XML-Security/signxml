@@ -235,7 +235,7 @@ class xmldsig(object):
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
-        To specify the location of an enveloped signature within **data**, insert a '<Signature Id="placeholder"></Signature>'
+        To specify the location of an enveloped signature within **data**, insert a `<Signature Id="placeholder"></Signature>`
         element in **data**. This element will be replaced by the generated signature, and excised when generating the digest.
         """
         self.signature_alg = algorithm
