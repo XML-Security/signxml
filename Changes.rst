@@ -1,3 +1,7 @@
+Version 0.3.0 (2014-10-16)
+--------------------------
+- Allow location of enveloped signature to be specified
+
 Version 0.2.9 (2014-10-14)
 --------------------------
 - Use exclusive c14n when signing
