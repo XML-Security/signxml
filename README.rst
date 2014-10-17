@@ -46,6 +46,10 @@ Using a SAML metadata file:
     root = ElementTree.fromstring(signature_data)
     xmldsig(root).verify(x509_cert=cert)
 
+.. admonition:: Signing SAML assertions
+
+The SAML assertion schema specifies a location for the enveloped XML signature (between ``<Issuer>`` and ``<Subject>``). To sign a SAML assertion in a schema-compliant way, insert a signature placeholder tag at that location before calling xmldsig: ``<Signature Id="placeholder"></Signature>``.
+
 See the `API documentation <https://signxml.readthedocs.org/en/latest/#id1>`_ for more.
 
 Authors
