@@ -1,3 +1,7 @@
+Version 0.3.1 (2014-10-17)
+--------------------------
+- Fix bug in enveloped signature excision
+
 Version 0.3.0 (2014-10-16)
 --------------------------
 - Allow location of enveloped signature to be specified
