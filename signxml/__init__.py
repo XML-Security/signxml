@@ -373,14 +373,14 @@ class xmldsig(object):
     def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, parser=None):
         """
         Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
-        be generated using a valid X509 certificate. To enable other means of signature validation, set the
+        be generated using a valid X.509 certificate. To enable other means of signature validation, set the
         **require_x509** argument to `False`.
 
         TODO: CN verification
 
-        :param require_x509: If ``True``, a valid X509 certificate-based signature is required to pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
+        :param require_x509: If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
-        :param x509_cert: An external X509 certificate, given as a PEM-formatted string, to use for verification. Overrides any X509 certificate information supplied by the signature. If left set to ``None``, requires that the signature supply a valid X509 certificate chain that validates against the known certificate authorities. Implies **require_x509=True**.
+        :param x509_cert: An external X.509 certificate, given as a PEM-formatted string, to use for verification. Overrides any X.509 certificate information supplied by the signature. If left set to ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the known certificate authorities. Implies **require_x509=True**.
         :type x509_cert: string
         :param ca_pem_file: Filename (as bytes) of a PEM file containing certificate authority information to use when verifying certificate-based signatures.
         :type ca_pem_file: bytes
@@ -451,7 +451,7 @@ class xmldsig(object):
 
             if self.x509_cert is None:
                 if x509_data is None:
-                    raise InvalidInput("Expected a X509 certificate based signature")
+                    raise InvalidInput("Expected a X.509 certificate based signature")
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
