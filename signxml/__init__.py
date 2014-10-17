@@ -168,6 +168,7 @@ class xmldsig(object):
 
             if len(signature_placeholders) == 0:
                 self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
+                self.payload.append(self.sig_root)
             elif len(signature_placeholders) == 1:
                 self.sig_root = signature_placeholders[0]
                 del self.sig_root.attrib["Id"]
@@ -175,7 +176,6 @@ class xmldsig(object):
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
             self._reference_uri = ""
-            self.payload.append(self.sig_root)
         else:
             self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
             self.payload = Element(ds_tag("Object"), nsmap=dict(ds=XMLDSIG_NS), Id="object")
