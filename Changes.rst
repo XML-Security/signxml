@@ -1,3 +1,7 @@
+Version 0.2.9 (2014-10-14)
+--------------------------
+- Use exclusive c14n when signing
+
 Version 0.2.8 (2014-10-13)
 --------------------------
 - Namespace all tags when generating signature
