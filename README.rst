@@ -51,7 +51,7 @@ Using a SAML metadata file:
 
  The SAML assertion schema specifies a location for the enveloped XML signature (between ``<Issuer>`` and
  ``<Subject>``). To sign a SAML assertion in a schema-compliant way, insert a signature placeholder tag at that location
- before calling xmldsig: ``<Signature Id="placeholder"></Signature>``.
+ before calling xmldsig: ``<ds:Signature Id="placeholder"></ds:Signature>``.
 
 See the `API documentation <https://signxml.readthedocs.org/en/latest/#id1>`_ for more.
 
