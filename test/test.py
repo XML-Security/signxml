@@ -22,6 +22,14 @@ def reset_tree(t, enveloped=True):
                 continue
             t.remove(s)
 
+class URIResolver(etree.Resolver):
+    def resolve(self, url, id, context):
+        print("Resolving URL '%s'" % url)
+        return None
+
+parser = etree.XMLParser(load_dtd=True)
+parser.resolvers.add(URIResolver())
+
 class TestSignXML(unittest.TestCase):
     def setUp(self):
         self.example_xml_files = (os.path.join(os.path.dirname(__file__), "example.xml"),
@@ -57,7 +65,10 @@ class TestSignXML(unittest.TestCase):
                                 # print(etree.tostring(signed))
                                 signed_data = etree.tostring(signed)
                                 hmac_key = self.keys["hmac"] if sa == "hmac" else None
-                                xmldsig(signed_data).verify(hmac_key=hmac_key, require_x509=False)
+                                xmldsig(signed_data).verify(hmac_key=hmac_key,
+                                                            require_x509=False,
+                                                            validate_schema=True,
+                                                            parser=parser)
 
                                 with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
                                     xmldsig(signed_data).verify(hmac_key=hmac_key)
@@ -124,7 +135,10 @@ class TestSignXML(unittest.TestCase):
             with open(signature_file, "rb") as fh:
                 try:
                     #xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file, require_x509=False, hmac_key="secret")
-                    xmldsig(fh.read()).verify(require_x509=False, hmac_key="secret")
+                    xmldsig(fh.read()).verify(require_x509=False,
+                                              hmac_key="secret",
+                                              validate_schema=True,
+                                              parser=parser)
                 except Exception as e:
                     if "Expected to find XML element" in str(e) or "EntitiesForbidden" in str(e) or signature_file.endswith("signature-enveloping-hmac-sha1-40.xml") or signature_file.endswith("signature-enveloping-b64-dsa.xml"):
                         print("IGNORED:", type(e), e)

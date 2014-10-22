@@ -390,7 +390,7 @@ class xmldsig(object):
         :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :type validate_schema: boolean
-        :param parser: Whether to validate **data** against the XML Signature schema.
+        :param parser: Custom XML parser instance to use when parsing **data**.
         :type parser: :py:class:`ElementTree.XMLParser` compatible parser
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
