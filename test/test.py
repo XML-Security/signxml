@@ -67,6 +67,10 @@ class TestSignXML(unittest.TestCase):
                                 hmac_key = self.keys["hmac"] if sa == "hmac" else None
                                 xmldsig(signed_data).verify(hmac_key=hmac_key,
                                                             require_x509=False,
+                                                            validate_schema=True)
+
+                                xmldsig(signed_data).verify(hmac_key=hmac_key,
+                                                            require_x509=False,
                                                             validate_schema=True,
                                                             parser=parser)
 
