@@ -3,6 +3,7 @@ SHELL=/bin/bash
 env: requirements.txt
 	virtualenv env
 	source env/bin/activate; pip install --requirement=requirements.txt
+	source env/bin/activate; pip list --outdated
 
 test: env
 	-pylint -E signxml
