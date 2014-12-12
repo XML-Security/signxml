@@ -190,8 +190,7 @@ class xmldsig(object):
             else:
                 self.payload.append(self.data)
 
-        self.payload_c14n = self._c14n(self.payload, with_comments=with_comments,
-                                       inclusive_ns_prefixes=self.sig_root.nsmap.keys())
+        self.payload_c14n = self._c14n(self.payload, with_comments=with_comments)
         if enveloped:
             self.payload_c14n = _get_signature_regex(ns_prefix="ds").sub(b"", self.payload_c14n)
 
@@ -222,11 +221,9 @@ class xmldsig(object):
             y = key.public_key().public_numbers().y
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
-    def _c14n(self, node, with_comments=True, inclusive_ns_prefixes=None):
-        if inclusive_ns_prefixes is None:
-            inclusive_ns_prefixes = []
-        return etree.tostring(node, method="c14n", exclusive=True, with_comments=with_comments,
-                              inclusive_ns_prefixes=[p for p in inclusive_ns_prefixes if p is not None])
+    def _c14n(self, node, with_comments=True):
+        c14n = etree.tostring(node, method="c14n", exclusive=False, with_comments=with_comments)
+        return c14n.replace(b' xmlns=""', b'')
 
     def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, with_comments=False, enveloped=True):
         """
@@ -434,7 +431,7 @@ class xmldsig(object):
             with_comments = True
         else:
             with_comments = False
-        signed_info_c14n = self._c14n(signed_info, with_comments=with_comments, inclusive_ns_prefixes=root.nsmap.keys())
+        signed_info_c14n = self._c14n(signed_info, with_comments=with_comments)
         reference = self._find(signed_info, "Reference")
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
@@ -444,7 +441,7 @@ class xmldsig(object):
         else:
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
-        payload_c14n = self._c14n(payload, with_comments=with_comments, inclusive_ns_prefixes=root.nsmap.keys())
+        payload_c14n = self._c14n(payload, with_comments=with_comments)
 
         if enveloped:
             payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
