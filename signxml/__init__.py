@@ -221,8 +221,10 @@ class xmldsig(object):
             y = key.public_key().public_numbers().y
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
-    def _c14n(self, node, with_comments=True):
+    def _c14n(self, node, with_comments=True, method=...):
+        # FIXME: toggle on method
         # INC:
+        #   <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
         # EXC:
         #<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></ds:CanonicalizationMethod>
         c14n = etree.tostring(node, method="c14n", exclusive=False, with_comments=with_comments)
