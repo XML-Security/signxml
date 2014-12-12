@@ -222,6 +222,9 @@ class xmldsig(object):
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
     def _c14n(self, node, with_comments=True):
+        # INC:
+        # EXC:
+        #<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></ds:CanonicalizationMethod>
         c14n = etree.tostring(node, method="c14n", exclusive=False, with_comments=with_comments)
         return c14n.replace(b' xmlns=""', b'')
 
