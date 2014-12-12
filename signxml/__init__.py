@@ -34,6 +34,11 @@ class InvalidSignature(cryptography.exceptions.InvalidSignature):
     Raised when signature validation fails.
     """
 
+class InvalidDigest(InvalidSignature):
+    """
+    Raised when digest validation fails (causing the signature to be untrusted).
+    """
+
 class InvalidCertificate(InvalidSignature):
     """
     Raised when certificate validation fails.
@@ -445,7 +450,7 @@ class xmldsig(object):
             payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
-            raise InvalidSignature("Digest mismatch")
+            raise InvalidDigest("Digest mismatch")
 
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
@@ -454,7 +459,7 @@ class xmldsig(object):
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
 
         if x509_data is not None or self.require_x509:
-            from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify
+            from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
 
             if self.x509_cert is None:
                 if x509_data is None:
@@ -466,7 +471,11 @@ class xmldsig(object):
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))]
 
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
-            verify(cert_chain[-1], raw_signature, signed_info_c14n, bytes(signature_digest_method))
+            try:
+                verify(cert_chain[-1], raw_signature, signed_info_c14n, bytes(signature_digest_method))
+            except OpenSSLCryptoError as e:
+                lib, func, reason = e.message[0]
+                raise InvalidSignature("Signature verification failed: {}".format(reason))
         elif "hmac-sha" in signature_alg:
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
