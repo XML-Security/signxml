@@ -1,3 +1,7 @@
+Version 0.3.2 (2014-12-11)
+--------------------------
+- Fix bug in enveloped signature canonicalization of namespace prefixes
+
 Version 0.3.1 (2014-10-17)
 --------------------------
 - Fix bug in enveloped signature excision

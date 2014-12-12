@@ -7,7 +7,7 @@ install_requires = [line.rstrip() for line in open(os.path.join(os.path.dirname(
 
 setup(
     name='signxml',
-    version='0.3.1',
+    version='0.3.2',
     url='https://github.com/kislyuk/signxml',
     license='Apache Software License',
     author='Andrey Kislyuk',
