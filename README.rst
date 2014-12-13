@@ -25,6 +25,8 @@ Installation
 Synopsis
 --------
 
+SignXML uses the ElementTree API (also supported by lxml) to work with XML data.
+
 .. code-block:: python
 
     from signxml import xmldsig
@@ -35,16 +37,21 @@ Synopsis
     xmldsig(root).sign(key=key, cert=cert)
     xmldsig(root).verify()
 
-Using a SAML metadata file:
+Verifying SAML assertions
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 
 .. code-block:: python
 
+    from lxml import etree
+    from base64 import b64decode
     from signxml import xmldsig
 
     with open("metadata.xml", "rb") as fh:
         cert = etree.parse(fh).find("//ds:X509Certificate").text
 
-    root = ElementTree.fromstring(signature_data)
+    root = etree.parse(b64decode(assertion)).getroot()
     xmldsig(root).verify(x509_cert=cert)
 
 .. admonition:: Signing SAML assertions
