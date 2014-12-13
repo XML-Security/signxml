@@ -1,3 +1,7 @@
+Version 0.3.3 (2014-12-13)
+--------------------------
+- Overhaul support of canonicalization algorithms
+
 Version 0.3.2 (2014-12-11)
 --------------------------
 - Fix bug in enveloped signature canonicalization of namespace prefixes
