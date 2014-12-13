@@ -50,18 +50,20 @@ class TestSignXML(unittest.TestCase):
                         print("FIXME", sa, ha)
                         continue
                     for enveloped_signature in True, False:
-                        for with_comments in True, False:
+                        for c14n_algorithm in ("http://www.w3.org/2001/10/xml-exc-c14n#",
+                                               "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
+                                               xmldsig.default_c14n_algorithm):
                             data = [etree.parse(f).getroot() for f in self.example_xml_files]
                             data.append("x y \n z t\n я\n")
                             for d in data:
                                 if isinstance(d, str) and enveloped_signature is True:
                                     continue
-                                print(da, sa, ha, "enveloped", enveloped_signature, "comments", with_comments, type(d))
+                                print(da, sa, ha, c14n_algorithm, "enveloped", enveloped_signature, type(d))
                                 reset_tree(d, enveloped=enveloped_signature)
                                 signed = xmldsig(d, digest_algorithm=da).sign(algorithm="-".join([sa, ha]),
                                                                               key=self.keys[sa],
                                                                               enveloped=enveloped_signature,
-                                                                              with_comments=with_comments)
+                                                                              c14n_algorithm=c14n_algorithm)
                                 # print(etree.tostring(signed))
                                 signed_data = etree.tostring(signed)
                                 hmac_key = self.keys["hmac"] if sa == "hmac" else None

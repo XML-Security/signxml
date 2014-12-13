@@ -130,6 +130,16 @@ class xmldsig(object):
     }
     known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.iteritems()}
 
+    known_c14n_algorithms = {
+        "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
+        "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+        "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments",
+        "http://www.w3.org/2006/12/xml-c14n11",
+        "http://www.w3.org/2006/12/xml-c14n11#WithComments"
+    }
+    default_c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
+
     def _get_digest(self, data, digest_algorithm):
         hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
         hasher.update(data)
@@ -163,7 +173,7 @@ class xmldsig(object):
         return self._get_digest_method_by_tag(signature_algorithm_tag, methods=self.known_signature_digest_methods,
                                               known_tags=self.known_signature_digest_tags)
 
-    def _get_payload_c14n(self, enveloped, with_comments):
+    def _get_payload_c14n(self, enveloped, c14n_algorithm=default_c14n_algorithm):
         if enveloped:
             self.payload = self.data
             if isinstance(self.data, (str, bytes)):
@@ -190,7 +200,7 @@ class xmldsig(object):
             else:
                 self.payload.append(self.data)
 
-        self.payload_c14n = self._c14n(self.payload, with_comments=with_comments)
+        self.payload_c14n = self._c14n(self.payload, algorithm=c14n_algorithm)
         if enveloped:
             self.payload_c14n = _get_signature_regex(ns_prefix="ds").sub(b"", self.payload_c14n)
 
@@ -221,16 +231,20 @@ class xmldsig(object):
             y = key.public_key().public_numbers().y
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
-    def _c14n(self, node, with_comments=True, method=...):
-        # FIXME: toggle on method
-        # INC:
-        #   <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
-        # EXC:
-        #<ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"></ds:CanonicalizationMethod>
-        c14n = etree.tostring(node, method="c14n", exclusive=False, with_comments=with_comments)
-        return c14n.replace(b' xmlns=""', b'')
+    def _c14n(self, node, algorithm=default_c14n_algorithm):
+        with_comments = True if algorithm.endswith("#WithComments") else False
 
-    def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, with_comments=False, enveloped=True):
+        if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
+            exclusive = True
+        else:
+            exclusive = False
+        c14n = etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments)
+        if exclusive is False:
+            c14n = c14n.replace(b' xmlns=""', b'')
+        return c14n
+
+    def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, enveloped=True,
+             c14n_algorithm=default_c14n_algorithm):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -242,8 +256,8 @@ class xmldsig(object):
         :type passphrase: string
         :param cert: X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an array containing the certificate and a chain of intermediate certificates.
         :type cert: string or array of strings
-        :param with_comments: Whether to canonicalize (c14n) the payload with comments or without.
-        :type with_comments: boolean
+        :param c14n_algorithm: Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable ``xmldsig.known_c14n_algorithms``.
+        :type c14n_algorithm: string
         :param enveloped: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
         :type enveloped: boolean
 
@@ -260,14 +274,11 @@ class xmldsig(object):
         else:
             cert_chain = cert
 
-        self._get_payload_c14n(enveloped, with_comments)
+        self._get_payload_c14n(enveloped, c14n_algorithm=c14n_algorithm)
 
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
         signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=dict(ds=XMLDSIG_NS))
-        c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
-        if with_comments:
-            c14n_algorithm += "#WithComments"
         c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=c14n_algorithm)
         if self.signature_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.signature_alg]
@@ -283,7 +294,7 @@ class xmldsig(object):
         digest_value.text = self.digest
         signature_value = SubElement(self.sig_root, ds_tag("SignatureValue"))
 
-        signed_info_c14n = self._c14n(signed_info)
+        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         if self.signature_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
             signer = HMAC(key=self.key,
@@ -432,11 +443,8 @@ class xmldsig(object):
 
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
-        if c14n_method.get("Algorithm").endswith("#WithComments"):
-            with_comments = True
-        else:
-            with_comments = False
-        signed_info_c14n = self._c14n(signed_info, with_comments=with_comments)
+        c14n_algorithm = c14n_method.get("Algorithm")
+        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         reference = self._find(signed_info, "Reference")
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
@@ -446,7 +454,7 @@ class xmldsig(object):
         else:
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
-        payload_c14n = self._c14n(payload, with_comments=with_comments)
+        payload_c14n = self._c14n(payload, algorithm=c14n_algorithm)
 
         if enveloped:
             payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
