@@ -131,10 +131,10 @@ class xmldsig(object):
     known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.iteritems()}
 
     known_c14n_algorithms = {
-        "http://www.w3.org/2001/10/xml-exc-c14n#",
-        "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
         "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
         "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments",
+        "http://www.w3.org/2001/10/xml-exc-c14n#",
+        "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
         "http://www.w3.org/2006/12/xml-c14n11",
         "http://www.w3.org/2006/12/xml-c14n11#WithComments"
     }
