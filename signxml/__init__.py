@@ -20,8 +20,9 @@ XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
 XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
 XMLDSIG_MORE_NS = "http://www.w3.org/2001/04/xmldsig-more#"
+XML_EXC_C14N_NS = "http://www.w3.org/2001/10/xml-exc-c14n#"
 
-namespaces = dict(ds=XMLDSIG_NS, ds11=XMLDSIG11_NS)
+namespaces = dict(ds=XMLDSIG_NS, ds11=XMLDSIG11_NS, ec=XML_EXC_C14N_NS)
 
 def ds_tag(tag):
     return "{" + XMLDSIG_NS + "}" + tag
@@ -231,14 +232,15 @@ class xmldsig(object):
             y = key.public_key().public_numbers().y
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
-    def _c14n(self, node, algorithm=default_c14n_algorithm):
+    def _c14n(self, node, algorithm=default_c14n_algorithm, inclusive_ns_prefixes=None):
         with_comments = True if algorithm.endswith("#WithComments") else False
 
         if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
             exclusive = True
         else:
             exclusive = False
-        c14n = etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments)
+        c14n = etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
+                              inclusive_ns_prefixes=inclusive_ns_prefixes)
         if exclusive is False:
             c14n = c14n.replace(b' xmlns=""', b'')
         return c14n
@@ -444,8 +446,16 @@ class xmldsig(object):
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
         c14n_algorithm = c14n_method.get("Algorithm")
-        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         reference = self._find(signed_info, "Reference")
+
+        inclusive_ns_prefixes = None
+        inclusive_namespaces = reference.find("./ds:Transforms/ds:Transform[@Algorithm]/ec:InclusiveNamespaces[@PrefixList]",
+                                              namespaces=namespaces)
+        inclusive_ns_prefixes = None
+        if inclusive_namespaces is not None:
+            inclusive_ns_prefixes = inclusive_namespaces.get("PrefixList").split(" ")
+
+        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
 
@@ -454,7 +464,7 @@ class xmldsig(object):
         else:
             payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
 
-        payload_c14n = self._c14n(payload, algorithm=c14n_algorithm)
+        payload_c14n = self._c14n(payload, algorithm=c14n_algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes)
 
         if enveloped:
             payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
