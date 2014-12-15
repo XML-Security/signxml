@@ -1,3 +1,7 @@
+Version 0.3.4 (2014-12-14)
+--------------------------
+- Add support for exclusive canonicalization with InclusiveNamespaces PrefixList attribute
+
 Version 0.3.3 (2014-12-13)
 --------------------------
 - Overhaul support of canonicalization algorithms
