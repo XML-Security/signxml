@@ -398,6 +398,14 @@ class xmldsig(object):
         verifier.update(signed_info_c14n)
         verifier.verify()
 
+    def _get_inclusive_ns_prefixes(self, reference_node):
+        inclusive_ns_query = "./ds:Transforms/ds:Transform[@Algorithm]/ec:InclusiveNamespaces[@PrefixList]"
+        inclusive_namespaces = reference_node.find(inclusive_ns_query, namespaces=namespaces)
+        if inclusive_namespaces is None:
+            return None
+        else:
+            return inclusive_namespaces.get("PrefixList").split(" ")
+
     def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, parser=None):
         """
         Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
@@ -448,14 +456,7 @@ class xmldsig(object):
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
         c14n_algorithm = c14n_method.get("Algorithm")
         reference = self._find(signed_info, "Reference")
-
-        inclusive_ns_prefixes = None
-        inclusive_namespaces = reference.find("./ds:Transforms/ds:Transform[@Algorithm]/ec:InclusiveNamespaces[@PrefixList]",
-                                              namespaces=namespaces)
-        inclusive_ns_prefixes = None
-        if inclusive_namespaces is not None:
-            inclusive_ns_prefixes = inclusive_namespaces.get("PrefixList").split(" ")
-
+        inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(reference)
         signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
