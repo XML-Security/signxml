@@ -233,12 +233,13 @@ class xmldsig(object):
             public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
 
     def _c14n(self, node, algorithm=default_c14n_algorithm, inclusive_ns_prefixes=None):
-        with_comments = True if algorithm.endswith("#WithComments") else False
+        exclusive, with_comments = False, False
 
         if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
             exclusive = True
-        else:
-            exclusive = False
+        if algorithm.endswith("#WithComments"):
+            with_comments = True
+
         c14n = etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
                               inclusive_ns_prefixes=inclusive_ns_prefixes)
         if exclusive is False:
