@@ -79,8 +79,7 @@ Links
 * `W3C Working Group Note: XML Signature Best Practices <http://www.w3.org/TR/xmldsig-bestpractices/>`_
 * `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
-
-
+* `XMLSec: Related links <https://www.aleksey.com/xmlsec/related.html>`_
 
 Bugs
 ~~~~
