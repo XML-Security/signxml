@@ -347,9 +347,6 @@ class xmldsig(object):
                         x509_certificate.text = strip_pem_header(cert)
                     else:
                         from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
-                        print("BEGIN DUMP")
-                        print(dump_certificate(FILETYPE_PEM, cert))
-                        print("END DUMP")
                         x509_certificate.text = dump_certificate(FILETYPE_PEM, cert)
         else:
             raise NotImplementedError()
