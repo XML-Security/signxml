@@ -293,6 +293,7 @@ class xmldsig(object):
         if enveloped:
             transforms = SubElement(reference, ds_tag("Transforms"))
             SubElement(transforms, ds_tag("Transform"), Algorithm=XMLDSIG_NS + "enveloped-signature")
+            SubElement(transforms, ds_tag("Transform"), Algorithm=c14n_algorithm)
         digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
         digest_value = SubElement(reference, ds_tag("DigestValue"))
         digest_value.text = self.digest
@@ -396,14 +397,6 @@ class xmldsig(object):
         verifier.update(signed_info_c14n)
         verifier.verify()
 
-    def _get_inclusive_ns_prefixes(self, reference_node):
-        inclusive_ns_query = "./ds:Transforms/ds:Transform[@Algorithm]/ec:InclusiveNamespaces[@PrefixList]"
-        inclusive_namespaces = reference_node.find(inclusive_ns_query, namespaces=namespaces)
-        if inclusive_namespaces is None:
-            return None
-        else:
-            return inclusive_namespaces.get("PrefixList").split(" ")
-
     def _resolve_reference(self, doc_root, reference, uri_resolver=None):
         uri = reference.get("URI")
         if uri == "":
@@ -412,7 +405,9 @@ class xmldsig(object):
             raise InvalidInput("XPointer references are not supported")
             # doc_root.xpath(uri.lstrip("#"))[0]
         elif uri.startswith("#"):
-            results = doc_root.xpath(".//*[@Id=$uri]", uri=uri.lstrip("#"))
+            results = doc_root.xpath("..//*[@Id=$uri]", uri=uri.lstrip("#"))
+            if len(results) < 1:
+                results += doc_root.xpath("..//*[@ID=$uri]", uri=uri.lstrip("#"))
             if len(results) < 1:
                 raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
             return results[0]
@@ -423,6 +418,38 @@ class xmldsig(object):
             if result is None:
                 raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
             return result
+
+    def _get_inclusive_ns_prefixes(self, transform_node):
+        inclusive_namespaces = transform_node.find("./ec:InclusiveNamespaces[@PrefixList]", namespaces=namespaces)
+        if inclusive_namespaces is None:
+            return None
+        else:
+            return inclusive_namespaces.get("PrefixList").split(" ")
+
+    def _apply_transforms(self, payload, transforms_node, signature, c14n_algorithm):
+        transforms, c14n_applied = [], False
+        if transforms_node is not None:
+            transforms = self._findall(transforms_node, "Transform")
+
+        for transform in transforms:
+            if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#base64":
+                payload = b64decode(payload.text)
+
+        for transform in transforms:
+            algorithm = transform.get("Algorithm")
+            if algorithm in self.known_c14n_algorithms:
+                inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(transform)
+                payload = self._c14n(payload, algorithm=algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes)
+                c14n_applied = True
+
+        if not c14n_applied and not isinstance(payload, (str, bytes)):
+            payload = self._c14n(payload, algorithm=c14n_algorithm)
+
+        for transform in transforms:
+            if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#enveloped-signature":
+                payload = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload)
+
+        return payload
 
     def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
                validate_schema=True, parser=None, uri_resolver=None):
@@ -466,10 +493,8 @@ class xmldsig(object):
             root = self.data
 
         if root.tag == ds_tag("Signature"):
-            enveloped = False
             signature = root
         else:
-            enveloped = True
             signature = self._find(root, "Signature")
 
         if validate_schema:
@@ -479,21 +504,13 @@ class xmldsig(object):
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
         c14n_algorithm = c14n_method.get("Algorithm")
         reference = self._find(signed_info, "Reference")
-        inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(reference)
+        transforms = self._find(reference, "Transforms", require=False)
         signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
 
-        if enveloped:
-            payload = root
-            payload_c14n = self._c14n(payload, algorithm=c14n_algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes)
-            payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
-        else:
-            payload = self._resolve_reference(signature, reference, uri_resolver=uri_resolver)
-            if isinstance(payload, (str, bytes)):
-                payload_c14n = payload
-            else:
-                payload_c14n = self._c14n(payload, algorithm=c14n_algorithm)
+        payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
+        payload_c14n = self._apply_transforms(payload, transforms, signature, c14n_algorithm)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidDigest("Digest mismatch")

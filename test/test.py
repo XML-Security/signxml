@@ -169,7 +169,7 @@ class TestSignXML(unittest.TestCase):
                                               ca_pem_file=get_ca_pem_file(signature_file))
                 except Exception as e:
                     exempt_cases = ("xpath-transform", "xslt-transform", "x509-data-issuer-serial", "x509-data-ski",
-                                    "x509-data-subject-name", "hmac-sha1-40", "signature-big", "b64")
+                                    "x509-data-subject-name", "hmac-sha1-40", "signature-big")
                     if signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
                         self.assertIsInstance(e, InvalidDigest)
                     elif signature_file.endswith("signature-rsa-detached-xslt-transform-bad-retrieval-method.xml"):
