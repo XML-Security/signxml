@@ -132,21 +132,55 @@ class TestSignXML(unittest.TestCase):
             with open(signature_file, "rb") as fh:
                 xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
 
-    def test_xmldsig_interop_merlin_23(self):
+    def test_xmldsig_interop(self):
+        def resolver(uri):
+            if uri == "document.xml":
+                with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", uri), "rb") as fh:
+                    return fh.read()
+            elif uri == "http://www.ietf.org/rfc/rfc3161.txt":
+                with open(os.path.join(os.path.dirname(__file__), "rfc3161.txt"), "rb") as fh:
+                    return fh.read()
+            return None
+
         #from ssl import DER_cert_to_PEM_cert
-        #with open(os.path.join(os.path.dirname(__file__), "interop", "merlin-xmldsig-twenty-three", "ca.crt")) as fh:
+        #with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.der"), "rb") as fh:
         #    ca_pem_file = DER_cert_to_PEM_cert(fh.read())
-        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "merlin-xmldsig-twenty-three", "signature*.xml")):
+        #    with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem"), "wb") as fh2:
+        #        fh2.write(ca_pem_file)
+
+        def get_ca_pem_file(signature_file):
+            if "signature-dsa" in signature_file:
+                ca_pem_file = "dsa-ca-cert.pem"
+            elif "signature-rsa" in signature_file:
+                ca_pem_file = "rsa-ca-cert.pem"
+            else:
+                return None
+            return bytes(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", ca_pem_file))
+
+        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*", "signature*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
                 try:
                     #xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file, require_x509=False, hmac_key="secret")
                     xmldsig(fh.read()).verify(require_x509=False,
-                                              hmac_key="secret",
+                                              hmac_key="test" if "phaos" in signature_file else "secret",
                                               validate_schema=True,
-                                              parser=parser)
+                                              uri_resolver=resolver,
+                                              ca_pem_file=get_ca_pem_file(signature_file))
                 except Exception as e:
-                    if "Expected to find XML element" in str(e) or "EntitiesForbidden" in str(e) or signature_file.endswith("signature-enveloping-hmac-sha1-40.xml") or signature_file.endswith("signature-enveloping-b64-dsa.xml"):
+                    exempt_cases = ("xpath-transform", "xslt-transform", "x509-data-issuer-serial", "x509-data-ski",
+                                    "x509-data-subject-name", "hmac-sha1-40", "signature-big", "b64")
+                    if signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
+                        self.assertIsInstance(e, InvalidDigest)
+                    elif signature_file.endswith("signature-rsa-detached-xslt-transform-bad-retrieval-method.xml"):
+                        self.assertIsInstance(e, InvalidInput)
+                    elif signature_file.endswith("signature-rsa-enveloped-bad-sig.xml"):
+                        self.assertIsInstance(e, etree.DocumentInvalid)
+                    elif signature_file.endswith("signature-hmac-md5-c14n-enveloping.xml"):
+                        self.assertIsInstance(e, InvalidInput)
+                    elif any(x in signature_file for x in exempt_cases) or "Unable to resolve reference" in str(e) or "EntitiesForbidden" in str(e):
+                        print("IGNORED test case:", type(e), e)
+                    elif "certificate has expired" in str(e) and ("signature-dsa" in signature_file or "signature-rsa" in signature_file):
                         print("IGNORED:", type(e), e)
                     else:
                         raise

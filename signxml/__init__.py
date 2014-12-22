@@ -226,7 +226,8 @@ class xmldsig(object):
                 e.text = b64encode(long_to_bytes(getattr(key_params, field)))
         elif self.signature_alg.startswith("ecdsa-"):
             ec_key_value = SubElement(key_value, ds11_tag("ECKeyValue"), nsmap=dict(ds11=XMLDSIG11_NS))
-            named_curve = SubElement(ec_key_value, ds11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name])
+            named_curve = SubElement(ec_key_value, ds11_tag("NamedCurve"),
+                                     URI=self.known_ecdsa_curve_oids[key.curve.name])
             public_key = SubElement(ec_key_value, ds11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
@@ -403,11 +404,34 @@ class xmldsig(object):
         else:
             return inclusive_namespaces.get("PrefixList").split(" ")
 
-    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, parser=None):
+    def _resolve_reference(self, doc_root, reference, uri_resolver=None):
+        uri = reference.get("URI")
+        if uri == "":
+            return doc_root
+        elif uri.startswith("#xpointer("):
+            raise InvalidInput("XPointer references are not supported")
+            # doc_root.xpath(uri.lstrip("#"))[0]
+        elif uri.startswith("#"):
+            results = doc_root.xpath(".//*[@Id=$uri]", uri=uri.lstrip("#"))
+            if len(results) < 1:
+                raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
+            return results[0]
+        else:
+            if uri_resolver is None:
+                raise InvalidInput("External URI dereferencing is not configured: {}".format(uri))
+            result = uri_resolver(uri)
+            if result is None:
+                raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
+            return result
+
+    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
+               validate_schema=True, parser=None, uri_resolver=None):
         """
-        Verify the XML signature supplied in the data, or raise an exception. By default, this requires the signature to
-        be generated using a valid X.509 certificate. To enable other means of signature validation, set the
-        **require_x509** argument to `False`.
+        Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
+        exception if the signature is not valid. By default, this requires the signature to be generated using a valid
+        X.509 certificate. To enable other means of signature validation, set the **require_x509** argument to `False`.
+
+        **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
         TODO: CN verification
 
@@ -424,7 +448,9 @@ class xmldsig(object):
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :type validate_schema: boolean
         :param parser: Custom XML parser instance to use when parsing **data**.
-        :type parser: :py:class:`ElementTree.XMLParser` compatible parser
+        :type parser: :py:class:`lxml.etree.XMLParser` compatible parser
+        :param uri_resolver: Function to use to resolve reference URIs that don't start with "#".
+        :type uri_resolver: callable
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
         """
@@ -460,13 +486,14 @@ class xmldsig(object):
 
         if enveloped:
             payload = root
-        else:
-            payload = self._find(signature, 'Object[@Id="{}"]'.format(reference.get("URI").lstrip("#")))
-
-        payload_c14n = self._c14n(payload, algorithm=c14n_algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes)
-
-        if enveloped:
+            payload_c14n = self._c14n(payload, algorithm=c14n_algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes)
             payload_c14n = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload_c14n)
+        else:
+            payload = self._resolve_reference(signature, reference, uri_resolver=uri_resolver)
+            if isinstance(payload, (str, bytes)):
+                payload_c14n = payload
+            else:
+                payload_c14n = self._c14n(payload, algorithm=c14n_algorithm)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidDigest("Digest mismatch")
@@ -512,6 +539,8 @@ class xmldsig(object):
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
+
+        return payload
 
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
