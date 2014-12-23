@@ -1,3 +1,9 @@
+Version 0.3.5 (2014-12-22)
+--------------------------
+- Refactor application of enveloped signature transforms
+- Support base64 transform
+- Support application of different canonicalization algorithms to signature and payload (closes #1)
+
 Version 0.3.4 (2014-12-14)
 --------------------------
 - Add support for exclusive canonicalization with InclusiveNamespaces PrefixList attribute
