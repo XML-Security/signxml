@@ -172,7 +172,7 @@ class TestSignXML(unittest.TestCase):
                                         uri_resolver=resolver,
                                         ca_pem_file=get_ca_pem_file(signature_file))
                     if "HMACOutputLength" in sig or "bad" in signature_file or "expired" in signature_file:
-                        raise Exception("Expected an exception to occur")
+                        raise BaseException("Expected an exception to occur")
                 except Exception as e:
                     unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
                                          "x509-data-issuer-serial", "x509-data-ski", "x509-data-subject-name",
