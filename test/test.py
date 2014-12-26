@@ -150,35 +150,52 @@ class TestSignXML(unittest.TestCase):
 
         def get_ca_pem_file(signature_file):
             if "signature-dsa" in signature_file:
-                ca_pem_file = "dsa-ca-cert.pem"
+                ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem")
             elif "signature-rsa" in signature_file:
-                ca_pem_file = "rsa-ca-cert.pem"
+                ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "rsa-ca-cert.pem")
+            elif "aleksey" in signature_file:
+                ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "aleksey-xmldsig-01", "cacert.pem")
             else:
                 return None
-            return bytes(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", ca_pem_file))
+            return bytes(ca_pem_file)
 
-        for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*", "signature*.xml")):
+        signature_files = glob(os.path.join(os.path.dirname(__file__), "interop", "*", "signature*.xml"))
+        signature_files += glob(os.path.join(os.path.dirname(__file__), "interop", "aleksey*", "*.xml"))
+        for signature_file in signature_files:
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
                 try:
-                    #xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file, require_x509=False, hmac_key="secret")
-                    xmldsig(fh.read()).verify(require_x509=False,
-                                              hmac_key="test" if "phaos" in signature_file else "secret",
-                                              validate_schema=True,
-                                              uri_resolver=resolver,
-                                              ca_pem_file=get_ca_pem_file(signature_file))
+                    sig = fh.read()
+                    xmldsig(sig).verify(require_x509=False,
+                                        hmac_key="test" if "phaos" in signature_file else "secret",
+                                        validate_schema=True,
+                                        uri_resolver=resolver,
+                                        ca_pem_file=get_ca_pem_file(signature_file))
+                    if "HMACOutputLength" in sig or "bad" in signature_file or "expired" in signature_file:
+                        raise Exception("Expected an exception to occur")
                 except Exception as e:
-                    exempt_cases = ("xpath-transform", "xslt-transform", "x509-data-issuer-serial", "x509-data-ski",
-                                    "x509-data-subject-name", "hmac-sha1-40", "signature-big")
-                    if signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
+                    unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
+                                         "x509-data-issuer-serial", "x509-data-ski", "x509-data-subject-name",
+                                         "x509data")
+                    todo_cases = ("signature-big", "enveloping-dsa-x509chain",
+                                  "enveloping-sha512-hmac-sha512", "enveloping-sha512-rsa-sha512")
+                    if signature_file.endswith("expired-cert.xml"):
+                        with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
+                            raise
+                    elif "md5" in signature_file or "ripemd160" in signature_file:
+                        with self.assertRaisesRegexp(InvalidInput, "Algorithm .+ is not recognized"):
+                            raise
+                    elif "HMACOutputLength" in sig:
+                        self.assertIsInstance(e, (InvalidSignature, InvalidDigest))
+                    elif signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
                         self.assertIsInstance(e, InvalidDigest)
                     elif signature_file.endswith("signature-rsa-detached-xslt-transform-bad-retrieval-method.xml"):
                         self.assertIsInstance(e, InvalidInput)
                     elif signature_file.endswith("signature-rsa-enveloped-bad-sig.xml"):
                         self.assertIsInstance(e, etree.DocumentInvalid)
-                    elif signature_file.endswith("signature-hmac-md5-c14n-enveloping.xml"):
-                        self.assertIsInstance(e, InvalidInput)
-                    elif any(x in signature_file for x in exempt_cases) or "Unable to resolve reference" in str(e) or "EntitiesForbidden" in str(e):
+                    elif any(x in signature_file for x in unsupported_cases) or "EntitiesForbidden" in str(e):
+                        print("Unsupported test case:", type(e), e)
+                    elif any(x in signature_file for x in todo_cases) or "Unable to resolve reference" in str(e):
                         print("IGNORED test case:", type(e), e)
                     elif "certificate has expired" in str(e) and ("signature-dsa" in signature_file or "signature-rsa" in signature_file):
                         print("IGNORED:", type(e), e)

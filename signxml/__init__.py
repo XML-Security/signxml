@@ -458,7 +458,9 @@ class xmldsig(object):
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
         X.509 certificate. To enable other means of signature validation, set the **require_x509** argument to `False`.
 
-        **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
+        .. admonition:: See what is signed
+
+         **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
         TODO: CN verification
 
