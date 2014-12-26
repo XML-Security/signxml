@@ -470,7 +470,7 @@ class xmldsig(object):
 
          **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
-        TODO: CN verification
+        TODO: CN verification, return decoded c14n
 
         :param require_x509: If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
