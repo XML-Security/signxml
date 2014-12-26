@@ -53,13 +53,32 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
         cert = etree.parse(fh).find("//ds:X509Certificate").text
 
     root = etree.parse(b64decode(assertion)).getroot()
-    xmldsig(root).verify(x509_cert=cert)
+    assertion_data = xmldsig(root).verify(x509_cert=cert)
 
 .. admonition:: Signing SAML assertions
 
  The SAML assertion schema specifies a location for the enveloped XML signature (between ``<Issuer>`` and
  ``<Subject>``). To sign a SAML assertion in a schema-compliant way, insert a signature placeholder tag at that location
  before calling xmldsig: ``<ds:Signature Id="placeholder"></ds:Signature>``.
+
+.. admonition:: See what is signed
+
+ It is important to understand and follow the best practice rule of "See what is signed" when verifying XML
+ signatures. The gist of this rule is: if your application neglects to verify that the information it trusts is
+ what was actually signed, the attacker can supply a valid signature but point you to malicious data that wasn't signed
+ by that signature.
+
+ In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
+ data returned by the ``verify()`` method. The return value is the XML node or string that was signed.
+
+ **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
+
+Detached signatures
+~~~~~~~~~~~~~~~~~~~
+
+The XML Signature specification requires support of detached signatures, where the signature document refers (in
+``<Reference URI="...">``) to an external document. SignXML does not support generating detached signatures. To verify
+a detached signature, pass a resolver callable to the ``xmldsig.verify()`` method.
 
 See the `API documentation <https://signxml.readthedocs.org/en/latest/#id1>`_ for more.
 
