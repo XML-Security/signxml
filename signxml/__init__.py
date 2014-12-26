@@ -466,11 +466,13 @@ class xmldsig(object):
          signed by that signature.
 
          In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
-         data returned by the ``verify()`` method. The return value is the XML node or string that was signed.
+         data returned by the ``verify()`` method. The return value is the XML node or string that was signed. Also,
+         depending on the signature settings used, comments in the XML data may not be subject to signing, so may need
+         to be untrusted.
 
          **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
-        TODO: CN verification, return decoded c14n
+        TODO: CN verification
 
         :param require_x509: If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
