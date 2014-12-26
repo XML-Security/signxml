@@ -460,6 +460,14 @@ class xmldsig(object):
 
         .. admonition:: See what is signed
 
+         It is important to understand and follow the best practice rule of "See what is signed" when verifying XML
+         signatures. The gist of this rule is: if your application neglects to verify that the information it trusts is
+         what was actually signed, the attacker can supply a valid signature but point your application to malicious
+         data that wasn't signed by that signature.
+
+         In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
+         data returned by the ``verify()`` method. The return value is the XML node or string that was signed.
+
          **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
         TODO: CN verification
@@ -482,6 +490,7 @@ class xmldsig(object):
         :type uri_resolver: callable
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
+
         """
         self.hmac_key = hmac_key
         self.require_x509 = require_x509
