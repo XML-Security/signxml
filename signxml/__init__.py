@@ -244,7 +244,7 @@ class xmldsig(object):
         c14n = etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
                               inclusive_ns_prefixes=inclusive_ns_prefixes)
         if exclusive is False:
-            # TODO: there must be a nicer way to do this
+            # TODO: there must be a nicer way to do this. See also http://www.w3.org/TR/xml-c14n, "namespace axis"
             c14n = c14n.replace(b' xmlns=""', b'')
         return c14n
 
