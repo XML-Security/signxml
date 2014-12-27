@@ -23,6 +23,10 @@ Installation
 
     pip install signxml
 
+Note: You will need several library dependencies. On Ubuntu, you can install them using::
+
+    apt-get install python-dev libxml2-dev libxslt1-dev libssl-dev python-cffi
+
 Synopsis
 --------
 
