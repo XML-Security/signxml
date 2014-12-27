@@ -23,7 +23,7 @@ Installation
 
     pip install signxml
 
-Note: You will need several library dependencies. On Ubuntu, you can install them using::
+Note: SignXML depends on lxml and cryptography, which in turn have several library dependencies. On Ubuntu, you can install them using::
 
     apt-get install python-dev libxml2-dev libxslt1-dev libssl-dev python-cffi
 
