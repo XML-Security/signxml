@@ -52,8 +52,7 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
     with open("metadata.xml", "rb") as fh:
         cert = etree.parse(fh).find("//ds:X509Certificate").text
 
-    root = etree.parse(b64decode(assertion)).getroot()
-    assertion_data = xmldsig(root).verify(x509_cert=cert)
+    assertion_data = xmldsig(b64decode(assertion_body)).verify(x509_cert=cert)
 
 .. admonition:: Signing SAML assertions
 
