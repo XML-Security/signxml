@@ -40,7 +40,7 @@ SignXML uses the ElementTree API (also supported by lxml) to work with XML data.
     key = open("example.key").read()
     root = ElementTree.fromstring(signature_data)
     xmldsig(root).sign(key=key, cert=cert)
-    xmldsig(root).verify()
+    verified_data = xmldsig(root).verify()
 
 Verifying SAML assertions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
