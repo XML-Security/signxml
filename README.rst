@@ -83,7 +83,7 @@ The XML Signature specification requires support of detached signatures, where t
 ``<Reference URI="...">``) to an external document. SignXML does not support generating detached signatures. To verify
 a detached signature, pass a resolver callable to the ``xmldsig.verify()`` method.
 
-See the `API documentation <https://signxml.readthedocs.org/en/latest/#id1>`_ for more.
+See the `API documentation <https://signxml.readthedocs.org/en/latest/#id3>`_ for more.
 
 Authors
 -------
