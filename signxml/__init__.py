@@ -1,4 +1,4 @@
-from __future__ import print_function, unicode_literals
+from __future__ import print_function, unicode_literals, division
 
 import os, re
 from base64 import b64encode, b64decode
@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
 
-from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header
+from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
@@ -56,7 +56,7 @@ def _get_signature_regex(ns_prefix=None):
     tag = "Signature"
     if ns_prefix is not None:
         tag = ns_prefix + ":" + tag
-    return re.compile(bytes('<{t}[>\s].*?</{t}>'.format(t=tag)), flags=re.DOTALL)
+    return re.compile(ensure_bytes("<{t}[>\s].*?</{t}>".format(t=tag)), flags=re.DOTALL)
 
 def _get_schema():
     global _schema
@@ -129,7 +129,7 @@ class xmldsig(object):
         "urn:oid:1.3.132.0.37": ec.SECT409R1,
         "urn:oid:1.3.132.0.38": ec.SECT571K1,
     }
-    known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.iteritems()}
+    known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.items()}
 
     known_c14n_algorithms = {
         "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
@@ -144,7 +144,7 @@ class xmldsig(object):
     def _get_digest(self, data, digest_algorithm):
         hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
         hasher.update(data)
-        return b64encode(hasher.finalize())
+        return ensure_str(b64encode(hasher.finalize()))
 
     def _get_digest_method(self, digest_algorithm_id, methods=None):
         if methods is None:
@@ -210,9 +210,9 @@ class xmldsig(object):
         if self.signature_alg.startswith("rsa-"):
             rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
             modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
-            modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n))
+            modulus.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().n)))
             exponent = SubElement(rsa_key_value, ds_tag("Exponent"))
-            exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e))
+            exponent.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().e)))
         elif self.signature_alg.startswith("dsa-"):
             dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
             for field in "p", "q", "g", "y":
@@ -223,7 +223,7 @@ class xmldsig(object):
                 else:
                     key_params = key.parameters().parameter_numbers()
 
-                e.text = b64encode(long_to_bytes(getattr(key_params, field)))
+                e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
         elif self.signature_alg.startswith("ecdsa-"):
             ec_key_value = SubElement(key_value, ds11_tag("ECKeyValue"), nsmap=dict(ds11=XMLDSIG11_NS))
             named_curve = SubElement(ec_key_value, ds11_tag("NamedCurve"),
@@ -231,7 +231,7 @@ class xmldsig(object):
             public_key = SubElement(ec_key_value, ds11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
-            public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y))
+            public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
 
     def _c14n(self, node, algorithm=default_c14n_algorithm, inclusive_ns_prefixes=None):
         exclusive, with_comments = False, False
@@ -309,7 +309,7 @@ class xmldsig(object):
                           algorithm=self._get_hmac_digest_method_by_tag(self.signature_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)
-            signature_value.text = b64encode(signer.finalize())
+            signature_value.text = ensure_str(b64encode(signer.finalize()))
             self.sig_root.append(signature_value)
         elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-") or self.signature_alg.startswith("ecdsa-"):
             if isinstance(self.key, (str, bytes)):
@@ -339,7 +339,7 @@ class xmldsig(object):
                 r_len = bytes_to_long(signature[3])
                 r, s = signature[4:4+r_len], signature[6+r_len:]
                 signature = r.rjust(32, b"\0") + s.rjust(32, b"\0")
-            signature_value.text = b64encode(signature)
+            signature_value.text = ensure_str(b64encode(signature))
 
             key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
             if cert_chain is None:
@@ -368,8 +368,8 @@ class xmldsig(object):
             named_curve = self._find(ec_key_value, "NamedCurve", namespace="ds11")
             public_key = self._find(ec_key_value, "PublicKey", namespace="ds11")
             key_data = b64decode(public_key.text)[1:]
-            x = bytes_to_long(key_data[:len(key_data)/2])
-            y = bytes_to_long(key_data[len(key_data)/2:])
+            x = bytes_to_long(key_data[:len(key_data)//2])
+            y = bytes_to_long(key_data[len(key_data)//2:])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
             key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
             verifier = key.verifier(raw_signature, ec.ECDSA(self._get_signature_digest_method(signature_alg)))
@@ -385,8 +385,8 @@ class xmldsig(object):
                 return long_to_bytes(0x30) + long_to_bytes(len(r) + len(s)) + r + s
             def as_der_integer(i):
                 return long_to_bytes(0x02) + long_to_bytes(len(i)) + i
-            sig_as_der_seq = as_der_sequence(as_der_integer(raw_signature[:len(raw_signature)/2]),
-                                             as_der_integer(raw_signature[len(raw_signature)/2:]))
+            sig_as_der_seq = as_der_sequence(as_der_integer(raw_signature[:len(raw_signature)//2]),
+                                             as_der_integer(raw_signature[len(raw_signature)//2:]))
             verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")
@@ -551,7 +551,7 @@ class xmldsig(object):
 
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
             try:
-                verify(cert_chain[-1], raw_signature, signed_info_c14n, bytes(signature_digest_method))
+                verify(cert_chain[-1], raw_signature, signed_info_c14n, signature_digest_method)
             except OpenSSLCryptoError as e:
                 lib, func, reason = e.message[0]
                 raise InvalidSignature("Signature verification failed: {}".format(reason))
@@ -560,7 +560,7 @@ class xmldsig(object):
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
             from cryptography.hazmat.primitives.hmac import HMAC
-            signer = HMAC(key=bytes(self.hmac_key),
+            signer = HMAC(key=ensure_bytes(self.hmac_key),
                           algorithm=self._get_hmac_digest_method(signature_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)
@@ -595,7 +595,7 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
-        ca_pem_file = certifi.where()
+        ca_pem_file = ensure_bytes(certifi.where())
     context.load_verify_locations(ca_pem_file, capath=ca_path)
     store = context.get_cert_store()
     for cert in cert_chain:

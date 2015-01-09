@@ -4,14 +4,26 @@ SignXML utility functions
 bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py
 """
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function, unicode_literals, division
 
-import struct, textwrap
+import sys, struct, textwrap
 
 from eight import *
 
+USING_PYTHON2 = True if sys.version_info < (3, 0) else False
+
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
+
+def ensure_bytes(x, encoding="utf-8"):
+    if not isinstance(x, bytes):
+        x = x.encode(encoding)
+    return x
+
+def ensure_str(x, encoding="utf-8"):
+    if not isinstance(x, str):
+        x = x.decode(encoding)
+    return x
 
 def bytes_to_long(s):
     """bytes_to_long(string) : long
@@ -19,7 +31,12 @@ def bytes_to_long(s):
 
     This is (essentially) the inverse of long_to_bytes().
     """
-    acc = 0L
+    if isinstance(s, int):
+        # On Python 2, indexing into a bytearray returns a string; on Python 3, an int.
+        return s
+    acc = 0
+    if USING_PYTHON2:
+        acc = long(acc)
     unpack = struct.unpack
     length = len(s)
     if length % 4:
@@ -40,10 +57,11 @@ def long_to_bytes(n, blocksize=0):
     """
     # after much testing, this algorithm was deemed to be the fastest
     s = b''
-    n = long(n)
+    if USING_PYTHON2:
+        n = long(n)
     pack = struct.pack
     while n > 0:
-        s = pack(b'>I', n & 0xffffffffL) + s
+        s = pack(b'>I', n & 0xffffffff) + s
         n = n >> 32
     # strip off leading zeros
     for i in range(len(s)):
@@ -62,12 +80,13 @@ def long_to_bytes(n, blocksize=0):
 
 def strip_pem_header(cert):
     bare_base64_cert = ""
-    for line in cert.splitlines():
+    for line in ensure_str(cert).splitlines():
         if line != PEM_HEADER and line != PEM_FOOTER:
             bare_base64_cert += line
     return bare_base64_cert
 
 def add_pem_header(bare_base64_cert):
+    bare_base64_cert = ensure_str(bare_base64_cert)
     if bare_base64_cert.startswith(PEM_HEADER):
         return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER

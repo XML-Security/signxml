@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 
 env: requirements.txt
-	virtualenv env
+	virtualenv --python=python env
 	source env/bin/activate; pip install --requirement=requirements.txt
 	source env/bin/activate; pip list --outdated
 

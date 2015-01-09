@@ -40,6 +40,7 @@ class TestSignXML(unittest.TestCase):
                          ecdsa=ec.generate_private_key(curve=ec.SECP384R1(), backend=default_backend()))
 
     def test_basic_signxml_statements(self):
+        print("Using Python version:", sys.version)
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
             xmldsig("x").sign(enveloped=True)
 
@@ -80,17 +81,17 @@ class TestSignXML(unittest.TestCase):
                                     xmldsig(signed_data).verify(hmac_key=hmac_key)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                                    mangled_sig = signed_data.replace("Austria", "Mongolia").replace("x y", "a b")
+                                    mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
                                     xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                                    mangled_sig = signed_data.replace("<ds:DigestValue>", "<ds:DigestValue>!")
+                                    mangled_sig = signed_data.replace(b"<ds:DigestValue>", b"<ds:DigestValue>!")
                                     xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
                                 with self.assertRaises(cryptography.exceptions.InvalidSignature):
-                                    sig_value = re.search("<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
-                                    mangled_sig = re.sub("<ds:SignatureValue>(.+?)</ds:SignatureValue>",
-                                                         "<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + "</ds:SignatureValue>",
+                                    sig_value = re.search(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
+                                    mangled_sig = re.sub(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>",
+                                                         b"<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + b"</ds:SignatureValue>",
                                                          signed_data)
                                     xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
 
@@ -103,7 +104,7 @@ class TestSignXML(unittest.TestCase):
 
     def test_x509_certs(self):
         tree = etree.parse(self.example_xml_files[0])
-        ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "example-ca.pem"))
+        ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
             crt = fh.read()
         with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
@@ -126,7 +127,7 @@ class TestSignXML(unittest.TestCase):
                 # TODO: negative: verify with wrong cert, wrong CA
 
     def test_xmldsig_interop_examples(self):
-        ca_pem_file = bytes(os.path.join(os.path.dirname(__file__), "interop", "cacert.pem"))
+        ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
@@ -157,7 +158,7 @@ class TestSignXML(unittest.TestCase):
                 ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "aleksey-xmldsig-01", "cacert.pem")
             else:
                 return None
-            return bytes(ca_pem_file)
+            return ca_pem_file.encode("utf-8")
 
         signature_files = glob(os.path.join(os.path.dirname(__file__), "interop", "*", "signature*.xml"))
         signature_files += glob(os.path.join(os.path.dirname(__file__), "interop", "aleksey*", "*.xml"))
@@ -171,7 +172,7 @@ class TestSignXML(unittest.TestCase):
                                         validate_schema=True,
                                         uri_resolver=resolver,
                                         ca_pem_file=get_ca_pem_file(signature_file))
-                    if "HMACOutputLength" in sig or "bad" in signature_file or "expired" in signature_file:
+                    if "HMACOutputLength" in str(sig) or "bad" in signature_file or "expired" in signature_file:
                         raise BaseException("Expected an exception to occur")
                 except Exception as e:
                     unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
@@ -185,7 +186,7 @@ class TestSignXML(unittest.TestCase):
                     elif "md5" in signature_file or "ripemd160" in signature_file:
                         with self.assertRaisesRegexp(InvalidInput, "Algorithm .+ is not recognized"):
                             raise
-                    elif "HMACOutputLength" in sig:
+                    elif "HMACOutputLength" in str(sig):
                         self.assertIsInstance(e, (InvalidSignature, InvalidDigest))
                     elif signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
                         self.assertIsInstance(e, InvalidDigest)

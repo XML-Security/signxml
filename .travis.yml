@@ -8,14 +8,13 @@ python:
 
 install:
     - python setup.py install
+    - pip install coverage coveralls
 
 script:
-    - make test
-    - source env/bin/activate && pip install --quiet coverage && coverage run --omit='*/site-packages/*,*/distutils/*' ./test/test.py
-    - source env/bin/activate && coverage report --show-missing
+    - coverage run --omit='*/site-packages/*,*/distutils/*' ./test/test.py
+    - coverage report --show-missing
 
 after_success:
-    - pip install --quiet coveralls
     - coveralls
 
 matrix:
