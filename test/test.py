@@ -40,7 +40,6 @@ class TestSignXML(unittest.TestCase):
                          ecdsa=ec.generate_private_key(curve=ec.SECP384R1(), backend=default_backend()))
 
     def test_basic_signxml_statements(self):
-        print("Using Python version:", sys.version)
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
             xmldsig("x").sign(enveloped=True)
 
