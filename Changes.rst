@@ -1,3 +1,8 @@
+Version 0.3.6 (2015-01-10)
+--------------------------
+- Python 3 compatibility fixes
+- Fix test matrix (Python version configuration) in Travis
+
 Version 0.3.5 (2014-12-22)
 --------------------------
 - Refactor application of enveloped signature transforms
