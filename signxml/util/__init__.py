@@ -4,7 +4,7 @@ SignXML utility functions
 bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py
 """
 
-from __future__ import print_function, unicode_literals, division
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys, struct, textwrap
 
