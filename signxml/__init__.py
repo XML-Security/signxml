@@ -320,7 +320,7 @@ class xmldsig(object):
 
             hash_alg = self._get_signature_digest_method_by_tag(self.signature_alg)
             if self.signature_alg.startswith("dsa-"):
-                signer = key.signer(algorithm=hash_alg)
+                signer = key.signer(signature_algorithm=hash_alg)
             elif self.signature_alg.startswith("ecdsa-"):
                 signer = key.signer(signature_algorithm=ec.ECDSA(algorithm=hash_alg))
             elif self.signature_alg.startswith("rsa-"):
