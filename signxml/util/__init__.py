@@ -32,7 +32,7 @@ def bytes_to_long(s):
     This is (essentially) the inverse of long_to_bytes().
     """
     if isinstance(s, int):
-        # On Python 2, indexing into a bytearray returns a string; on Python 3, an int.
+        # On Python 2, indexing into a bytearray returns a byte string; on Python 3, an int.
         return s
     acc = 0
     if USING_PYTHON2:
