@@ -111,13 +111,13 @@ License
 -------
 Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_.
 
-.. image:: https://travis-ci.org/kislyuk/signxml.png
+.. image:: https://travis-ci.org/kislyuk/signxml.svg
         :target: https://travis-ci.org/kislyuk/signxml
 .. image:: https://coveralls.io/repos/kislyuk/signxml/badge.svg?branch=master
         :target: https://coveralls.io/r/kislyuk/signxml?branch=master
-.. image:: https://pypip.in/v/signxml/badge.png
+.. image:: https://pypip.in/v/signxml/badge.svg
         :target: https://warehouse.python.org/project/signxml/
-.. image:: https://pypip.in/d/signxml/badge.png
+.. image:: https://pypip.in/d/signxml/badge.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
         :target: https://signxml.readthedocs.org/
