@@ -113,7 +113,7 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
 
 .. image:: https://travis-ci.org/kislyuk/signxml.png
         :target: https://travis-ci.org/kislyuk/signxml
-.. image:: https://coveralls.io/repos/kislyuk/signxml/badge.png?branch=master
+.. image:: https://coveralls.io/repos/kislyuk/signxml/badge.svg?branch=master
         :target: https://coveralls.io/r/kislyuk/signxml?branch=master
 .. image:: https://pypip.in/v/signxml/badge.png
         :target: https://warehouse.python.org/project/signxml/
