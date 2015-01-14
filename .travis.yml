@@ -11,8 +11,7 @@ install:
     - pip install coverage coveralls
 
 script:
-    - ./test/test.py
-    - coverage run --omit='*/site-packages/*,*/distutils/*' ./test/test.py
+    - coverage run ./test/test.py
     - coverage report --show-missing
 
 after_success:
