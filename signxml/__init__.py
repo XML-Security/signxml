@@ -408,12 +408,13 @@ class xmldsig(object):
             raise InvalidInput("XPointer references are not supported")
             # doc_root.xpath(uri.lstrip("#"))[0]
         elif uri.startswith("#"):
-            results = doc_root.xpath("..//*[@Id=$uri]", uri=uri.lstrip("#"))
-            if len(results) < 1:
-                results += doc_root.xpath("..//*[@ID=$uri]", uri=uri.lstrip("#"))
-            if len(results) < 1:
-                raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
-            return results[0]
+            for id_attribute in self.id_attributes:
+                results = doc_root.xpath("..//*[@{}=$uri]".format(id_attribute), uri=uri.lstrip("#"))
+                if len(results) > 1:
+                    raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
+                elif len(results) == 1:
+                    return results[0]
+            raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
         else:
             if uri_resolver is None:
                 raise InvalidInput("External URI dereferencing is not configured: {}".format(uri))
@@ -455,7 +456,7 @@ class xmldsig(object):
         return payload
 
     def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
-               validate_schema=True, parser=None, uri_resolver=None):
+               validate_schema=True, parser=None, uri_resolver=None, id_attribute=None):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -493,15 +494,25 @@ class xmldsig(object):
         :type parser: :py:class:`lxml.etree.XMLParser` compatible parser
         :param uri_resolver: Function to use to resolve reference URIs that don't start with "#".
         :type uri_resolver: callable
+        :param id_attribute: Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
+        :type id_attribute: string
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
 
+        :returns: XML ElementTree Element API compatible object representing the root of the signed payload.
+        :rtype: XML.ElementTree.Element
         """
         self.hmac_key = hmac_key
         self.require_x509 = require_x509
         self.x509_cert = x509_cert
+
         if x509_cert:
             self.require_x509 = True
+
+        if id_attribute is None:
+            self.id_attributes = ("Id", "ID")
+        else:
+            self.id_attributes = (id_attribute, )
 
         if isinstance(self.data, (str, bytes)):
             root = fromstring(self.data, parser=parser)
