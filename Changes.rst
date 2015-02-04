@@ -1,4 +1,4 @@
-Version 0.3.8 (2015-02-04)
+Version 0.3.9 (2015-02-04)
 --------------------------
 - Do not distribute tests in source archive
 
