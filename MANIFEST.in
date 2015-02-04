@@ -1,3 +1,2 @@
 include requirements.txt
 include signxml/schemas/*.xsd
-recursive-include test *

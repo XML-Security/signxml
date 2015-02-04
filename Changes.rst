@@ -1,3 +1,7 @@
+Version 0.3.8 (2015-02-04)
+--------------------------
+- Do not distribute tests in source archive
+
 Version 0.3.7 (2015-02-04)
 --------------------------
 - Configurable id attribute name for verifying non-standard internal object references, e.g. ADFS (closes #6)
