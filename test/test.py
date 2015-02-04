@@ -76,6 +76,18 @@ class TestSignXML(unittest.TestCase):
                                                             validate_schema=True,
                                                             parser=parser)
 
+                                xmldsig(signed_data).verify(hmac_key=hmac_key,
+                                                            require_x509=False,
+                                                            validate_schema=True,
+                                                            id_attribute="Id")
+
+                                if enveloped_signature is False:
+                                    with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
+                                        xmldsig(signed_data).verify(hmac_key=hmac_key,
+                                                                    require_x509=False,
+                                                                    validate_schema=True,
+                                                                    id_attribute="X")
+
                                 with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
                                     xmldsig(signed_data).verify(hmac_key=hmac_key)
 
