@@ -1,3 +1,7 @@
+Version 0.3.7 (2015-02-04)
+--------------------------
+- Configurable id attribute name for verifying non-standard internal object references, e.g. ADFS (closes #6)
+
 Version 0.3.6 (2015-01-10)
 --------------------------
 - Python 3 compatibility fixes
