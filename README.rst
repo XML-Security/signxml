@@ -27,6 +27,8 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 
     apt-get install python-dev libxml2-dev libxslt1-dev libssl-dev python-cffi
 
+**Ubuntu 12.04:** ``python-cffi`` is not available on 12.04. Use ``apt-get install libffi-dev`` followed by ``pip install cffi``.
+
 Synopsis
 --------
 
