@@ -255,17 +255,35 @@ class xmldsig(object):
         """
         Sign the data and return the root element of the resulting XML tree.
 
-        :param algorithm: Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest algorithm, separated by a hyphen. All algorthm IDs listed under the `Algorithm Identifiers and Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
+        :param algorithm:
+            Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest
+            algorithm, separated by a hyphen. All algorthm IDs listed under the `Algorithm Identifiers and
+            Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature
+            1.1 standard are supported.
         :type algorithm: string
-        :param key: Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object. When signing with a HMAC, this should be a string containing the shared secret.
-        :type key: string, :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`, :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object
+        :param key:
+            Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string
+            containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`,
+            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or
+            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object. When signing with a
+            HMAC, this should be a string containing the shared secret.
+        :type key:
+            string, :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`,
+            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or
+            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :type passphrase: string
-        :param cert: X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an array containing the certificate and a chain of intermediate certificates.
+        :param cert:
+            X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an
+            array containing the certificate and a chain of intermediate certificates.
         :type cert: string or array of strings
-        :param c14n_algorithm: Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable ``xmldsig.known_c14n_algorithms``.
+        :param c14n_algorithm:
+            Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable
+            ``xmldsig.known_c14n_algorithms``.
         :type c14n_algorithm: string
-        :param enveloped: If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method will be used.
+        :param enveloped:
+            If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method
+            will be used.
         :type enveloped: boolean
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
@@ -478,13 +496,24 @@ class xmldsig(object):
 
         TODO: CN verification
 
-        :param require_x509: If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
+        :param require_x509:
+            If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other
+            types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
-        :param x509_cert: An external X.509 certificate, given as a PEM-formatted string, to use for verification. Overrides any X.509 certificate information supplied by the signature. If left set to ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the known certificate authorities. Implies **require_x509=True**.
+        :param x509_cert:
+            An external X.509 certificate, given as a PEM-formatted string, to use for verification. Overrides any X.509
+            certificate information supplied by the signature. If left set to ``None``, requires that the signature
+            supply a valid X.509 certificate chain that validates against the known certificate authorities. Implies
+            **require_x509=True**.
         :type x509_cert: string
-        :param ca_pem_file: Filename (as bytes) of a PEM file containing certificate authority information to use when verifying certificate-based signatures.
+        :param ca_pem_file:
+            Filename (as bytes) of a PEM file containing certificate authority information to use when verifying
+            certificate-based signatures.
         :type ca_pem_file: bytes
-        :param ca_path: Path to a directory containing PEM-formatted certificate authority files to use when verifying certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle provided by :py:mod:`certifi` will be loaded.
+        :param ca_path:
+            Path to a directory containing PEM-formatted certificate authority files to use when verifying
+            certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle
+            provided by :py:mod:`certifi` will be loaded.
         :type ca_path: string
         :param hmac_key: If using HMAC, a string containing the shared secret.
         :type hmac_key: string
@@ -494,7 +523,8 @@ class xmldsig(object):
         :type parser: :py:class:`lxml.etree.XMLParser` compatible parser
         :param uri_resolver: Function to use to resolve reference URIs that don't start with "#".
         :type uri_resolver: callable
-        :param id_attribute: Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
+        :param id_attribute:
+            Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
