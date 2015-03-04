@@ -12,7 +12,7 @@ install:
 
 script:
     - coverage run --source=signxml ./test/test.py
-    - coverage report --show-missing
+#    - coverage report --show-missing
 
 after_success:
     - coveralls
