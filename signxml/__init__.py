@@ -14,6 +14,16 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
 
+from pyasn1.type import univ
+from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
+
+class DERSequenceOfIntegers(univ.SequenceOf):
+    componentType = univ.Integer()
+    def __init__(self, integers):
+        univ.SequenceOf.__init__(self)
+        for pos, i in enumerate(integers):
+            self.setComponentByPosition(pos, i)
+
 from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
@@ -349,14 +359,11 @@ class xmldsig(object):
             signature = signer.finalize()
             if self.signature_alg.startswith("dsa-"):
                 # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
-                # Bytes 0-1: DER sequence header and length
-                # Bytes 2-3: DER integer header and length (r_len)
-                # Bytes 4-4+r_len-1: r (first half of DSA signature)
-                # Bytes 4+r_len-5+r_len: DER integer header and length
-                # Bytes 6+r_len to the end: s (second half of DSA signature)
-                r_len = bytes_to_long(signature[3])
-                r, s = signature[4:4+r_len], signature[6+r_len:]
-                signature = r.rjust(32, b"\0") + s.rjust(32, b"\0")
+                decoded_signature = der_decoder.decode(signature)[0]
+                r = decoded_signature.getComponentByPosition(0)
+                s = decoded_signature.getComponentByPosition(1)
+                signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
+
             signature_value.text = ensure_str(b64encode(signature))
 
             key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
@@ -399,12 +406,8 @@ class xmldsig(object):
             y = self._get_long(dsa_key_value, "Y")
             pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
             key = pn.public_key(backend=default_backend())
-            def as_der_sequence(r, s):
-                return long_to_bytes(0x30) + long_to_bytes(len(r) + len(s)) + r + s
-            def as_der_integer(i):
-                return long_to_bytes(0x02) + long_to_bytes(len(i)) + i
-            sig_as_der_seq = as_der_sequence(as_der_integer(raw_signature[:len(raw_signature)//2]),
-                                             as_der_integer(raw_signature[len(raw_signature)//2:]))
+            sig_as_der_seq = der_encoder.encode(DERSequenceOfIntegers([bytes_to_long(raw_signature[:len(raw_signature)//2]),
+                                                                       bytes_to_long(raw_signature[len(raw_signature)//2:])]))
             verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")
