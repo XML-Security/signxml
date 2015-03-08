@@ -1,3 +1,7 @@
+Version 0.4.0 (2015-03-08)
+--------------------------
+- Use pyasn1 for DER encoding and decoding, eliminating some DSA signature verification failures
+
 Version 0.3.9 (2015-02-04)
 --------------------------
 - Do not distribute tests in source archive
