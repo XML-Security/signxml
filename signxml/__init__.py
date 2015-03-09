@@ -17,14 +17,14 @@ from cryptography.hazmat.backends import default_backend
 from pyasn1.type import univ
 from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
+from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
+
 class DERSequenceOfIntegers(univ.SequenceOf):
     componentType = univ.Integer()
     def __init__(self, integers):
         univ.SequenceOf.__init__(self)
         for pos, i in enumerate(integers):
             self.setComponentByPosition(pos, i)
-
-from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
 
 XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
 XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
