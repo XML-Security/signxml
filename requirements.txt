@@ -1,6 +1,6 @@
-lxml==3.3.6
-defusedxml>=0.4.1, <0.5
-eight>=0.3.0, <0.4
-cryptography >=0.8.1, <0.9
-pyOpenSSL==0.14
-certifi>=14.05.14
+lxml >= 3.4.2, < 3.5
+defusedxml >= 0.4.1, < 0.5
+eight >= 0.3.0, < 0.4
+cryptography >= 0.8.1, < 0.9
+pyOpenSSL >= 0.14
+certifi >= 14.05.14
