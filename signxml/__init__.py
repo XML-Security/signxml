@@ -635,7 +635,8 @@ class xmldsig(object):
         return element.findall(namespace + ":" + query, namespaces=namespaces)
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
-    from OpenSSL import SSL, crypto
+    from OpenSSL import SSL
+    from OpenSSL.crypto import X509StoreContext, X509StoreContextError, Error as OpenSSLCryptoError
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
@@ -644,13 +645,13 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     store = context.get_cert_store()
     for cert in cert_chain:
         try:
-            crypto.X509StoreContext(store, cert).verify_certificate()
-        except crypto.X509StoreContextError as e:
+            X509StoreContext(store, cert).verify_certificate()
+        except X509StoreContextError as e:
             raise InvalidCertificate(e)
 
         try:
             store.add_cert(cert)
-        except crypto.Error as e:
+        except OpenSSLCryptoError as e:
             if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
                 continue
             else:
