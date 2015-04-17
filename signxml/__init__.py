@@ -643,23 +643,15 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     context.load_verify_locations(ca_pem_file, capath=ca_path)
     store = context.get_cert_store()
     for cert in cert_chain:
-        # The following certificate chain verification code uses an internal pyOpenSSL API with guidance from
-        # https://github.com/pyca/pyopenssl/pull/155
-        # TODO: Update this to use the public API once the PR lands.
-        store_ctx = SSL._lib.X509_STORE_CTX_new()
-        _store_ctx = SSL._ffi.gc(store_ctx, SSL._lib.X509_STORE_CTX_free)
-        SSL._lib.X509_STORE_CTX_init(store_ctx, store._store, cert._x509, SSL._ffi.NULL)
-        result = SSL._lib.X509_verify_cert(_store_ctx)
-        SSL._lib.X509_STORE_CTX_cleanup(_store_ctx)
-        if result <= 0:
-            e = SSL._lib.X509_STORE_CTX_get_error(_store_ctx)
-            msg = SSL._ffi.string(SSL._lib.X509_verify_cert_error_string(e))
-            raise InvalidCertificate(msg)
-        else:
-            try:
-                store.add_cert(cert)
-            except crypto.Error as e:
-                if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
-                    continue
-                else:
-                    raise
+        try:
+            crypto.X509StoreContext(store, cert).verify_certificate()
+        except crypto.X509StoreContextError as e:
+            raise InvalidCertificate(e)
+
+        try:
+            store.add_cert(cert)
+        except crypto.Error as e:
+            if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
+                continue
+            else:
+                raise
