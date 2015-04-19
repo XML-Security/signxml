@@ -15,10 +15,10 @@ from eight import *
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from signxml import *
 
-def reset_tree(t, enveloped=True):
+def reset_tree(t, method):
     if not isinstance(t, str):
         for s in t.findall("ds:Signature", namespaces=namespaces):
-            if enveloped and s.get("Id") == "placeholder":
+            if method == methods.enveloped and s.get("Id") == "placeholder":
                 continue
             t.remove(s)
 
@@ -40,28 +40,30 @@ class TestSignXML(unittest.TestCase):
                          ecdsa=ec.generate_private_key(curve=ec.SECP384R1(), backend=default_backend()))
 
     def test_basic_signxml_statements(self):
+        with self.assertRaisesRegexp(InvalidInput, "Unknown signature method"):
+            xmldsig("x").sign(method=None)
+
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
-            xmldsig("x").sign(enveloped=True)
+            xmldsig("x").sign()
 
         for digest_alg in "sha1", "sha224", "sha256", "sha384", "sha512":
             for sig_alg in "hmac", "dsa", "rsa", "ecdsa":
                 for hash_alg in "sha1", "sha256":
-                    for enveloped_signature in True, False:
+                    for method in methods.enveloped, methods.enveloping:
                         for c14n_alg in ("http://www.w3.org/2001/10/xml-exc-c14n#",
                                          "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
                                          xmldsig.default_c14n_algorithm):
                             data = [etree.parse(f).getroot() for f in self.example_xml_files]
                             data.append("x y \n z t\n я\n")
                             for d in data:
-                                if isinstance(d, str) and enveloped_signature is True:
+                                if isinstance(d, str) and method == methods.enveloped:
                                     continue
-                                print(digest_alg, sig_alg, hash_alg, c14n_alg,
-                                      "enveloped", enveloped_signature, type(d))
-                                reset_tree(d, enveloped=enveloped_signature)
+                                print(digest_alg, sig_alg, hash_alg, c14n_alg, method, type(d))
+                                reset_tree(d, method)
                                 signer = xmldsig(d, digest_algorithm=digest_alg)
-                                signed = signer.sign(algorithm="-".join([sig_alg, hash_alg]),
+                                signed = signer.sign(method=method,
+                                                     algorithm="-".join([sig_alg, hash_alg]),
                                                      key=self.keys[sig_alg],
-                                                     enveloped=enveloped_signature,
                                                      c14n_algorithm=c14n_alg)
                                 # print(etree.tostring(signed))
                                 signed_data = etree.tostring(signed)
@@ -80,7 +82,7 @@ class TestSignXML(unittest.TestCase):
                                                             validate_schema=True,
                                                             id_attribute="Id")
 
-                                if enveloped_signature is False:
+                                if method == methods.enveloping:
                                     with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
                                         xmldsig(signed_data).verify(hmac_key=hmac_key,
                                                                     require_x509=False,
@@ -121,14 +123,14 @@ class TestSignXML(unittest.TestCase):
         with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
             key = fh.read()
         for hash_alg in "sha1", "sha256":
-            for enveloped_signature in True, False:
-                print(hash_alg, enveloped_signature)
+            for method in methods.enveloped, methods.enveloping:
+                print(hash_alg, method)
                 data = tree.getroot()
-                reset_tree(data)
-                signed = xmldsig(data).sign(algorithm="rsa-" + hash_alg,
+                reset_tree(data, method)
+                signed = xmldsig(data).sign(method=method,
+                                            algorithm="rsa-" + hash_alg,
                                             key=key,
-                                            cert=crt,
-                                            enveloped=enveloped_signature)
+                                            cert=crt)
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
                 xmldsig(signed_data).verify(x509_cert=crt)

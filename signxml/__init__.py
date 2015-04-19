@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, re
 from base64 import b64encode, b64decode
+from enum import Enum
 
 from eight import *
 from lxml import etree
@@ -18,6 +19,8 @@ from pyasn1.type import univ
 from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
 from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
+
+methods = Enum("Methods", "enveloped enveloping detached")
 
 class DERSequenceOfIntegers(univ.SequenceOf):
     componentType = univ.Integer()
@@ -184,8 +187,8 @@ class xmldsig(object):
         return self._get_digest_method_by_tag(signature_algorithm_tag, methods=self.known_signature_digest_methods,
                                               known_tags=self.known_signature_digest_tags)
 
-    def _get_payload_c14n(self, enveloped, c14n_algorithm=default_c14n_algorithm):
-        if enveloped:
+    def _get_payload_c14n(self, method, c14n_algorithm=default_c14n_algorithm):
+        if method == methods.enveloped:
             self.payload = self.data
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
@@ -212,7 +215,7 @@ class xmldsig(object):
                 self.payload.append(self.data)
 
         self.payload_c14n = self._c14n(self.payload, algorithm=c14n_algorithm)
-        if enveloped:
+        if method == methods.enveloped:
             self.payload_c14n = _get_signature_regex(ns_prefix="ds").sub(b"", self.payload_c14n)
 
     def _serialize_key_value(self, key, key_info_element):
@@ -260,11 +263,16 @@ class xmldsig(object):
             c14n = c14n.replace(b' xmlns=""', b'')
         return c14n
 
-    def sign(self, algorithm="rsa-sha256", key=None, passphrase=None, cert=None, enveloped=True,
+    def sign(self, method=methods.enveloped, algorithm="rsa-sha256", key=None, passphrase=None, cert=None,
              c14n_algorithm=default_c14n_algorithm):
         """
         Sign the data and return the root element of the resulting XML tree.
 
+        :param method:
+            ``signxml.methods.enveloped``, ``signxml.methods.enveloping``, or ``signxml.methods.detached``. See the list
+            of signature types under `XML Signature Syntax and Processing Version 2.0, Definitions
+            <http://www.w3.org/TR/xmldsig-core2/#sec-Definitions>`_.
+        :type method: :py:class:`methods`
         :param algorithm:
             Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest
             algorithm, separated by a hyphen. All algorthm IDs listed under the `Algorithm Identifiers and
@@ -291,10 +299,6 @@ class xmldsig(object):
             Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable
             ``xmldsig.known_c14n_algorithms``.
         :type c14n_algorithm: string
-        :param enveloped:
-            If `True`, the enveloped signature signing method will be used. If `False`, the enveloping signature method
-            will be used.
-        :type enveloped: boolean
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
@@ -304,12 +308,15 @@ class xmldsig(object):
         self.signature_alg = algorithm
         self.key = key
 
+        if not isinstance(method, methods):
+            raise InvalidInput("Unknown signature method {}".format(method))
+
         if isinstance(cert, (str, bytes)):
             cert_chain = [cert]
         else:
             cert_chain = cert
 
-        self._get_payload_c14n(enveloped, c14n_algorithm=c14n_algorithm)
+        self._get_payload_c14n(method, c14n_algorithm=c14n_algorithm)
 
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
@@ -321,7 +328,7 @@ class xmldsig(object):
             algorithm_id = self.known_signature_digest_tags[self.signature_alg]
         signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
         reference = SubElement(signed_info, ds_tag("Reference"), URI=self._reference_uri)
-        if enveloped:
+        if method == methods.enveloped:
             transforms = SubElement(reference, ds_tag("Transforms"))
             SubElement(transforms, ds_tag("Transform"), Algorithm=XMLDSIG_NS + "enveloped-signature")
             SubElement(transforms, ds_tag("Transform"), Algorithm=c14n_algorithm)
@@ -381,10 +388,12 @@ class xmldsig(object):
         else:
             raise NotImplementedError()
 
-        if enveloped:
+        if method == methods.enveloped:
             return self.payload
-        else:
+        elif method == methods.enveloping:
             self.sig_root.append(self.payload)
+            return self.sig_root
+        elif method == methods.detached:
             return self.sig_root
 
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
