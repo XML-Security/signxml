@@ -43,27 +43,29 @@ class TestSignXML(unittest.TestCase):
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
             xmldsig("x").sign(enveloped=True)
 
-        for da in "sha1", "sha224", "sha256", "sha384", "sha512":
-            for sa in "hmac", "dsa", "rsa", "ecdsa":
-                for ha in "sha1", "sha256":
+        for digest_alg in "sha1", "sha224", "sha256", "sha384", "sha512":
+            for sig_alg in "hmac", "dsa", "rsa", "ecdsa":
+                for hash_alg in "sha1", "sha256":
                     for enveloped_signature in True, False:
-                        for c14n_algorithm in ("http://www.w3.org/2001/10/xml-exc-c14n#",
-                                               "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
-                                               xmldsig.default_c14n_algorithm):
+                        for c14n_alg in ("http://www.w3.org/2001/10/xml-exc-c14n#",
+                                         "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
+                                         xmldsig.default_c14n_algorithm):
                             data = [etree.parse(f).getroot() for f in self.example_xml_files]
                             data.append("x y \n z t\n я\n")
                             for d in data:
                                 if isinstance(d, str) and enveloped_signature is True:
                                     continue
-                                print(da, sa, ha, c14n_algorithm, "enveloped", enveloped_signature, type(d))
+                                print(digest_alg, sig_alg, hash_alg, c14n_alg,
+                                      "enveloped", enveloped_signature, type(d))
                                 reset_tree(d, enveloped=enveloped_signature)
-                                signed = xmldsig(d, digest_algorithm=da).sign(algorithm="-".join([sa, ha]),
-                                                                              key=self.keys[sa],
-                                                                              enveloped=enveloped_signature,
-                                                                              c14n_algorithm=c14n_algorithm)
+                                signer = xmldsig(d, digest_algorithm=digest_alg)
+                                signed = signer.sign(algorithm="-".join([sig_alg, hash_alg]),
+                                                     key=self.keys[sig_alg],
+                                                     enveloped=enveloped_signature,
+                                                     c14n_algorithm=c14n_alg)
                                 # print(etree.tostring(signed))
                                 signed_data = etree.tostring(signed)
-                                hmac_key = self.keys["hmac"] if sa == "hmac" else None
+                                hmac_key = self.keys["hmac"] if sig_alg == "hmac" else None
                                 xmldsig(signed_data).verify(hmac_key=hmac_key,
                                                             require_x509=False,
                                                             validate_schema=True)
@@ -85,7 +87,8 @@ class TestSignXML(unittest.TestCase):
                                                                     validate_schema=True,
                                                                     id_attribute="X")
 
-                                with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
+                                with self.assertRaisesRegexp(InvalidInput,
+                                                             "Expected a X.509 certificate based signature"):
                                     xmldsig(signed_data).verify(hmac_key=hmac_key)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
@@ -106,7 +109,7 @@ class TestSignXML(unittest.TestCase):
                                 with self.assertRaises(etree.XMLSyntaxError):
                                     xmldsig("").verify(hmac_key=hmac_key, require_x509=False)
 
-                                if sa == "hmac":
+                                if sig_alg == "hmac":
                                     with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
                                         xmldsig(signed_data).verify(hmac_key=b"SECRET", require_x509=False)
 
@@ -117,12 +120,12 @@ class TestSignXML(unittest.TestCase):
             crt = fh.read()
         with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
             key = fh.read()
-        for ha in "sha1", "sha256":
+        for hash_alg in "sha1", "sha256":
             for enveloped_signature in True, False:
-                print(ha, enveloped_signature)
+                print(hash_alg, enveloped_signature)
                 data = tree.getroot()
                 reset_tree(data)
-                signed = xmldsig(data).sign(algorithm="rsa-" + ha,
+                signed = xmldsig(data).sign(algorithm="rsa-" + hash_alg,
                                             key=key,
                                             cert=crt,
                                             enveloped=enveloped_signature)
@@ -158,12 +161,13 @@ class TestSignXML(unittest.TestCase):
         #        fh2.write(ca_pem_file)
 
         def get_ca_pem_file(signature_file):
+            interop_dir = os.path.join(os.path.dirname(__file__), "interop")
             if "signature-dsa" in signature_file:
-                ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem")
+                ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem")
             elif "signature-rsa" in signature_file:
-                ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "rsa-ca-cert.pem")
+                ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-ca-cert.pem")
             elif "aleksey" in signature_file:
-                ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "aleksey-xmldsig-01", "cacert.pem")
+                ca_pem_file = os.path.join(interop_dir, "aleksey-xmldsig-01", "cacert.pem")
             else:
                 return None
             return ca_pem_file.encode("utf-8")
