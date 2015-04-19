@@ -46,9 +46,6 @@ class TestSignXML(unittest.TestCase):
         for da in "sha1", "sha224", "sha256", "sha384", "sha512":
             for sa in "hmac", "dsa", "rsa", "ecdsa":
                 for ha in "sha1", "sha256":
-                    if (sa == "dsa" and ha == "sha256"):
-                        print("FIXME", sa, ha)
-                        continue
                     for enveloped_signature in True, False:
                         for c14n_algorithm in ("http://www.w3.org/2001/10/xml-exc-c14n#",
                                                "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
