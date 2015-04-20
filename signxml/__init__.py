@@ -206,7 +206,8 @@ class xmldsig(object):
 
             self._reference_uri = ""
         elif method == methods.detached:
-            self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
+            if self._reference_uri is None:
+                self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
         else:
             self.payload = Element(ds_tag("Object"), nsmap=dict(ds=XMLDSIG_NS), Id="object")
             if isinstance(self.data, (str, bytes)):
@@ -265,7 +266,7 @@ class xmldsig(object):
         return c14n
 
     def sign(self, method=methods.enveloped, algorithm="rsa-sha256", key=None, passphrase=None, cert=None,
-             c14n_algorithm=default_c14n_algorithm):
+             c14n_algorithm=default_c14n_algorithm, reference_uri=None):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -300,6 +301,9 @@ class xmldsig(object):
             Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable
             ``xmldsig.known_c14n_algorithms``.
         :type c14n_algorithm: string
+        :param reference_uri:
+            Custom reference URI to incorporate into the signature. Only used when ``method`` is set to ``detached``.
+        :type reference_uri: string
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
@@ -308,6 +312,7 @@ class xmldsig(object):
         """
         self.signature_alg = algorithm
         self.key = key
+        self._reference_uri = reference_uri
 
         if not isinstance(method, methods):
             raise InvalidInput("Unknown signature method {}".format(method))

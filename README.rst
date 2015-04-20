@@ -83,12 +83,22 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 
  **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
-Detached signatures
-~~~~~~~~~~~~~~~~~~~
+XML signature methods
+~~~~~~~~~~~~~~~~~~~~~
+The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
+enveloping, and detached signature. Enveloped is the default method. To specify the type of signature that you want to
+generate, pass the ``method`` argument to ``sign()``:
 
-The XML Signature specification requires support of detached signatures, where the signature document refers (in
-``<Reference URI="...">``) to an external document. SignXML does not support generating detached signatures. To verify
-a detached signature, pass a resolver callable to the ``xmldsig.verify()`` method.
+.. code-block:: python
+
+    xmldsig(root).sign(method=signxml.methods.detached, key=key, cert=cert)
+    verified_data = xmldsig(root).verify()
+
+For detached signatures, the code above will use the ``Id`` or ``ID`` attribute of ``root`` to generate a relative URI
+(``<Reference URI="#value"``). You can also override the value of ``URI`` by passing ``reference_uri`` to ``sign()``.
+
+To verify a detached signature that refers to an external entity, pass a callable resolver in
+``xmldsig.verify(uri_resolver=...)``.
 
 See the `API documentation <https://signxml.readthedocs.org/en/latest/#id3>`_ for more.
 
