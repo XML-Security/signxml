@@ -188,15 +188,15 @@ class xmldsig(object):
                                               known_tags=self.known_signature_digest_tags)
 
     def _get_payload_c14n(self, method, c14n_algorithm=default_c14n_algorithm):
+        self.payload = self.data
+        self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
         if method == methods.enveloped:
-            self.payload = self.data
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
 
             signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']")
 
             if len(signature_placeholders) == 0:
-                self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
                 self.payload.append(self.sig_root)
             elif len(signature_placeholders) == 1:
                 self.sig_root = signature_placeholders[0]
@@ -205,14 +205,15 @@ class xmldsig(object):
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
             self._reference_uri = ""
+        elif method == methods.detached:
+            self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
         else:
-            self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
             self.payload = Element(ds_tag("Object"), nsmap=dict(ds=XMLDSIG_NS), Id="object")
-            self._reference_uri = "#object"
             if isinstance(self.data, (str, bytes)):
                 self.payload.text = self.data
             else:
                 self.payload.append(self.data)
+            self._reference_uri = "#object"
 
         self.payload_c14n = self._c14n(self.payload, algorithm=c14n_algorithm)
         if method == methods.enveloped:
