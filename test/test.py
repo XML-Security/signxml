@@ -49,14 +49,14 @@ class TestSignXML(unittest.TestCase):
         for digest_alg in "sha1", "sha224", "sha256", "sha384", "sha512":
             for sig_alg in "hmac", "dsa", "rsa", "ecdsa":
                 for hash_alg in "sha1", "sha256":
-                    for method in methods.enveloped, methods.enveloping:
+                    for method in methods:
                         for c14n_alg in ("http://www.w3.org/2001/10/xml-exc-c14n#",
                                          "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
                                          xmldsig.default_c14n_algorithm):
                             data = [etree.parse(f).getroot() for f in self.example_xml_files]
                             data.append("x y \n z t\n я\n")
                             for d in data:
-                                if isinstance(d, str) and method == methods.enveloped:
+                                if isinstance(d, str) and method != methods.enveloping:
                                     continue
                                 print(digest_alg, sig_alg, hash_alg, c14n_alg, method, type(d))
                                 reset_tree(d, method)
@@ -64,56 +64,54 @@ class TestSignXML(unittest.TestCase):
                                 signed = signer.sign(method=method,
                                                      algorithm="-".join([sig_alg, hash_alg]),
                                                      key=self.keys[sig_alg],
-                                                     c14n_algorithm=c14n_alg)
+                                                     c14n_algorithm=c14n_alg,
+                                                     reference_uri="URI" if method == methods.detached else None)
                                 # print(etree.tostring(signed))
-                                signed_data = etree.tostring(signed)
                                 hmac_key = self.keys["hmac"] if sig_alg == "hmac" else None
-                                xmldsig(signed_data).verify(hmac_key=hmac_key,
-                                                            require_x509=False,
-                                                            validate_schema=True)
+                                verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True)
 
-                                xmldsig(signed_data).verify(hmac_key=hmac_key,
-                                                            require_x509=False,
-                                                            validate_schema=True,
-                                                            parser=parser)
+                                if method == methods.detached:
+                                    verify_kwargs["uri_resolver"] = lambda uri: d
 
-                                xmldsig(signed_data).verify(hmac_key=hmac_key,
-                                                            require_x509=False,
-                                                            validate_schema=True,
-                                                            id_attribute="Id")
+                                signed_data = etree.tostring(signed)
+                                xmldsig(signed_data).verify(**verify_kwargs)
+                                xmldsig(signed_data).verify(parser=parser, **verify_kwargs)
+                                xmldsig(signed_data).verify(id_attribute="Id", **verify_kwargs)
 
                                 if method == methods.enveloping:
                                     with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
-                                        xmldsig(signed_data).verify(hmac_key=hmac_key,
-                                                                    require_x509=False,
-                                                                    validate_schema=True,
-                                                                    id_attribute="X")
+                                        xmldsig(signed_data).verify(id_attribute="X", **verify_kwargs)
 
                                 with self.assertRaisesRegexp(InvalidInput,
                                                              "Expected a X.509 certificate based signature"):
-                                    xmldsig(signed_data).verify(hmac_key=hmac_key)
+                                    xmldsig(signed_data).verify(hmac_key=hmac_key,
+                                                                uri_resolver=verify_kwargs.get("uri_resolver"))
 
-                                with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                                    mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
-                                    xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
+                                if method != methods.detached:
+                                    with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                                        mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
+                                        xmldsig(mangled_sig).verify(**verify_kwargs)
 
                                 with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
                                     mangled_sig = signed_data.replace(b"<ds:DigestValue>", b"<ds:DigestValue>!")
-                                    xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
+                                    xmldsig(mangled_sig).verify(**verify_kwargs)
 
                                 with self.assertRaises(cryptography.exceptions.InvalidSignature):
                                     sig_value = re.search(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
-                                    mangled_sig = re.sub(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>",
-                                                         b"<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + b"</ds:SignatureValue>",
-                                                         signed_data)
-                                    xmldsig(mangled_sig).verify(hmac_key=hmac_key, require_x509=False)
+                                    mangled_sig = re.sub(
+                                        b"<ds:SignatureValue>(.+?)</ds:SignatureValue>",
+                                        b"<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + b"</ds:SignatureValue>",
+                                        signed_data
+                                    )
+                                    xmldsig(mangled_sig).verify(**verify_kwargs)
 
                                 with self.assertRaises(etree.XMLSyntaxError):
                                     xmldsig("").verify(hmac_key=hmac_key, require_x509=False)
 
                                 if sig_alg == "hmac":
                                     with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
-                                        xmldsig(signed_data).verify(hmac_key=b"SECRET", require_x509=False)
+                                        verify_kwargs["hmac_key"] = b"SECRET"
+                                        xmldsig(signed_data).verify(**verify_kwargs)
 
     def test_x509_certs(self):
         tree = etree.parse(self.example_xml_files[0])

@@ -86,7 +86,7 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 XML signature methods
 ~~~~~~~~~~~~~~~~~~~~~
 The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
-enveloping, and detached signature. Enveloped is the default method. To specify the type of signature that you want to
+detached, and enveloping signature. Enveloped is the default method. To specify the type of signature that you want to
 generate, pass the ``method`` argument to ``sign()``:
 
 .. code-block:: python
@@ -95,7 +95,8 @@ generate, pass the ``method`` argument to ``sign()``:
     verified_data = xmldsig(root).verify()
 
 For detached signatures, the code above will use the ``Id`` or ``ID`` attribute of ``root`` to generate a relative URI
-(``<Reference URI="#value"``). You can also override the value of ``URI`` by passing ``reference_uri`` to ``sign()``.
+(``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
+``sign()``.
 
 To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``xmldsig.verify(uri_resolver=...)``.
