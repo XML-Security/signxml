@@ -1,3 +1,8 @@
+Version 0.4.1 (2015-04-21)
+--------------------------
+- Add support for detached signatures (closes #3)
+- Update pyOpenSSL dependency; use X509StoreContext.verify_certificate()
+
 Version 0.4.0 (2015-03-08)
 --------------------------
 - Use pyasn1 for DER encoding and decoding, eliminating some DSA signature verification failures
