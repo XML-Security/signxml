@@ -86,8 +86,8 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 
  **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
-XML signature methods
-~~~~~~~~~~~~~~~~~~~~~
+XML signature methods: enveloped, detached, enveloping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
 detached, and enveloping signature. Enveloped is the default method. To specify the type of signature that you want to
 generate, pass the ``method`` argument to ``sign()``:
