@@ -69,7 +69,7 @@ def _get_signature_regex(ns_prefix=None):
     tag = "Signature"
     if ns_prefix is not None:
         tag = ns_prefix + ":" + tag
-    return re.compile(ensure_bytes("<{t}[>\s].*?</{t}>".format(t=tag)), flags=re.DOTALL)
+    return re.compile(ensure_bytes(r"<{t}[>\s].*?</{t}>".format(t=tag)), flags=re.DOTALL)
 
 def _get_schema():
     global _schema
