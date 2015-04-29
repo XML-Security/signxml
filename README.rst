@@ -114,7 +114,7 @@ Links
 -----
 * `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.org/en/latest/>`_
-* `Package distribution <https://warehouse.python.org/project/signxml/>`_ `(PyPI) <https://pypi.python.org/pypi/signxml>`_
+* `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
 * `List of W3C XML Signature standards and drafts <http://www.w3.org/TR/#tr_XML_Signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
@@ -132,15 +132,15 @@ License
 -------
 Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_.
 
-.. image:: https://travis-ci.org/kislyuk/signxml.svg
+.. image:: https://img.shields.io/travis/kislyuk/signxml.svg
         :target: https://travis-ci.org/kislyuk/signxml
-.. image:: https://coveralls.io/repos/kislyuk/signxml/badge.svg?branch=master
+.. image:: https://img.shields.io/coveralls/kislyuk/signxml.svg
         :target: https://coveralls.io/r/kislyuk/signxml?branch=master
-.. image:: https://pypip.in/version/signxml/badge.svg
+.. image:: https://img.shields.io/pypi/v/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
-.. image:: https://pypip.in/download/signxml/badge.svg
+.. image:: https://img.shields.io/pypi/dm/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
-.. image:: https://pypip.in/py_versions/signxml/badge.svg
+.. image:: https://img.shields.io/pypi/l/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
         :target: https://signxml.readthedocs.org/
