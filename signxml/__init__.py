@@ -92,6 +92,7 @@ class xmldsig(object):
         self.digest_alg = digest_algorithm
         self.signature_alg = None
         self.data = data
+        self._namespaces = dict(ds=XMLDSIG_NS)
 
     known_digest_methods = {
         XMLDSIG_NS + "sha1": SHA1,
@@ -189,7 +190,7 @@ class xmldsig(object):
 
     def _get_payload_c14n(self, method, c14n_algorithm=default_c14n_algorithm):
         self.payload = self.data
-        self.sig_root = Element(ds_tag("Signature"), nsmap=dict(ds=XMLDSIG_NS))
+        self.sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         if method == methods.enveloped:
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
@@ -209,7 +210,7 @@ class xmldsig(object):
             if self._reference_uri is None:
                 self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
         else:
-            self.payload = Element(ds_tag("Object"), nsmap=dict(ds=XMLDSIG_NS), Id="object")
+            self.payload = Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")
             if isinstance(self.data, (str, bytes)):
                 self.payload.text = self.data
             else:
@@ -326,7 +327,7 @@ class xmldsig(object):
 
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
-        signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=dict(ds=XMLDSIG_NS))
+        signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=c14n_algorithm)
         if self.signature_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.signature_alg]
@@ -633,6 +634,14 @@ class xmldsig(object):
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
         return payload
+
+    @property
+    def namespaces(self):
+        return self._namespaces
+
+    @namespaces.setter
+    def namespaces(self, new_namespaces):
+        self._namespaces = new_namespaces
 
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
