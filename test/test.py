@@ -215,5 +215,26 @@ class TestSignXML(unittest.TestCase):
                     else:
                         raise
 
+    def test_signxml_changing_signature_namepace_prefix(self):
+        data = etree.parse(self.example_xml_files[0]).getroot()
+        signer = xmldsig(data)
+        signer.namespaces = dict(digi_sign=namespaces['ds'])
+        signed = signer.sign(key=self.keys["rsa"])
+        signed_data = etree.tostring(signed)
+        expected_match = ("<digi_sign:Signature xmlns:"
+                          "digi_sign=\"%s\">") % namespaces['ds']
+        self.assertTrue(re.search(expected_match.encode('ascii'), signed_data))
+
+    def test_signxml_changing_signature_namepace_prefix_to_default(self):
+        data = etree.parse(self.example_xml_files[0]).getroot()
+        signer = xmldsig(data)
+        ns = dict()
+        ns[None] = namespaces['ds']
+        signer.namespaces = ns
+        signed = signer.sign(key=self.keys["rsa"])
+        signed_data = etree.tostring(signed)
+        expected_match = ("<Signature xmlns=\"%s\">") % namespaces['ds']
+        self.assertTrue(re.search(expected_match.encode('ascii'), signed_data))
+
 if __name__ == '__main__':
     unittest.main()
