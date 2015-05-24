@@ -1,3 +1,8 @@
+Version 0.4.2 (2015-04-24)
+--------------------------
+- Add support for parameterizable signature namespace (PR #12, thanks to @ldnunes)
+- Update cryptography dependency
+
 Version 0.4.1 (2015-04-21)
 --------------------------
 - Add support for detached signatures (closes #3)
