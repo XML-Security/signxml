@@ -114,6 +114,8 @@ class TestSignXML(unittest.TestCase):
                                         xmldsig(signed_data).verify(**verify_kwargs)
 
     def test_x509_certs(self):
+        from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
+
         tree = etree.parse(self.example_xml_files[0])
         ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
@@ -132,6 +134,10 @@ class TestSignXML(unittest.TestCase):
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
                 xmldsig(signed_data).verify(x509_cert=crt)
+                xmldsig(signed_data).verify(x509_cert=load_certificate(FILETYPE_PEM, crt))
+
+                with self.assertRaises(OpenSSLCryptoError):
+                    xmldsig(signed_data).verify(x509_cert=crt[::-1])
 
                 with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
                     xmldsig(signed_data).verify()

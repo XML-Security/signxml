@@ -520,15 +520,15 @@ class xmldsig(object):
             types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
         :param x509_cert:
-            An external X.509 certificate, given as a PEM-formatted string, to use for verification. Overrides any X.509
-            certificate information supplied by the signature. If left set to ``None``, requires that the signature
-            supply a valid X.509 certificate chain that validates against the known certificate authorities. Implies
-            **require_x509=True**.
-        :type x509_cert: string
+            An external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use for
+            verification. Overrides any X.509 certificate information supplied by the signature. If left set to
+            ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the
+            known certificate authorities. Implies **require_x509=True**.
+        :type x509_cert: string or OpenSSL.crypto.X509
         :param ca_pem_file:
-            Filename (as bytes) of a PEM file containing certificate authority information to use when verifying
-            certificate-based signatures.
-        :type ca_pem_file: bytes
+            Filename of a PEM file containing certificate authority information to use when verifying certificate-based
+            signatures.
+        :type ca_pem_file: string or bytes
         :param ca_path:
             Path to a directory containing PEM-formatted certificate authority files to use when verifying
             certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle
@@ -550,6 +550,7 @@ class xmldsig(object):
 
         :returns: XML ElementTree Element API compatible object representing the root of the signed payload.
         :rtype: XML.ElementTree.Element
+
         """
         self.hmac_key = hmac_key
         self.require_x509 = require_x509
@@ -598,7 +599,7 @@ class xmldsig(object):
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
 
         if x509_data is not None or self.require_x509:
-            from OpenSSL.crypto import load_certificate, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
+            from OpenSSL.crypto import load_certificate, X509, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
 
             if self.x509_cert is None:
                 if x509_data is None:
@@ -606,6 +607,8 @@ class xmldsig(object):
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
+            elif isinstance(self.x509_cert, X509):
+                cert_chain = [self.x509_cert]
             else:
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))]
 
@@ -664,8 +667,8 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
-        ca_pem_file = ensure_bytes(certifi.where())
-    context.load_verify_locations(ca_pem_file, capath=ca_path)
+        ca_pem_file = certifi.where()
+    context.load_verify_locations(ensure_bytes(ca_pem_file), capath=ca_path)
     store = context.get_cert_store()
     for cert in cert_chain:
         try:
