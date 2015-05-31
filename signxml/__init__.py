@@ -295,8 +295,8 @@ class xmldsig(object):
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :type passphrase: string
         :param cert:
-            X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an
-            array containing the certificate and a chain of intermediate certificates.
+            X.509 certificate to use for signing. This should be a string or OpenSSL.crypto.X509 object containing a
+            PEM-formatted certificate, or an array containing the certificate and a chain of intermediate certificates.
         :type cert: string or array of strings
         :param c14n_algorithm:
             Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable
