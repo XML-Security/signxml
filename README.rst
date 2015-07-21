@@ -115,6 +115,7 @@ Links
 * `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.org/en/latest/>`_
 * `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
+* `Change log <https://github.com/kislyuk/signxml/blob/master/Changes.rst>`_
 * `List of W3C XML Signature standards and drafts <http://www.w3.org/TR/#tr_XML_Signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
