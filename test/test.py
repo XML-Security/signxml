@@ -148,7 +148,8 @@ class TestSignXML(unittest.TestCase):
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
-                xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
+                with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
+                    xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
 
     def test_xmldsig_interop(self):
         def resolver(uri):
