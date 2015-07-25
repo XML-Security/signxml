@@ -1,7 +1,7 @@
 lxml >= 3.4.4, < 3.5
 defusedxml >= 0.4.1, < 0.5
 eight >= 0.3.0, < 0.4
-cryptography >= 0.9.1, < 0.10
+cryptography >= 0.9.3, < 0.10
 pyOpenSSL >= 0.15.1
 certifi >= 14.05.14
 enum34 >= 1.0.4
