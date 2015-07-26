@@ -1,3 +1,8 @@
+Version 0.4.3 (2015-07-26)
+--------------------------
+- Do not open schema file in text mode when parsing XML (closes #18, thanks to @nick210)
+- Update cryptography dependency
+
 Version 0.4.2 (2015-04-24)
 --------------------------
 - Add support for parameterizable signature namespace (PR #12, thanks to @ldnunes)
