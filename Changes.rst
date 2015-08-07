@@ -1,3 +1,7 @@
+Version 0.4.4 (2015-08-07)
+--------------------------
+- Handle xml.etree.ElementTree nodes as input (previously these would cause a crash, despite the documentation suggesting otherwise). Closes #19, thanks to @nickcash.
+
 Version 0.4.3 (2015-07-26)
 --------------------------
 - Do not open schema file in text mode when parsing XML (closes #18, thanks to @nick210)
