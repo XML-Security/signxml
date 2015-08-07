@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, re
 from base64 import b64encode, b64decode
 from enum import Enum
+from xml.etree import ElementTree as stdlibElementTree
 
 from eight import *
 from lxml import etree
@@ -90,8 +91,12 @@ class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha256"):
         self.digest_alg = digest_algorithm
         self.signature_alg = None
-        self.data = data
         self._namespaces = dict(ds=XMLDSIG_NS)
+        self.data = data
+
+        if isinstance(data, stdlibElementTree.Element):
+            # TODO: add debug level logging statement re: performance impact here
+            self.data = fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
 
     known_digest_methods = {
         XMLDSIG_NS + "sha1": SHA1,

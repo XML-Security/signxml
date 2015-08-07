@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, unittest, collections, itertools, copy, re
 from glob import glob
+from xml.etree import ElementTree as stdlibElementTree
 
 from lxml import etree
 import cryptography.exceptions
@@ -56,6 +57,8 @@ class TestSignXML(unittest.TestCase):
         all_methods = itertools.product(digest_algs, sig_algs, hash_algs, methods, c14n_algs)
         for digest_alg, sig_alg, hash_alg, method, c14n_alg in all_methods:
             data = [etree.parse(f).getroot() for f in self.example_xml_files]
+            # FIXME: data.extend(stdlibElementTree.parse(f).getroot() for f in (self.example_xml_files)
+            data.append(stdlibElementTree.parse(self.example_xml_files[0]).getroot())
             data.append("x y \n z t\n я\n")
             for d in data:
                 if isinstance(d, str) and method != methods.enveloping:
@@ -73,7 +76,12 @@ class TestSignXML(unittest.TestCase):
                 verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True)
 
                 if method == methods.detached:
-                    verify_kwargs["uri_resolver"] = lambda uri: d
+                    def resolver(uri):
+                        if isinstance(d, stdlibElementTree.Element):
+                            return etree.fromstring(stdlibElementTree.tostring(d))
+                        else:
+                            return d
+                    verify_kwargs["uri_resolver"] = resolver
 
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(**verify_kwargs)
@@ -222,7 +230,7 @@ class TestSignXML(unittest.TestCase):
                     else:
                         raise
 
-    def test_signxml_changing_signature_namepace_prefix(self):
+    def test_signxml_changing_signature_namespace_prefix(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         signer = xmldsig(data)
         signer.namespaces = dict(digi_sign=namespaces['ds'])
@@ -232,7 +240,7 @@ class TestSignXML(unittest.TestCase):
                           "digi_sign=\"%s\">") % namespaces['ds']
         self.assertTrue(re.search(expected_match.encode('ascii'), signed_data))
 
-    def test_signxml_changing_signature_namepace_prefix_to_default(self):
+    def test_signxml_changing_signature_namespace_prefix_to_default(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         signer = xmldsig(data)
         ns = dict()
@@ -242,6 +250,11 @@ class TestSignXML(unittest.TestCase):
         signed_data = etree.tostring(signed)
         expected_match = ("<Signature xmlns=\"%s\">") % namespaces['ds']
         self.assertTrue(re.search(expected_match.encode('ascii'), signed_data))
+
+    def test_elementtree_compat(self):
+        data = stdlibElementTree.parse(self.example_xml_files[0]).getroot()
+        signer = xmldsig(data)
+        signed = signer.sign(key=self.keys["rsa"])
 
 if __name__ == '__main__':
     unittest.main()
