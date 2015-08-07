@@ -30,9 +30,15 @@ Installation
 
 Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptography
 <https://github.com/pyca/cryptography>`_, which in turn depend on `OpenSSL <https://www.openssl.org/>`_, `LibXML
-<http://xmlsoft.org/>`_, and Python tools to interface with them. On Ubuntu, you can install those with::
+<http://xmlsoft.org/>`_, and Python tools to interface with them. You can install those as follows:
 
-    apt-get install python-dev libxml2-dev libxslt1-dev libssl-dev python-cffi
+**Ubuntu, Python 2**::
+
+    apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev
+
+**Ubuntu, Python 3**::
+
+    apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev
 
 **Ubuntu 12.04:** ``python-cffi`` is not available on 12.04. Use ``apt-get install libffi-dev`` followed by
 ``pip install cffi``.
