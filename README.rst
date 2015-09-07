@@ -55,8 +55,8 @@ SignXML uses the ElementTree API (also supported by lxml) to work with XML data.
     cert = open("example.pem").read()
     key = open("example.key").read()
     root = ElementTree.fromstring(signature_data)
-    xmldsig(root).sign(key=key, cert=cert)
-    verified_data = xmldsig(root).verify()
+    signed_root = xmldsig(root).sign(key=key, cert=cert)
+    verified_data = xmldsig(signed_root).verify()
 
 Verifying SAML assertions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,8 +100,8 @@ generate, pass the ``method`` argument to ``sign()``:
 
 .. code-block:: python
 
-    xmldsig(root).sign(method=signxml.methods.detached, key=key, cert=cert)
-    verified_data = xmldsig(root).verify()
+    signed_root = xmldsig(root).sign(method=signxml.methods.detached, key=key, cert=cert)
+    verified_data = xmldsig(signed_root).verify()
 
 For detached signatures, the code above will use the ``Id`` or ``ID`` attribute of ``root`` to generate a relative URI
 (``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
