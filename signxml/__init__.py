@@ -276,7 +276,7 @@ class xmldsig(object):
         return c14n
 
     def sign(self, method=methods.enveloped, algorithm="rsa-sha256", key=None, passphrase=None, cert=None,
-             c14n_algorithm=default_c14n_algorithm, reference_uri=None, key_name=None):
+             c14n_algorithm=default_c14n_algorithm, reference_uri=None, key_info_name=None, key_info_cert=True):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -315,12 +315,14 @@ class xmldsig(object):
         :param reference_uri:
             Custom reference URI to incorporate into the signature. Only used when ``method`` is set to ``detached``.
         :type reference_uri: string
-        :param key_name:
-            The KeyName to include in KeyInfo/KeyName signature. Selection to include in Keyinfo is as follows:
-            a) /KeyInfo/KeyName, when parameter ``key_name`` is supplied
-            b) /KeyInfo/X509Data/X509Certificate(s), when ``cert`` parameter is supplied
-            c) /KeyInfo/KeyValue/..., otherwise !
-        :type key_name: string
+        :param key_info_name:
+            The value to include in KeyInfo/KeyName signature.
+            When no key_info_name is not given and key_info_cert is set to False, the KeyValue will be included in KeyInfo/KeyValue
+        :type key_info_name: string
+        :param key_info_cert:
+            When True the certificate chain certificates will be included in the KeyInfo/X509Data
+            When False and key_info_name is not given, the KeyValue will be included in KeyInfo/KeyValue
+        :type key_info_name: boolean
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
@@ -395,20 +397,25 @@ class xmldsig(object):
                 signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
 
             signature_value.text = ensure_str(b64encode(signature))
+
             key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
-            if key_name is not None:
-                SubElement(key_info, ds_tag("KeyName")).text = key_name
-            elif cert_chain is None:
-                self._serialize_key_value(key, key_info)
-            else:
-                x509_data = SubElement(key_info, ds_tag("X509Data"))
-                for cert in cert_chain:
-                    x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
-                    if isinstance(cert, (str, bytes)):
-                        x509_certificate.text = strip_pem_header(cert)
-                    else:
-                        from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
-                        x509_certificate.text = dump_certificate(FILETYPE_PEM, cert)
+
+            if (cert_chain is None or key_info_cert is False) and key_info_name is None:
+               self._serialize_key_value(key, key_info)
+
+            if key_info_name is not None:
+               SubElement(key_info, ds_tag("KeyName")).text = key_info_name
+
+            if key_info_cert is True and cert_chain is not None:
+               x509_data = SubElement(key_info, ds_tag("X509Data"))
+               for cert in cert_chain:
+                   x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
+                   if isinstance(cert, (str, bytes)):
+                      x509_certificate.text = strip_pem_header(cert)
+                   else:
+                      from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
+                      x509_certificate.text = dump_certificate(FILETYPE_PEM, cert)
+
         else:
             raise NotImplementedError()
 
