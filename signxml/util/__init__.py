@@ -79,8 +79,8 @@ def long_to_bytes(n, blocksize=0):
     return s
 
 def strip_pem_header(cert):
+    pem_regexp = "{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER)
     try:
-        pem_regexp = "{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER)
         return re.search(pem_regexp, ensure_str(cert), flags=re.S).group(1)
     except Exception:
         return ensure_str(cert)
