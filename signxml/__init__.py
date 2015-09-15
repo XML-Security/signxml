@@ -276,7 +276,7 @@ class xmldsig(object):
         return c14n
 
     def sign(self, method=methods.enveloped, algorithm="rsa-sha256", key=None, passphrase=None, cert=None,
-             c14n_algorithm=default_c14n_algorithm, reference_uri=None):
+             c14n_algorithm=default_c14n_algorithm, reference_uri=None, key_info_name=None, key_info_cert=True):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -315,6 +315,13 @@ class xmldsig(object):
         :param reference_uri:
             Custom reference URI to incorporate into the signature. Only used when ``method`` is set to ``detached``.
         :type reference_uri: string
+        :param key_info_name:
+            The name that will be included into KeyInfo/KeyName
+        :type key_info_name: string
+        :param key_info_cert:
+            When True, the certificate(s) will be included into KeyInfo/X509Data
+            Default True
+        :type key_info_cert: boolean
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
@@ -391,9 +398,15 @@ class xmldsig(object):
             signature_value.text = ensure_str(b64encode(signature))
 
             key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
-            if cert_chain is None:
+
+            #if (key_info_cert is False or cert_chain is None) and key_info_name is None:
+            if key_info_cert is False or cert_chain is None:
                 self._serialize_key_value(key, key_info)
-            else:
+
+            if key_info_name is not None:
+                SubElement(key_info, ds_tag("KeyName")).text = key_info_name
+
+            if cert_chain is not None:
                 x509_data = SubElement(key_info, ds_tag("X509Data"))
                 for cert in cert_chain:
                     x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
