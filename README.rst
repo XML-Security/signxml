@@ -43,6 +43,11 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 **Ubuntu 12.04:** ``python-cffi`` is not available on 12.04. Use ``apt-get install libffi-dev`` followed by
 ``pip install cffi``.
 
+**OS X**: Use `Homebrew <http://brew.sh/>`_::
+
+    brew install libxml2 libxslt
+    brew link --force libxml2 libxslt
+
 Synopsis
 --------
 
