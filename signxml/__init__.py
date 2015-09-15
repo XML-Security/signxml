@@ -406,7 +406,7 @@ class xmldsig(object):
             if key_info_name is not None:
                 SubElement(key_info, ds_tag("KeyName")).text = key_info_name
 
-            if cert_chain is not None:
+            if key_info_cert is True and cert_chain is not None:
                 x509_data = SubElement(key_info, ds_tag("X509Data"))
                 for cert in cert_chain:
                     x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
