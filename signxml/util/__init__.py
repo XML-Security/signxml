@@ -6,7 +6,7 @@ bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import sys, struct, textwrap
+import sys, re, struct, textwrap
 
 from eight import *
 
@@ -79,11 +79,11 @@ def long_to_bytes(n, blocksize=0):
     return s
 
 def strip_pem_header(cert):
-    bare_base64_cert = ""
-    for line in ensure_str(cert).splitlines():
-        if line != PEM_HEADER and line != PEM_FOOTER:
-            bare_base64_cert += line
-    return bare_base64_cert
+    try:
+        pem_regexp = "{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER)
+        return re.search(pem_regexp, ensure_str(cert), flags=re.S).group(1)
+    except Exception:
+        return ensure_str(cert)
 
 def add_pem_header(bare_base64_cert):
     bare_base64_cert = ensure_str(bare_base64_cert)
