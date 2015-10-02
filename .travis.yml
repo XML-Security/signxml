@@ -7,6 +7,10 @@ python:
     - pypy
     - pypy3
 
+os:
+    - linux
+    - osx
+
 install:
     - python setup.py install
     - pip install coverage coveralls
