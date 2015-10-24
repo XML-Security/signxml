@@ -209,7 +209,8 @@ class xmldsig(object):
             else:
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
-            self._reference_uri = ""
+            if self._reference_uri is None:
+                self._reference_uri = ""
             # get signed data id attribute value for reference uri  
             payloadId = self.payload.get("Id", self.payload.get("ID"))
             if payloadId is not None:
