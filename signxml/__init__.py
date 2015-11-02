@@ -583,7 +583,7 @@ class xmldsig(object):
         if root.tag == ds_tag("Signature"):
             signature = root
         else:
-            signature = self._find(root, "Signature")
+            signature = self._find(root, "Signature", anywhere=True)
 
         if validate_schema:
             _get_schema().assertValid(signature)
@@ -665,7 +665,7 @@ class xmldsig(object):
 
     def _find(self, element, query, require=True, namespace="ds", anywhere=False):
         if anywhere:
-            result = element.find('://' + namespace + ":" + query, namespaces=namespaces)
+            result = element.find('.//' + namespace + ":" + query, namespaces=namespaces)
         else:
             result = element.find(namespace + ":" + query, namespaces=namespaces)
 
@@ -675,7 +675,7 @@ class xmldsig(object):
 
     def _findall(self, element, query, namespace="ds", anywhere=False):
         if anywhere:
-            return element.findall('://' + namespace + ":" + query, namespaces=namespaces)
+            return element.findall('.//' + namespace + ":" + query, namespaces=namespaces)
         else:
             return element.findall(namespace + ":" + query, namespaces=namespaces)
 
