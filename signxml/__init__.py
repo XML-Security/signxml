@@ -211,11 +211,11 @@ class xmldsig(object):
 
             if self._reference_uri is None:
                 self._reference_uri = ""
-            # get signed data id attribute value for reference uri  
+            # get signed data id attribute value for reference uri
             payloadId = self.payload.get("Id", self.payload.get("ID"))
             if payloadId is not None:
                 # set default reference uri based on data id attribute value
-                self._reference_uri = "#{}".format(payloadId)            
+                self._reference_uri = "#{}".format(payloadId)
         elif method == methods.detached:
             if self._reference_uri is None:
                 self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
@@ -663,14 +663,21 @@ class xmldsig(object):
             result = bytes_to_long(b64decode(result.text))
         return result
 
-    def _find(self, element, query, require=True, namespace="ds"):
-        result = element.find(namespace + ":" + query, namespaces=namespaces)
+    def _find(self, element, query, require=True, namespace="ds", anywhere=False):
+        if anywhere:
+            result = element.find('://' + namespace + ":" + query, namespaces=namespaces)
+        else:
+            result = element.find(namespace + ":" + query, namespaces=namespaces)
+
         if require and result is None:
             raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
         return result
 
-    def _findall(self, element, query, namespace="ds"):
-        return element.findall(namespace + ":" + query, namespaces=namespaces)
+    def _findall(self, element, query, namespace="ds", anywhere=False):
+        if anywhere:
+            return element.findall('://' + namespace + ":" + query, namespaces=namespaces)
+        else:
+            return element.findall(namespace + ":" + query, namespaces=namespaces)
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     from OpenSSL import SSL
