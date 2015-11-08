@@ -1,3 +1,8 @@
+Version 0.4.5 (2015-11-08)
+--------------------------
+- Support enveloped signatures nested at arbitrary levels beneath root element (#32, #33). Thanks to @jmindek.
+- Update certifi, cryptography dependencies
+
 Version 0.4.4 (2015-08-07)
 --------------------------
 - Handle xml.etree.ElementTree nodes as input (previously these would cause a crash, despite the documentation suggesting otherwise). Closes #19, thanks to @nickcash.
