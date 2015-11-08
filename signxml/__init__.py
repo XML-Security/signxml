@@ -199,7 +199,7 @@ class xmldsig(object):
             if isinstance(self.data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
 
-            signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']")
+            signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']", anywhere=True)
 
             if len(signature_placeholders) == 0:
                 self.payload.append(self.sig_root)
@@ -457,6 +457,7 @@ class xmldsig(object):
             # doc_root.xpath(uri.lstrip("#"))[0]
         elif uri.startswith("#"):
             for id_attribute in self.id_attributes:
+                # results = doc_root.xpath("..//*[@*[local-name() = '{}']=$uri]".format(id_attribute), uri=uri.lstrip("#"))
                 results = doc_root.xpath("..//*[@{}=$uri]".format(id_attribute), uri=uri.lstrip("#"))
                 if len(results) > 1:
                     raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))

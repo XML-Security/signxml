@@ -8,7 +8,9 @@
         <neighbor name="Austria" direction="E"/>
         <neighbor name="Switzerland" direction="W"/>
     </country>
-    <ds:Signature Id="placeholder"></ds:Signature>
+    <security>
+      <ds:Signature Id="placeholder"></ds:Signature>
+    </security>
     <country name="Singapore">
         <rank>4</rank>
         <year>2011</year>

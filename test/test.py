@@ -18,10 +18,10 @@ from signxml import *
 
 def reset_tree(t, method):
     if not isinstance(t, str):
-        for s in t.findall("ds:Signature", namespaces=namespaces):
+        for s in t.findall(".//ds:Signature", namespaces=namespaces):
             if method == methods.enveloped and s.get("Id") == "placeholder":
                 continue
-            t.remove(s)
+            s.getparent().remove(s)
 
 class URIResolver(etree.Resolver):
     def resolve(self, url, id, context):
@@ -160,9 +160,10 @@ class TestSignXML(unittest.TestCase):
                     xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
 
     def test_xmldsig_interop(self):
+        interop_dir = os.path.join(os.path.dirname(__file__), "interop")
         def resolver(uri):
             if uri == "document.xml":
-                with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", uri), "rb") as fh:
+                with open(os.path.join(interop_dir, "phaos-xmldsig-three", uri), "rb") as fh:
                     return fh.read()
             elif uri == "http://www.ietf.org/rfc/rfc3161.txt":
                 with open(os.path.join(os.path.dirname(__file__), "rfc3161.txt"), "rb") as fh:
@@ -175,20 +176,30 @@ class TestSignXML(unittest.TestCase):
         #    with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem"), "wb") as fh2:
         #        fh2.write(ca_pem_file)
 
+        def get_x509_cert(signature_file):
+            if "windows_store_signature" in signature_file:
+                return open(os.path.join(interop_dir, "xml-crypto", "windows_store_certificate.pem")).read()
+            else:
+                return None
+
         def get_ca_pem_file(signature_file):
-            interop_dir = os.path.join(os.path.dirname(__file__), "interop")
             if "signature-dsa" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem")
             elif "signature-rsa" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-ca-cert.pem")
             elif "aleksey" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "aleksey-xmldsig-01", "cacert.pem")
+            elif "wsfederation_metadata" in signature_file:
+                ca_pem_file = os.path.join(interop_dir, "xml-crypto", "wsfederation_metadata.pem")
+            elif "signature_with_inclusivenamespaces" in signature_file:
+                ca_pem_file = os.path.join(interop_dir, "xml-crypto", "signature_with_inclusivenamespaces.pem")
             else:
                 return None
             return ca_pem_file.encode("utf-8")
 
-        signature_files = glob(os.path.join(os.path.dirname(__file__), "interop", "*", "signature*.xml"))
-        signature_files += glob(os.path.join(os.path.dirname(__file__), "interop", "aleksey*", "*.xml"))
+        signature_files = glob(os.path.join(interop_dir, "*", "signature*.xml"))
+        signature_files += glob(os.path.join(interop_dir, "aleksey*", "*.xml"))
+        signature_files += glob(os.path.join(interop_dir, "xml-crypto", "*.xml"))
         for signature_file in signature_files:
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
@@ -198,8 +209,9 @@ class TestSignXML(unittest.TestCase):
                                         hmac_key="test" if "phaos" in signature_file else "secret",
                                         validate_schema=True,
                                         uri_resolver=resolver,
+                                        x509_cert=get_x509_cert(signature_file),
                                         ca_pem_file=get_ca_pem_file(signature_file))
-                    if "HMACOutputLength" in str(sig) or "bad" in signature_file or "expired" in signature_file:
+                    if "HMACOutputLength" in sig.decode("utf-8") or "bad" in signature_file or "expired" in signature_file:
                         raise BaseException("Expected an exception to occur")
                 except Exception as e:
                     unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
@@ -213,7 +225,7 @@ class TestSignXML(unittest.TestCase):
                     elif "md5" in signature_file or "ripemd160" in signature_file:
                         with self.assertRaisesRegexp(InvalidInput, "Algorithm .+ is not recognized"):
                             raise
-                    elif "HMACOutputLength" in str(sig):
+                    elif "HMACOutputLength" in sig.decode("utf-8"):
                         self.assertIsInstance(e, (InvalidSignature, InvalidDigest))
                     elif signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
                         self.assertIsInstance(e, InvalidDigest)
