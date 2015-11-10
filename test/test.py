@@ -256,5 +256,12 @@ class TestSignXML(unittest.TestCase):
         signer = xmldsig(data)
         signed = signer.sign(key=self.keys["rsa"])
 
+    def test_find_signature(self):
+        example = os.path.join(os.path.dirname(__file__), "example3.xml")
+        pem_file = os.path.join(os.path.dirname(__file__), "example-ca2.pem")
+        data = stdlibElementTree.parse(example).getroot()
+        signer = xmldsig(data)
+        signer.verify(ca_pem_file=pem_file)
+
 if __name__ == '__main__':
     unittest.main()
