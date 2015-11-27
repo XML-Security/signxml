@@ -227,9 +227,10 @@ class xmldsig(object):
                 self.payload.append(self.data)
             self._reference_uri = "#object"
 
-        self.payload_c14n = self._c14n(self.payload, algorithm=c14n_algorithm)
+        c14n = self._c14n(self.payload, algorithm=c14n_algorithm)
         if method == methods.enveloped:
-            self.payload_c14n = _get_signature_regex(ns_prefix="ds").sub(b"", self.payload_c14n)
+            c14n = _get_signature_regex(ns_prefix="ds").sub(b"", c14n)
+        return c14n
 
     def _serialize_key_value(self, key, key_info_element):
         key_value = SubElement(key_info_element, ds_tag("KeyValue"))
@@ -334,8 +335,7 @@ class xmldsig(object):
         else:
             cert_chain = cert
 
-        self._get_payload_c14n(method, c14n_algorithm=c14n_algorithm)
-
+        self.payload_c14n = self._get_payload_c14n(method, c14n_algorithm=c14n_algorithm)
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
         signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
