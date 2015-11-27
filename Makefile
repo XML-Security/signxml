@@ -1,13 +1,13 @@
 SHELL=/bin/bash
 
-env: requirements.txt
-	virtualenv --python=python env
-	source env/bin/activate; pip install --requirement=requirements.txt
-	source env/bin/activate; pip list --outdated
+env: setup.py
+	virtualenv env
+	env/bin/pip install .
+	env/bin/pip list --outdated
 
 test: env
 	-pylint -E signxml
-	source env/bin/activate; ./test/test.py -v
+	env/bin/python test/test.py -v
 
 test3: env
 	python3 ./test/test.py -v
