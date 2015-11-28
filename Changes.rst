@@ -1,3 +1,7 @@
+Version 0.4.6 (2015-11-28)
+--------------------------
+- Python 3.5 compatibility fix: move enum34 into conditional dependencies (#37). Thanks to @agronholm.
+
 Version 0.4.5 (2015-11-08)
 --------------------------
 - Support enveloped signatures nested at arbitrary levels beneath root element (#32, #33). Thanks to @jmindek.
