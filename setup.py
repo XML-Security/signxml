@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-import os, glob
 from setuptools import setup, find_packages
-
-install_requires = [line.rstrip() for line in open(os.path.join(os.path.dirname(__file__), "requirements.txt"))]
 
 setup(
     name='signxml',
@@ -14,7 +11,18 @@ setup(
     author_email='kislyuk@gmail.com',
     description='Python XML Signature library',
     long_description=open('README.rst').read(),
-    install_requires=install_requires,
+    install_requires=[
+        'lxml >= 3.4.4, < 3.5',
+        'defusedxml >= 0.4.1, < 0.5',
+        'eight >= 0.3.0, < 0.4',
+        'cryptography >= 1.0.2, < 1.1',
+        'pyOpenSSL >= 0.15.1',
+        'certifi >= 2015.9.6.2'
+    ],
+    extras_require={
+        ':python_version == "2.7"': ['enum34 >= 1.0.4'],
+        ':python_version == "3.3"': ['enum34 >= 1.0.4']
+    },
     packages = find_packages(exclude=['test']),
     platforms=['MacOS X', 'Posix'],
     package_data={'signxml': ['schemas/*.xsd']},
@@ -29,6 +37,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ]
 )
