@@ -6,6 +6,10 @@ API documentation
 .. automodule:: signxml
    :members:
 
+Release Notes
+=============
+.. include:: ../Changes.rst
+
 
 Table of Contents
 =================
