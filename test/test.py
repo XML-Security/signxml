@@ -151,6 +151,68 @@ class TestSignXML(unittest.TestCase):
                     xmldsig(signed_data).verify()
                 # TODO: negative: verify with wrong cert, wrong CA
 
+    def test_key_name_no_x509(self):
+        from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
+
+        tree = etree.parse(self.example_xml_files[0])
+        ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
+            crt = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
+            key = fh.read()
+        for hash_alg in "sha1", "sha256":
+            for method in methods.enveloped, methods.enveloping:
+                print(hash_alg, method)
+                data = tree.getroot()
+                reset_tree(data, method)
+                signed = xmldsig(data).sign(method=method,
+                                            algorithm="rsa-" + hash_alg,
+                                            key=key,
+                                            cert=crt,
+                                            key_info_name="MyName",
+                                            key_info_cert=False)
+                signed_data = etree.tostring(signed)
+                xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
+                xmldsig(signed_data).verify(x509_cert=crt)
+                xmldsig(signed_data).verify(x509_cert=load_certificate(FILETYPE_PEM, crt))
+
+                with self.assertRaises(OpenSSLCryptoError):
+                    xmldsig(signed_data).verify(x509_cert=crt[::-1])
+
+                with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
+                    xmldsig(signed_data).verify()
+
+    def test_key_name_and_x509(self):
+        from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
+
+        tree = etree.parse(self.example_xml_files[0])
+        ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
+            crt = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
+            key = fh.read()
+        for hash_alg in "sha1", "sha256":
+            for method in methods.enveloped, methods.enveloping:
+                print(hash_alg, method)
+                data = tree.getroot()
+                reset_tree(data, method)
+                signed = xmldsig(data).sign(method=method,
+                                            algorithm="rsa-" + hash_alg,
+                                            key=key,
+                                            cert=crt,
+                                            key_info_name="MyName",
+                                            key_info_cert=True)
+                signed_data = etree.tostring(signed)
+                xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
+                xmldsig(signed_data).verify(x509_cert=crt)
+                xmldsig(signed_data).verify(x509_cert=load_certificate(FILETYPE_PEM, crt))
+
+                with self.assertRaises(OpenSSLCryptoError):
+                    xmldsig(signed_data).verify(x509_cert=crt[::-1])
+
+                with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
+                    xmldsig(signed_data).verify()
+
     def test_xmldsig_interop_examples(self):
         ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
