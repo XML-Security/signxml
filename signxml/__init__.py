@@ -278,7 +278,7 @@ class xmldsig(object):
         return c14n
 
     def sign(self, method=methods.enveloped, algorithm="rsa-sha256", key=None, passphrase=None, cert=None,
-             c14n_algorithm=default_c14n_algorithm, reference_uri=None):
+             c14n_algorithm=default_c14n_algorithm, reference_uri=None, key_name=None):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -317,6 +317,10 @@ class xmldsig(object):
         :param reference_uri:
             Custom reference URI to incorporate into the signature. Only used when ``method`` is set to ``detached``.
         :type reference_uri: string
+        :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
+            key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to sign
+            the message
+        :type key_name: string
 
         :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
 
@@ -392,6 +396,10 @@ class xmldsig(object):
             signature_value.text = ensure_str(b64encode(signature))
 
             key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
+            if key_name is not None:
+                keyname = SubElement(key_info, ds_tag("KeyName"))
+                keyname.text = key_name
+
             if cert_chain is None:
                 self._serialize_key_value(key, key_info)
             else:
