@@ -636,7 +636,10 @@ class xmldsig(object):
             try:
                 verify(cert_chain[-1], raw_signature, signed_info_c14n, signature_digest_method)
             except OpenSSLCryptoError as e:
-                lib, func, reason = e.message[0]
+                try:
+                    lib, func, reason = e.message[0]
+                except Exception:
+                    reason = e
                 raise InvalidSignature("Signature verification failed: {}".format(reason))
         elif "hmac-sha" in signature_alg:
             if self.hmac_key is None:
