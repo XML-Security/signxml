@@ -698,7 +698,7 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     if ca_pem_file is None and ca_path is None:
         import certifi
         ca_pem_file = certifi.where()
-    context.load_verify_locations(ensure_bytes(ca_pem_file), capath=ca_path)
+    context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
     store = context.get_cert_store()
     for cert in cert_chain:
         try:

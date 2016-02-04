@@ -15,12 +15,16 @@ USING_PYTHON2 = True if sys.version_info < (3, 0) else False
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
 
-def ensure_bytes(x, encoding="utf-8"):
+def ensure_bytes(x, encoding="utf-8", none_ok=False):
+    if none_ok is True and x is None:
+        return x
     if not isinstance(x, bytes):
         x = x.encode(encoding)
     return x
 
-def ensure_str(x, encoding="utf-8"):
+def ensure_str(x, encoding="utf-8", none_ok=False):
+    if none_ok is True and x is None:
+        return x
     if not isinstance(x, str):
         x = x.decode(encoding)
     return x
