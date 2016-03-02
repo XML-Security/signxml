@@ -24,6 +24,9 @@ matrix:
     - language: generic
       python: 3.5
       os: osx
+  allow_failures:
+    - python: pypy
+    - python: pypy3
 
 install:
   - python setup.py install
@@ -35,10 +38,5 @@ script:
 
 after_success:
   - coveralls
-
-matrix:
-  allow_failures:
-    - python: pypy
-    - python: pypy3
 
 sudo: false
