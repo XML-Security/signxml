@@ -29,10 +29,13 @@ matrix:
     - python: pypy3
 
 install:
+  - virtualenv --python=python env
+  - source env/bin/activate
   - python setup.py install
   - pip install coverage coveralls
 
 script:
+  - source env/bin/activate
   - coverage run --source=signxml ./test/test.py
 # - coverage report --show-missing
 
