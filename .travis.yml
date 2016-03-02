@@ -1,22 +1,40 @@
 language: python
+
+cache:
+  directories:
+    - $HOME/.cache
+    - $HOME/.m2
+
 python:
-    - 2.7
-    - 3.3
-    - 3.4
-    - 3.5
-    - pypy
-    - pypy3
+  - 2.7
+  - 3.3
+  - 3.4
+  - 3.5
+  - pypy
+  - pypy3
+
+matrix:
+  include:
+    - language: generic
+      python: 2.7
+      os: osx
+    - language: generic
+      python: 3.3
+      os: osx
+    - language: generic
+      python: 3.5
+      os: osx
 
 install:
-    - python setup.py install
-    - pip install coverage coveralls
+  - python setup.py install
+  - pip install coverage coveralls
 
 script:
-    - coverage run --source=signxml ./test/test.py
-#    - coverage report --show-missing
+  - coverage run --source=signxml ./test/test.py
+# - coverage report --show-missing
 
 after_success:
-    - coveralls
+  - coveralls
 
 matrix:
   allow_failures:
