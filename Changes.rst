@@ -1,3 +1,9 @@
+Version 0.5.0 (2016-03-02)
+--------------------------
+- Add support for using a KeyName element within the KeyInfo block (#38). Thanks to @Pelleplutt.
+- Update cryptography dependency
+- Expand Travis CI test matrix to include OS X
+
 Version 0.4.6 (2015-11-28)
 --------------------------
 - Python 3.5 compatibility fix: move enum34 into conditional dependencies (#37). Thanks to @agronholm.
