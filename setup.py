@@ -16,7 +16,7 @@ setup(
         'defusedxml >= 0.4.1, < 0.5',
         'eight >= 0.3.0, < 0.4',
         'cryptography >= 1.2.3, < 1.3',
-        'pyOpenSSL >= 0.15.1',
+        'pyOpenSSL >= 0.15.1, < 16.0.0',
         'certifi >= 2015.9.6.2'
     ],
     extras_require={
