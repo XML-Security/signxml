@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, re
+import os
 from base64 import b64encode, b64decode
 from enum import Enum
 from xml.etree import ElementTree as stdlibElementTree
 
-from eight import *
+from eight import *  # noqa
 from lxml import etree
 from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring

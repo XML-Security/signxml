@@ -23,7 +23,7 @@ setup(
         ':python_version == "2.7"': ['enum34 >= 1.0.4'],
         ':python_version == "3.3"': ['enum34 >= 1.0.4']
     },
-    packages = find_packages(exclude=['test']),
+    packages=find_packages(exclude=['test']),
     platforms=['MacOS X', 'Posix'],
     package_data={'signxml': ['schemas/*.xsd']},
     zip_safe=False,

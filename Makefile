@@ -5,8 +5,10 @@ env: setup.py
 	env/bin/pip install .
 	env/bin/pip list --outdated
 
-test: env
-	-pylint -E signxml
+lint:
+	./setup.py flake8
+
+test: env lint
 	env/bin/python test/test.py -v
 
 test3: env
@@ -24,4 +26,4 @@ docs:
 install:
 	./setup.py install
 
-.PHONY: test release docs
+.PHONY: test release docs lint
