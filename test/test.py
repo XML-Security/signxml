@@ -224,6 +224,9 @@ class TestSignXML(unittest.TestCase):
                     if signature_file.endswith("expired-cert.xml"):
                         with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
                             raise
+                    elif signature_file.endswith("invalid_enveloped_transform.xml"):
+                        with self.assertRaisesRegexp(ValueError, "Can't remove the root signature node"):
+                            raise                        
                     elif "md5" in signature_file or "ripemd160" in signature_file:
                         with self.assertRaisesRegexp(InvalidInput, "Algorithm .+ is not recognized"):
                             raise
