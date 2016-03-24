@@ -1,3 +1,8 @@
+Version 0.6.0 (2016-04-24)
+--------------------------
+- Remove signature nodes appropriately (#46). Thanks to @klondi.
+- Expand Travis CI test to include flake8 linter.
+
 Version 0.5.0 (2016-03-02)
 --------------------------
 - Add support for using a KeyName element within the KeyInfo block (#38). Thanks to @Pelleplutt.
