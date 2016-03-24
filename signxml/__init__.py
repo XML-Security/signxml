@@ -64,13 +64,34 @@ class InvalidInput(ValueError):
 
 _schema = None
 
-# Note: This regexp is a very ugly way to process XML data, but it's mandated by the standard, which requires that the
-# signature be excised after c14n, leaving behind extra whitespace that needs to be part of the digest.
-def _get_signature_regex(ns_prefix=None):
-    tag = "Signature"
-    if ns_prefix is not None:
-        tag = ns_prefix + ":" + tag
-    return re.compile(ensure_bytes(r"<{t}[>\s].*?</{t}>".format(t=tag)), flags=re.DOTALL)
+def _remove_sig(signature):
+    """
+    Remove the signature node from payload keeping any tail element.
+    This is needed for eneveloped signatures.
+
+    :param payload: Payload to remove signature from
+    :type data: XML ElementTree Element
+    :param signature: Signature to remove from payload
+    :type digest_algorithm: XML ElementTree Element
+    """
+    try:
+        signaturep = next(signature.iterancestors())
+    except StopIteration:
+        raise ValueError("Can't remove the root signature node")
+    if signature.tail is not None:
+        try:
+            signatures = next(signature.itersiblings(preceding=True))
+        except StopIteration:
+            if signaturep.text is not None:
+                signaturep.text = signaturep.text + signature.tail
+            else:
+                signaturep.text = signature.tail
+        else:
+            if signatures.tail is not None:
+                signatures.tail = signatures.tail + signature.tail
+            else:
+                signatures.tail = signature.tail
+    signaturep.remove(signature)
 
 def _get_schema():
     global _schema
@@ -201,11 +222,13 @@ class xmldsig(object):
 
             signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']", anywhere=True)
 
+            c14n_payload = fromstring(etree.tostring(self.payload))
             if len(signature_placeholders) == 0:
                 self.payload.append(self.sig_root)
             elif len(signature_placeholders) == 1:
                 self.sig_root = signature_placeholders[0]
                 del self.sig_root.attrib["Id"]
+                _remove_sig(self._findall(c14n_payload, "Signature[@Id='placeholder']", anywhere=True)[0])
             else:
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
@@ -219,6 +242,7 @@ class xmldsig(object):
         elif method == methods.detached:
             if self._reference_uri is None:
                 self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
+            c14n_payload = self.payload
         else:
             self.payload = Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")
             if isinstance(self.data, (str, bytes)):
@@ -226,10 +250,9 @@ class xmldsig(object):
             else:
                 self.payload.append(self.data)
             self._reference_uri = "#object"
+            c14n_payload = self.payload
 
-        c14n = self._c14n(self.payload, algorithm=c14n_algorithm)
-        if method == methods.enveloped:
-            c14n = _get_signature_regex(ns_prefix="ds").sub(b"", c14n)
+        c14n = self._c14n(c14n_payload, algorithm=c14n_algorithm)
         return c14n
 
     def _serialize_key_value(self, key, key_info_element):
@@ -340,6 +363,7 @@ class xmldsig(object):
             cert_chain = cert
 
         self.payload_c14n = self._get_payload_c14n(method, c14n_algorithm=c14n_algorithm)
+
         self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
 
         signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
@@ -493,6 +517,10 @@ class xmldsig(object):
             transforms = self._findall(transforms_node, "Transform")
 
         for transform in transforms:
+            if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#enveloped-signature":
+                _remove_sig(signature)
+
+        for transform in transforms:
             if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#base64":
                 payload = b64decode(payload.text)
 
@@ -505,10 +533,6 @@ class xmldsig(object):
 
         if not c14n_applied and not isinstance(payload, (str, bytes)):
             payload = self._c14n(payload, algorithm=c14n_algorithm)
-
-        for transform in transforms:
-            if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#enveloped-signature":
-                payload = _get_signature_regex(ns_prefix=signature.prefix).sub(b"", payload)
 
         return payload
 
@@ -588,11 +612,14 @@ class xmldsig(object):
             root = fromstring(self.data, parser=parser)
         else:
             root = self.data
+        c14n_root = fromstring(etree.tostring(root))
 
         if root.tag == ds_tag("Signature"):
             signature = root
+            c14n_signature = c14n_root
         else:
             signature = self._find(root, "Signature", anywhere=True)
+            c14n_signature = self._find(c14n_root, "Signature", anywhere=True)
 
         if validate_schema:
             _get_schema().assertValid(signature)
@@ -607,7 +634,8 @@ class xmldsig(object):
         digest_value = self._find(reference, "DigestValue")
 
         payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
-        payload_c14n = self._apply_transforms(payload, transforms, signature, c14n_algorithm)
+        c14n_payload = self._resolve_reference(c14n_root, reference, uri_resolver=uri_resolver)
+        payload_c14n = self._apply_transforms(c14n_payload, transforms, c14n_signature, c14n_algorithm)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidDigest("Digest mismatch")
