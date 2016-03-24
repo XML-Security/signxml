@@ -187,6 +187,8 @@ class TestSignXML(unittest.TestCase):
                 ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem")
             elif "signature-rsa" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-ca-cert.pem")
+            elif "aleksey-xmldsig-01-enveloped" in signature_file:
+                ca_pem_file = os.path.join(interop_dir, "aleksey-xmldsig-01-enveloped", "cacert.pem")
             elif "aleksey" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "aleksey-xmldsig-01", "cacert.pem")
             elif "wsfederation_metadata" in signature_file:
