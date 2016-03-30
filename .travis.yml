@@ -31,8 +31,9 @@ matrix:
 install:
   - virtualenv --python=python env
   - source env/bin/activate
-  - python setup.py install
-  - pip install coverage coveralls flake8
+  - pip install coverage coveralls flake8 wheel
+  - python setup.py bdist_wheel
+  - pip install dist/*.whl
 
 script:
   - source env/bin/activate
