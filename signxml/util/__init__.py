@@ -40,7 +40,7 @@ def bytes_to_long(s):
         return s
     acc = 0
     if USING_PYTHON2:
-        acc = long(acc)
+        acc = long(acc)  # noqa
     unpack = struct.unpack
     length = len(s)
     if length % 4:
@@ -62,7 +62,7 @@ def long_to_bytes(n, blocksize=0):
     # after much testing, this algorithm was deemed to be the fastest
     s = b''
     if USING_PYTHON2:
-        n = long(n)
+        n = long(n)  # noqa
     pack = struct.pack
     while n > 0:
         s = pack(b'>I', n & 0xffffffff) + s
