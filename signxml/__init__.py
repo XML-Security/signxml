@@ -5,7 +5,7 @@ from base64 import b64encode, b64decode
 from enum import Enum
 from xml.etree import ElementTree as stdlibElementTree
 
-from eight import *  # noqa
+from eight import str, bytes
 from lxml import etree
 from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring
