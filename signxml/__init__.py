@@ -612,6 +612,7 @@ class xmldsig(object):
             root = fromstring(self.data, parser=parser)
         else:
             root = self.data
+        #HACK: deep copy won't keep root's namespaces resulting in an invalid digest
         c14n_root = fromstring(etree.tostring(root))
 
         if root.tag == ds_tag("Signature"):
