@@ -88,6 +88,11 @@ class TestSignXML(unittest.TestCase):
                 xmldsig(signed_data).verify(parser=parser, **verify_kwargs)
                 xmldsig(signed_data).verify(id_attribute="Id", **verify_kwargs)
 
+                if method == methods.enveloped:
+                    rv = xmldsig(signed_data).verify(id_attribute="Id", **verify_kwargs)
+                    #Check the enveloped signature was removed (this test won't work for nested signatures)
+                    self.assertIsNone(rv.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
+                    
                 if method == methods.enveloping:
                     with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
                         xmldsig(signed_data).verify(id_attribute="X", **verify_kwargs)

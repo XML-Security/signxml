@@ -609,18 +609,17 @@ class xmldsig(object):
             self.id_attributes = (id_attribute, )
 
         if isinstance(self.data, (str, bytes)):
-            root = fromstring(self.data, parser=parser)
+            orig_root = fromstring(self.data, parser=parser)
         else:
-            root = self.data
+            orig_root = self.data
         #HACK: deep copy won't keep root's namespaces resulting in an invalid digest
-        c14n_root = fromstring(etree.tostring(root))
+        #We use a copy so we can modify the tree
+        root = fromstring(etree.tostring(orig_root))
 
         if root.tag == ds_tag("Signature"):
             signature = root
-            c14n_signature = c14n_root
         else:
             signature = self._find(root, "Signature", anywhere=True)
-            c14n_signature = self._find(c14n_root, "Signature", anywhere=True)
 
         if validate_schema:
             _get_schema().assertValid(signature)
@@ -635,8 +634,7 @@ class xmldsig(object):
         digest_value = self._find(reference, "DigestValue")
 
         payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
-        c14n_payload = self._resolve_reference(c14n_root, reference, uri_resolver=uri_resolver)
-        payload_c14n = self._apply_transforms(c14n_payload, transforms, c14n_signature, c14n_algorithm)
+        payload_c14n = self._apply_transforms(payload, transforms, signature, c14n_algorithm)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidDigest("Digest mismatch")
@@ -688,7 +686,11 @@ class xmldsig(object):
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
-        return payload
+        #We return the signed XML (and only that) to ensure no access to unsigned data happens
+        try:
+            return fromstring(payload_c14n)
+        except etree.XMLSyntaxError:
+            return payload_c14n
 
     @property
     def namespaces(self):
