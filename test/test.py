@@ -92,10 +92,10 @@ class TestSignXML(unittest.TestCase):
                     #Ensure the Signature is not part of the signed data
                     self.assertIsNone(_x.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
                     self.assertNotEqual(_x.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
-                
+
                 #Ensure the signature was returned
                 self.assertEqual(_s.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
-                    
+
                 if method == methods.enveloping:
                     with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
                         xmldsig(signed_data).verify(id_attribute="X", **verify_kwargs)

@@ -626,16 +626,16 @@ class xmldsig(object):
             orig_root = fromstring(self.data, parser=parser)
         else:
             orig_root = self.data
-        #HACK: deep copy won't keep root's namespaces resulting in an invalid digest
-        #We use a copy so we can modify the tree
+        # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
+        # We use a copy so we can modify the tree
         root = fromstring(etree.tostring(orig_root))
 
         if root.tag == ds_tag("Signature"):
             signature_ref = root
         else:
             signature_ref = self._find(root, "Signature", anywhere=True)
-        
-        #HACK: deep copy won't keep root's namespaces
+
+        # HACK: deep copy won't keep root's namespaces
         signature = fromstring(etree.tostring(signature_ref))
 
         if validate_schema:
@@ -703,12 +703,12 @@ class xmldsig(object):
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
-        #We return the signed XML (and only that) to ensure no access to unsigned data happens
+        # We return the signed XML (and only that) to ensure no access to unsigned data happens
         try:
             payload_c14n_xml = fromstring(payload_c14n)
         except etree.XMLSyntaxError:
             payload_c14n_xml = None
-        return VerifyResult(payload_c14n,payload_c14n_xml,signature)
+        return VerifyResult(payload_c14n, payload_c14n_xml, signature)
 
     @property
     def namespaces(self):
