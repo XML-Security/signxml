@@ -1,4 +1,9 @@
-Version 0.6.0 (2016-04-24)
+Version 1.0.0 (2016-04-08)
+--------------------------
+- Major API change: Return signature information in verify() return value (#41, #50). Thanks to @klondi.
+- Major API change: Excise signature node from verify() return value to avoid possibly returning untrusted data (#47). Thanks to @klondi.
+
+Version 0.6.0 (2016-03-24)
 --------------------------
 - Remove signature nodes appropriately (#46). Thanks to @klondi.
 - Expand Travis CI test to include flake8 linter.

@@ -111,8 +111,10 @@ class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_
     :type signed_xml: ElementTree or None
     :param signature_xml: The signature element parsed as XML
     :type signed_xml: ElementTree
+
+    This class is a namedtuple representing structured data returned by ``xmldsig.verify()``. As with any namedtuple, elements of the return value can be accessed as attributes. For example::
+        verified_data = xmldsig(input_data).verify().signed_xml
     """
-    pass
 
 class xmldsig(object):
     """
