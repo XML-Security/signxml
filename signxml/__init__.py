@@ -20,6 +20,7 @@ from pyasn1.type import univ
 from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
 from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
+from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
 
@@ -99,6 +100,19 @@ def _get_schema():
         schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig1-schema.xsd")
         _schema = etree.XMLSchema(etree.parse(schema_file))
     return _schema
+
+class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_xml")):
+    """
+    The results of a verification return the signed data, the signed xml and the signature xml
+
+    :param signed_data: The binary data as it was signed (literally)
+    :type data: bytes
+    :param signed_xml: The signed data parsed as XML (or None if parsing failed)
+    :type signed_xml: ElementTree or None
+    :param signature_xml: The signature element parsed as XML
+    :type signed_xml: ElementTree
+    """
+    pass
 
 class xmldsig(object):
     """
@@ -592,8 +606,8 @@ class xmldsig(object):
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
 
-        :returns: XML ElementTree Element API compatible object representing the root of the signed payload.
-        :rtype: XML.ElementTree.Element
+        :returns: VerifyResult object with the signed data, signed xml and signature xml
+        :rtype: VerifyResult
 
         """
         self.hmac_key = hmac_key
@@ -609,17 +623,20 @@ class xmldsig(object):
             self.id_attributes = (id_attribute, )
 
         if isinstance(self.data, (str, bytes)):
-            root = fromstring(self.data, parser=parser)
+            orig_root = fromstring(self.data, parser=parser)
         else:
-            root = self.data
-        c14n_root = fromstring(etree.tostring(root))
+            orig_root = self.data
+        # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
+        # We use a copy so we can modify the tree
+        root = fromstring(etree.tostring(orig_root))
 
         if root.tag == ds_tag("Signature"):
-            signature = root
-            c14n_signature = c14n_root
+            signature_ref = root
         else:
-            signature = self._find(root, "Signature", anywhere=True)
-            c14n_signature = self._find(c14n_root, "Signature", anywhere=True)
+            signature_ref = self._find(root, "Signature", anywhere=True)
+
+        # HACK: deep copy won't keep root's namespaces
+        signature = fromstring(etree.tostring(signature_ref))
 
         if validate_schema:
             _get_schema().assertValid(signature)
@@ -634,8 +651,7 @@ class xmldsig(object):
         digest_value = self._find(reference, "DigestValue")
 
         payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
-        c14n_payload = self._resolve_reference(c14n_root, reference, uri_resolver=uri_resolver)
-        payload_c14n = self._apply_transforms(c14n_payload, transforms, c14n_signature, c14n_algorithm)
+        payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
 
         if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
             raise InvalidDigest("Digest mismatch")
@@ -687,7 +703,12 @@ class xmldsig(object):
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
-        return payload
+        # We return the signed XML (and only that) to ensure no access to unsigned data happens
+        try:
+            payload_c14n_xml = fromstring(payload_c14n)
+        except etree.XMLSyntaxError:
+            payload_c14n_xml = None
+        return VerifyResult(payload_c14n, payload_c14n_xml, signature)
 
     @property
     def namespaces(self):

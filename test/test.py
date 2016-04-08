@@ -86,7 +86,15 @@ class TestSignXML(unittest.TestCase):
                 signed_data = etree.tostring(signed)
                 xmldsig(signed_data).verify(**verify_kwargs)
                 xmldsig(signed_data).verify(parser=parser, **verify_kwargs)
-                xmldsig(signed_data).verify(id_attribute="Id", **verify_kwargs)
+                (_d,_x,_s) = xmldsig(signed_data).verify(id_attribute="Id", **verify_kwargs)
+
+                if _x is not None:
+                    #Ensure the Signature is not part of the signed data
+                    self.assertIsNone(_x.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
+                    self.assertNotEqual(_x.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+
+                #Ensure the signature was returned
+                self.assertEqual(_s.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 if method == methods.enveloping:
                     with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
