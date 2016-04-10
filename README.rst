@@ -43,6 +43,14 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 **Ubuntu 12.04:** ``python-cffi`` is not available on 12.04. Use ``apt-get install libffi-dev`` followed by
 ``pip install cffi``.
 
+**CentOS, Python 2**::
+
+    yum install python-devel python-cffi libxml2-devel libxslt1-devel openssl-devel
+
+**CentOS, Python 3**::
+
+    yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel
+
 **OS X**: Use `Homebrew <http://brew.sh/>`_::
 
     brew install libxml2 libxslt
