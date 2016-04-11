@@ -626,12 +626,11 @@ class xmldsig(object):
             self.id_attributes = (id_attribute, )
 
         if isinstance(self.data, (str, bytes)):
-            orig_root = fromstring(self.data, parser=parser)
+            root = fromstring(self.data, parser=parser)
         else:
-            orig_root = self.data
-        # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
-        # We use a copy so we can modify the tree
-        root = fromstring(etree.tostring(orig_root))
+            # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
+            # We use a copy so we can modify the tree
+            root = fromstring(etree.tostring(self.data))
 
         if root.tag == ds_tag("Signature"):
             signature_ref = root
@@ -639,7 +638,7 @@ class xmldsig(object):
             signature_ref = self._find(root, "Signature", anywhere=True)
 
         # HACK: deep copy won't keep root's namespaces
-        signature = fromstring(etree.tostring(signature_ref))
+        signature = fromstring(etree.tostring(signature_ref), parser=parser)
 
         if validate_schema:
             _get_schema().assertValid(signature)
@@ -652,13 +651,6 @@ class xmldsig(object):
         signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
         digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
-
-        payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
-        payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
-
-        if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
-            raise InvalidDigest("Digest mismatch")
-
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = signature_method.get("Algorithm")
@@ -705,6 +697,12 @@ class xmldsig(object):
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
+
+        payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
+        payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
+
+        if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
+            raise InvalidDigest("Digest mismatch")
 
         # We return the signed XML (and only that) to ensure no access to unsigned data happens
         try:
