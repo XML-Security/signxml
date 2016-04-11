@@ -19,7 +19,7 @@ from cryptography.hazmat.backends import default_backend
 from pyasn1.type import univ
 from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
-from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str
+from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, _Namespace
 from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
@@ -31,19 +31,20 @@ class DERSequenceOfIntegers(univ.SequenceOf):
         for pos, i in enumerate(integers):
             self.setComponentByPosition(pos, i)
 
-XMLDSIG_NS = "http://www.w3.org/2000/09/xmldsig#"
-XMLDSIG11_NS = "http://www.w3.org/2009/xmldsig11#"
-XMLENC_NS = "http://www.w3.org/2001/04/xmlenc#"
-XMLDSIG_MORE_NS = "http://www.w3.org/2001/04/xmldsig-more#"
-XML_EXC_C14N_NS = "http://www.w3.org/2001/10/xml-exc-c14n#"
-
-namespaces = dict(ds=XMLDSIG_NS, ds11=XMLDSIG11_NS, ec=XML_EXC_C14N_NS)
+namespaces = _Namespace(
+    ds="http://www.w3.org/2000/09/xmldsig#",
+    dsig11="http://www.w3.org/2009/xmldsig11#",
+    dsig2="http://www.w3.org/2010/xmldsig2#",
+    ec="http://www.w3.org/2001/10/xml-exc-c14n#",
+    dsig_more="http://www.w3.org/2001/04/xmldsig-more#",
+    enc="http://www.w3.org/2001/04/xmlenc#"
+)
 
 def ds_tag(tag):
-    return "{" + XMLDSIG_NS + "}" + tag
+    return "{" + namespaces.ds + "}" + tag
 
-def ds11_tag(tag):
-    return "{" + XMLDSIG11_NS + "}" + tag
+def dsig11_tag(tag):
+    return "{" + namespaces.dsig11 + "}" + tag
 
 class InvalidSignature(cryptography.exceptions.InvalidSignature):
     """
@@ -128,7 +129,7 @@ class xmldsig(object):
     def __init__(self, data, digest_algorithm="sha256"):
         self.digest_alg = digest_algorithm
         self.signature_alg = None
-        self._namespaces = dict(ds=XMLDSIG_NS)
+        self._namespaces = dict(ds=namespaces.ds)
         self.data = data
 
         if isinstance(data, stdlibElementTree.Element):
@@ -136,34 +137,34 @@ class xmldsig(object):
             self.data = fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
 
     known_digest_methods = {
-        XMLDSIG_NS + "sha1": SHA1,
-        XMLENC_NS + "sha256": SHA256,
-        XMLDSIG_MORE_NS + "sha224": SHA224,
-        XMLDSIG_MORE_NS + "sha384": SHA384,
-        XMLENC_NS + "sha512": SHA512,
+        namespaces.ds + "sha1": SHA1,
+        namespaces.enc + "sha256": SHA256,
+        namespaces.dsig_more + "sha224": SHA224,
+        namespaces.dsig_more + "sha384": SHA384,
+        namespaces.enc + "sha512": SHA512,
     }
 
     known_hmac_digest_methods = {
-        XMLDSIG_NS + "hmac-sha1": SHA1,
-        XMLDSIG_MORE_NS + "hmac-sha256": SHA256,
-        XMLDSIG_MORE_NS + "hmac-sha384": SHA384,
-        XMLDSIG_MORE_NS + "hmac-sha512": SHA512,
-        XMLDSIG_MORE_NS + "hmac-sha224": SHA224,
+        namespaces.ds + "hmac-sha1": SHA1,
+        namespaces.dsig_more + "hmac-sha256": SHA256,
+        namespaces.dsig_more + "hmac-sha384": SHA384,
+        namespaces.dsig_more + "hmac-sha512": SHA512,
+        namespaces.dsig_more + "hmac-sha224": SHA224,
     }
 
     known_signature_digest_methods = {
-        XMLDSIG_MORE_NS + "rsa-sha256": SHA256,
-        XMLDSIG_MORE_NS + "ecdsa-sha256": SHA256,
-        XMLDSIG_NS + "dsa-sha1": SHA1,
-        XMLDSIG_NS + "rsa-sha1": SHA1,
-        XMLDSIG_MORE_NS + "rsa-sha224": SHA224,
-        XMLDSIG_MORE_NS + "rsa-sha384": SHA384,
-        XMLDSIG_MORE_NS + "rsa-sha512": SHA512,
-        XMLDSIG_MORE_NS + "ecdsa-sha1": SHA1,
-        XMLDSIG_MORE_NS + "ecdsa-sha224": SHA224,
-        XMLDSIG_MORE_NS + "ecdsa-sha384": SHA384,
-        XMLDSIG_MORE_NS + "ecdsa-sha512": SHA512,
-        XMLDSIG11_NS + "dsa-sha256": SHA256,
+        namespaces.dsig_more + "rsa-sha256": SHA256,
+        namespaces.dsig_more + "ecdsa-sha256": SHA256,
+        namespaces.ds + "dsa-sha1": SHA1,
+        namespaces.ds + "rsa-sha1": SHA1,
+        namespaces.dsig_more + "rsa-sha224": SHA224,
+        namespaces.dsig_more + "rsa-sha384": SHA384,
+        namespaces.dsig_more + "rsa-sha512": SHA512,
+        namespaces.dsig_more + "ecdsa-sha1": SHA1,
+        namespaces.dsig_more + "ecdsa-sha224": SHA224,
+        namespaces.dsig_more + "ecdsa-sha384": SHA384,
+        namespaces.dsig_more + "ecdsa-sha512": SHA512,
+        namespaces.dsig11 + "dsa-sha256": SHA256,
     }
     known_digest_tags = {method.split("#")[1]: method for method in known_digest_methods}
     known_hmac_digest_tags = {method.split("#")[1]: method for method in known_hmac_digest_methods}
@@ -291,10 +292,10 @@ class xmldsig(object):
 
                 e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
         elif self.signature_alg.startswith("ecdsa-"):
-            ec_key_value = SubElement(key_value, ds11_tag("ECKeyValue"), nsmap=dict(ds11=XMLDSIG11_NS))
-            named_curve = SubElement(ec_key_value, ds11_tag("NamedCurve"),
+            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
+            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),
                                      URI=self.known_ecdsa_curve_oids[key.curve.name])
-            public_key = SubElement(ec_key_value, ds11_tag("PublicKey"))
+            public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
             public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
@@ -392,7 +393,7 @@ class xmldsig(object):
         reference = SubElement(signed_info, ds_tag("Reference"), URI=self._reference_uri)
         if method == methods.enveloped:
             transforms = SubElement(reference, ds_tag("Transforms"))
-            SubElement(transforms, ds_tag("Transform"), Algorithm=XMLDSIG_NS + "enveloped-signature")
+            SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
             SubElement(transforms, ds_tag("Transform"), Algorithm=c14n_algorithm)
         digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
         digest_value = SubElement(reference, ds_tag("DigestValue"))
@@ -464,9 +465,9 @@ class xmldsig(object):
 
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
         if "ecdsa-" in signature_alg:
-            ec_key_value = self._find(key_value, "ECKeyValue", namespace="ds11")
-            named_curve = self._find(ec_key_value, "NamedCurve", namespace="ds11")
-            public_key = self._find(ec_key_value, "PublicKey", namespace="ds11")
+            ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
+            named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
+            public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
             key_data = b64decode(public_key.text)[1:]
             x = bytes_to_long(key_data[:len(key_data)//2])
             y = bytes_to_long(key_data[len(key_data)//2:])
@@ -620,7 +621,7 @@ class xmldsig(object):
             self.require_x509 = True
 
         if id_attribute is None:
-            self.id_attributes = ("Id", "ID")
+            self.id_attributes = ("Id", "ID", "id", "xml:id")
         else:
             self.id_attributes = (id_attribute, )
 

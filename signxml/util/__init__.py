@@ -94,3 +94,6 @@ def add_pem_header(bare_base64_cert):
     if bare_base64_cert.startswith(PEM_HEADER):
         return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
+
+class _Namespace(dict):
+    __getattr__ = dict.__getitem__
