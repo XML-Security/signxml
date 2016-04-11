@@ -139,6 +139,7 @@ Links
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
 * `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
+* `W3C Working Group Note: XML Security 2.0 Requirements and Design Considerations <https://www.w3.org/TR/2013/NOTE-xmlsec-reqs2-20130411/>`_
 * `W3C Working Group Note: XML Signature Best Practices <http://www.w3.org/TR/xmldsig-bestpractices/>`_
 * `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
