@@ -108,7 +108,7 @@ class TestSignXML(unittest.TestCase):
                         mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
                         xmldsig(mangled_sig).verify(**verify_kwargs)
 
-                with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
                     mangled_sig = signed_data.replace(b"<ds:DigestValue>", b"<ds:DigestValue>!")
                     xmldsig(mangled_sig).verify(**verify_kwargs)
 
