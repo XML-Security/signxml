@@ -16,8 +16,8 @@ setup(
         'defusedxml >= 0.4.1, < 0.5',
         'eight >= 0.3.0, < 0.4',
         'cryptography >= 1.2.3, < 1.4',
-        'pyOpenSSL >= 16.0.0, < 16.1.0',
-        'certifi >= 2015.9.6.2'
+        'pyOpenSSL >= 0.15.1, < 16.0.0',
+        'certifi >= 2015.11.20.1'
     ],
     extras_require={
         ':python_version == "2.7"': ['enum34 >= 1.0.4'],
