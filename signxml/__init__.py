@@ -664,6 +664,8 @@ class xmldsig(object):
                 if x509_data is None:
                     raise InvalidInput("Expected a X.509 certificate based signature")
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+                if not certs:
+                    raise InvalidInput("Expected to find an X509Certificate element in the signature (X509SubjectName, X509SKI are not supported)")
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
             elif isinstance(self.x509_cert, X509):
