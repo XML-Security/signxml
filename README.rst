@@ -32,29 +32,27 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 <https://github.com/pyca/cryptography>`_, which in turn depend on `OpenSSL <https://www.openssl.org/>`_, `LibXML
 <http://xmlsoft.org/>`_, and Python tools to interface with them. You can install those as follows:
 
-**Ubuntu/Debian, Python 2**::
-
-    apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev
-
-**Ubuntu/Debian, Python 3**::
-
-    apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev
-
-**Ubuntu 12.04:** ``python-cffi`` is not available on 12.04. Use ``apt-get install libffi-dev`` followed by
-``pip install cffi``.
-
-**Red Hat, Python 2**::
-
-    yum install python-devel python-cffi libxml2-devel libxslt1-devel openssl-devel
-
-**Red Hat, Python 3**::
-
-    yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel
-
-**OS X**: Use `Homebrew <http://brew.sh/>`_::
-
-    brew install libxml2 libxslt
-    brew link --force libxml2 libxslt
++--------------+---------+-----------------------------------------------------------------------------------------+
+| OS           | Python  | Command                                                                                 |
++==============+=========+=========================================================================================+
+| Ubuntu 16.04 | Python 2| apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev              |
+|              |         | python-lxml python-cryptography python-openssl python-certifi python-defusedxml         |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| Ubuntu 16.04 | Python 3| apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev            |
+|              |         | python3-lxml python3-cryptography python3-openssl python3-certifi python3-defusedxml    |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| Ubuntu 14.04 | Python 2| apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev              |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| Ubuntu 14.04 | Python 3| apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev            |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| Ubuntu 12.04 | Python 2| apt-get install python-dev libxml2-dev libxslt1-dev libssl-dev; pip install cffi        |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| Red Hat      | Python 2| yum install python-devel python-cffi libxml2-devel libxslt1-devel openssl-devel         |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| Red Hat      | Python 3| yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel       |
++--------------+---------+-----------------------------------------------------------------------------------------+
+| OS X/Homebrew|         | brew install libxml2 libxslt; brew link --force libxml2 libxslt                         |
++--------------+---------+-----------------------------------------------------------------------------------------+
 
 Synopsis
 --------
