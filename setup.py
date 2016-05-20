@@ -28,6 +28,7 @@ setup(
     package_data={'signxml': ['schemas/*.xsd']},
     zip_safe=False,
     include_package_data=True,
+    test_suite='test',
     classifiers=[
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
