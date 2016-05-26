@@ -153,8 +153,8 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
 
 .. image:: https://img.shields.io/travis/kislyuk/signxml.svg
         :target: https://travis-ci.org/kislyuk/signxml
-.. image:: https://img.shields.io/coveralls/kislyuk/signxml.svg
-        :target: https://coveralls.io/r/kislyuk/signxml?branch=master
+.. image:: https://codecov.io/github/kislyuk/signxml/coverage.svg?branch=master
+        :target: https://codecov.io/github/kislyuk/signxml?branch=master
 .. image:: https://img.shields.io/pypi/v/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://img.shields.io/pypi/dm/signxml.svg
