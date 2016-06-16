@@ -121,7 +121,7 @@ For detached signatures, the code above will use the ``Id`` or ``ID`` attribute 
 To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``xmldsig.verify(uri_resolver=...)``.
 
-See the `API documentation <https://signxml.readthedocs.org/en/latest/#id3>`_ for more.
+See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
 
 Authors
 -------
@@ -130,7 +130,7 @@ Authors
 Links
 -----
 * `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
-* `Documentation (Read the Docs) <https://signxml.readthedocs.org/en/latest/>`_
+* `Documentation (Read the Docs) <https://signxml.readthedocs.io/en/latest/>`_
 * `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
 * `Change log <https://github.com/kislyuk/signxml/blob/master/Changes.rst>`_
 * `List of W3C XML Signature standards and drafts <http://www.w3.org/TR/#tr_XML_Signature>`_
@@ -162,4 +162,4 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
 .. image:: https://img.shields.io/pypi/l/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
-        :target: https://signxml.readthedocs.org/
+        :target: https://signxml.readthedocs.io/
