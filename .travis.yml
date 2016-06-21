@@ -1,9 +1,5 @@
 language: python
-
-cache:
-  directories:
-    - $HOME/.cache
-    - $HOME/.m2
+cache: pip
 
 python:
   - 2.7
