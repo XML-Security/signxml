@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ns0:Assertion xmlns:ns0="urn:oasis:names:tc:SAML:2.0:assertion" xmlns:ns1="http://www.w3.org/2000/09/xmldsig#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ID="11111" IssueInstant="2009-10-30T13:20:28Z" Version="2.0">
+  <ns1:Signature Id="Signature1">
+    <ns1:SignedInfo>
+      <ns1:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+      <ns1:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+      <ns1:Reference URI="#11111">
+        <ns1:Transforms>
+          <ns1:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+          <ns1:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+        </ns1:Transforms>
+        <ns1:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+        <ns1:DigestValue>bMUrCSql+y9rWuimppq0le0vkyD9qLXG+PUNL6XW9HA=</ns1:DigestValue>
+      </ns1:Reference>
+    </ns1:SignedInfo>
+    <ns1:SignatureValue>xtOJIL+IhnVdxDT3Ze6QR2AMEZmdm6OEmdm2pnI+QhuVOXSgYXi0sSveGc6Z95r7
+y6gPhTPLe1zQaGN1G5HnRtQwVEGxeGGAe2a09XR04xPUQCwgMbgUnuvbjQPmLnfc
+oSj1hcwhOJgyvKEaaJOl2OBuFBQWXLzHKMDlgSckr8c=</ns1:SignatureValue>
+    <ns1:KeyInfo>
+      <ns1:X509Data>
+        <ns1:X509Certificate>MIICsDCCAhmgAwIBAgIJAJrzqSSwmDY9MA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIEwpTb21lLVN0YXRlMSEwHwYDVQQKExhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwHhcNMDkxMDA2MTk0OTQxWhcNMDkxMTA1MTk0OTQxWjBFMQswCQYDVQQGEwJBVTETMBEGA1UECBMKU29tZS1TdGF0ZTEhMB8GA1UEChMYSW50ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDJg2cms7MqjniT8Fi/XkNHZNPbNVQyMUMXE9tXOdqwYCA1cc8vQdzkihscQMXy3iPw2cMggBu6gjMTOSOxECkuvX5ZCclKr8pXAJM5cY6gVOaVO2PdTZcvDBKGbiaNefiEw5hnoZomqZGp8wHNLAUkwtH9vjqqvxyS/vclc6k2ewIDAQABo4GnMIGkMB0GA1UdDgQWBBRePsKHKYJsiojE78ZWXccK9K4aJTB1BgNVHSMEbjBsgBRePsKHKYJsiojE78ZWXccK9K4aJaFJpEcwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgTClNvbWUtU3RhdGUxITAfBgNVBAoTGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZIIJAJrzqSSwmDY9MAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADgYEAJSrKOEzHO7TL5cy6h3qh+3+JAk8HbGBW+cbX6KBCAw/mzU8flK25vnWwXS3dv2FF3Aod0/S7AWNfKib5U/SA9nJaz/mWeF9S0farz9AQFc8/NSzAzaVq7YbM4F6f6N2FRl7GikdXRCed45j6mrPzGzk3ECbupFnqyREH3+ZPSdk=</ns1:X509Certificate>
+      </ns1:X509Data>
+    </ns1:KeyInfo>
+  </ns1:Signature>
+  <ns0:AttributeStatement>
+    <ns0:Attribute FriendlyName="givenName" NameFormat="">
+      <ns0:AttributeValue xsi:nil="true" xsi:type="xs:string">Bar</ns0:AttributeValue>
+    </ns0:Attribute>
+    <ns0:Attribute FriendlyName="surName" NameFormat="">
+      <ns0:AttributeValue xsi:nil="true" xsi:type="xs:string">Foo</ns0:AttributeValue>
+    </ns0:Attribute>
+  </ns0:AttributeStatement>
+</ns0:Assertion>

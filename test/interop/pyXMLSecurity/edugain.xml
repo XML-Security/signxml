@@ -1,0 +1,115 @@
+<?xml version="1.0"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://login.offcampuspartners.com">
+  <Signature xmlns="http://www.w3.org/2000/09/xmldsig#"><SignedInfo><CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><Reference URI=""><Transforms><Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#WithComments"/></Transforms><DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><DigestValue>lwZ1+LFsbfcuYXOml493uUnT1kY=</DigestValue></Reference></SignedInfo><SignatureValue>cysf+dF8Ji0aNu2OnXl2jlUno1hjt1gCHWz9zkMAMtDOgTi3atPIDV8sDZ9WBIpc
+Z28nTB16ICFd/C/ezdZsQAYEq+jh5Z0oUYJlFiw6M2BF5mBNIQeE7RkDBtqmbeQe
+WdsJyxZe0KBsRATepWNie1BZu08xWO5Eqh4sRSpShhU=</SignatureValue><KeyInfo><X509Data>
+<X509Certificate>MIICsDCCAhmgAwIBAgIJAJrzqSSwmDY9MA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNV
+BAYTAkFVMRMwEQYDVQQIEwpTb21lLVN0YXRlMSEwHwYDVQQKExhJbnRlcm5ldCBX
+aWRnaXRzIFB0eSBMdGQwHhcNMDkxMDA2MTk0OTQxWhcNMDkxMTA1MTk0OTQxWjBF
+MQswCQYDVQQGEwJBVTETMBEGA1UECBMKU29tZS1TdGF0ZTEhMB8GA1UEChMYSW50
+ZXJuZXQgV2lkZ2l0cyBQdHkgTHRkMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKB
+gQDJg2cms7MqjniT8Fi/XkNHZNPbNVQyMUMXE9tXOdqwYCA1cc8vQdzkihscQMXy
+3iPw2cMggBu6gjMTOSOxECkuvX5ZCclKr8pXAJM5cY6gVOaVO2PdTZcvDBKGbiaN
+efiEw5hnoZomqZGp8wHNLAUkwtH9vjqqvxyS/vclc6k2ewIDAQABo4GnMIGkMB0G
+A1UdDgQWBBRePsKHKYJsiojE78ZWXccK9K4aJTB1BgNVHSMEbjBsgBRePsKHKYJs
+iojE78ZWXccK9K4aJaFJpEcwRTELMAkGA1UEBhMCQVUxEzARBgNVBAgTClNvbWUt
+U3RhdGUxITAfBgNVBAoTGEludGVybmV0IFdpZGdpdHMgUHR5IEx0ZIIJAJrzqSSw
+mDY9MAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEFBQADgYEAJSrKOEzHO7TL5cy6
+h3qh+3+JAk8HbGBW+cbX6KBCAw/mzU8flK25vnWwXS3dv2FF3Aod0/S7AWNfKib5
+U/SA9nJaz/mWeF9S0farz9AQFc8/NSzAzaVq7YbM4F6f6N2FRl7GikdXRCed45j6
+mrPzGzk3ECbupFnqyREH3+ZPSdk=</X509Certificate>
+</X509Data></KeyInfo></Signature><md:Extensions>
+    <mdrpi:RegistrationInfo xmlns:mdrpi="urn:oasis:names:tc:SAML:metadata:rpi" registrationAuthority="http://www.canarie.ca" registrationInstant="2016-02-02T06:43:00Z"/>
+  </md:Extensions>
+  <md:SPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol urn:oasis:names:tc:SAML:1.1:protocol">
+    <md:Extensions>
+      <mdui:UIInfo xmlns:mdui="urn:oasis:names:tc:SAML:metadata:ui">
+        <mdui:DisplayName xml:lang="en">Off Campus Partners</mdui:DisplayName>
+        <mdui:Description xml:lang="en">Off Campus Partners simplifies the off-campus housing&#xD;
+   search process for universities, property managers, and students. Our&#xD;
+   software platform powers the off-campus housing listing service at the&#xD;
+   nation's leading universities.</mdui:Description>
+        <mdui:InformationURL xml:lang="en">http://www.offcampuspartners.com</mdui:InformationURL>
+        <mdui:PrivacyStatementURL xml:lang="en">https://offcampuspartners.com/privacy-policy</mdui:PrivacyStatementURL>
+      </mdui:UIInfo>
+    </md:Extensions>
+    <md:KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>
+MIIERTCCAy2gAwIBAgIJALasKQVcSwJQMA0GCSqGSIb3DQEBCwUAMIG4MQswCQYD
+VQQGEwJVUzERMA8GA1UECAwIVmlyZ2luaWExGDAWBgNVBAcMD0NoYXJsb3R0ZXN2
+aWxsZTEcMBoGA1UECgwTT2ZmIENhbXB1cyBQYXJ0bmVyczEPMA0GA1UECwwGT0NQ
+IElUMSQwIgYDVQQDDBtsb2dpbi5vZmZjYW1wdXNwYXJ0bmVycy5jb20xJzAlBgkq
+hkiG9w0BCQEWGGl0QG9mZmNhbXB1c3BhcnRuZXJzLmNvbTAeFw0xNjAyMDExNzIx
+NDNaFw0yNjAxMjkxNzIxNDNaMIG4MQswCQYDVQQGEwJVUzERMA8GA1UECAwIVmly
+Z2luaWExGDAWBgNVBAcMD0NoYXJsb3R0ZXN2aWxsZTEcMBoGA1UECgwTT2ZmIENh
+bXB1cyBQYXJ0bmVyczEPMA0GA1UECwwGT0NQIElUMSQwIgYDVQQDDBtsb2dpbi5v
+ZmZjYW1wdXNwYXJ0bmVycy5jb20xJzAlBgkqhkiG9w0BCQEWGGl0QG9mZmNhbXB1
+c3BhcnRuZXJzLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAM03
+53b3FBChT+/DPzPj5YNtbY5BQAEyhoKtalxDg/bfgwyuTCZsGH6tw1HSAD11O7rh
++/fFElp1S2KqSTeD1f2t1l7T6H1nFThjEMFZAUk07rWR0qYy6ojXe3t20hJjBdlq
+Rc0kstIXbXEr8aWx9tS3XvfeoKMaCelKVemCfi6wVkL9abWWoZmR/9kDjUQAbzw3
+zK8O0FBgDw7l9WrUw3ZoQX3Pdvf4ZhKO0q8qHUgbcfJMAWsAnhN5kPJr4KkcPkNM
+yU2rcoCEuG9rwI/gx2bOoyc3g20+8uEIzOzYXIc5S2CKe6i9x7eFE7QLZa700mIv
+qV3aDSCLXC14C7+uZYMCAwEAAaNQME4wHQYDVR0OBBYEFJIeqkz6XBLGyVb2T78R
+qTD1AwG+MB8GA1UdIwQYMBaAFJIeqkz6XBLGyVb2T78RqTD1AwG+MAwGA1UdEwQF
+MAMBAf8wDQYJKoZIhvcNAQELBQADggEBAFuYJ9WiMMgtHnNsuoo42U1bB7r3AT/b
+t9uwRAPnROXysLSnv+RvzRoOB/xH3gFO9NnbKE56h/n6AimDcuR7iX3YiPbGESyP
+AIM1UqfUoYQ237qluO/b6OCqLVOie1F51JcdY/3LekN14VTWp16XKevaT7nmTwOe
+i8bpbTLCgWZ60R/n/7kdL0YDRRa8mrjoWyQ1r1ujZs1ejLTB+o5kMr6fwNFDkJgY
+kHb1//oUcwpUckqvdzloI50atQNjYm2pep/Dn/1PFQUPq7QdSkESirbZYdzERe04
+DiYzNSxGsC1x/m4WMxfvvGT39sh7OipUqSYS5MZ3miH8xatOrmvPPjA=
+</ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </md:KeyDescriptor>
+    <md:KeyDescriptor use="encryption">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>
+MIIERTCCAy2gAwIBAgIJALasKQVcSwJQMA0GCSqGSIb3DQEBCwUAMIG4MQswCQYD
+VQQGEwJVUzERMA8GA1UECAwIVmlyZ2luaWExGDAWBgNVBAcMD0NoYXJsb3R0ZXN2
+aWxsZTEcMBoGA1UECgwTT2ZmIENhbXB1cyBQYXJ0bmVyczEPMA0GA1UECwwGT0NQ
+IElUMSQwIgYDVQQDDBtsb2dpbi5vZmZjYW1wdXNwYXJ0bmVycy5jb20xJzAlBgkq
+hkiG9w0BCQEWGGl0QG9mZmNhbXB1c3BhcnRuZXJzLmNvbTAeFw0xNjAyMDExNzIx
+NDNaFw0yNjAxMjkxNzIxNDNaMIG4MQswCQYDVQQGEwJVUzERMA8GA1UECAwIVmly
+Z2luaWExGDAWBgNVBAcMD0NoYXJsb3R0ZXN2aWxsZTEcMBoGA1UECgwTT2ZmIENh
+bXB1cyBQYXJ0bmVyczEPMA0GA1UECwwGT0NQIElUMSQwIgYDVQQDDBtsb2dpbi5v
+ZmZjYW1wdXNwYXJ0bmVycy5jb20xJzAlBgkqhkiG9w0BCQEWGGl0QG9mZmNhbXB1
+c3BhcnRuZXJzLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAM03
+53b3FBChT+/DPzPj5YNtbY5BQAEyhoKtalxDg/bfgwyuTCZsGH6tw1HSAD11O7rh
++/fFElp1S2KqSTeD1f2t1l7T6H1nFThjEMFZAUk07rWR0qYy6ojXe3t20hJjBdlq
+Rc0kstIXbXEr8aWx9tS3XvfeoKMaCelKVemCfi6wVkL9abWWoZmR/9kDjUQAbzw3
+zK8O0FBgDw7l9WrUw3ZoQX3Pdvf4ZhKO0q8qHUgbcfJMAWsAnhN5kPJr4KkcPkNM
+yU2rcoCEuG9rwI/gx2bOoyc3g20+8uEIzOzYXIc5S2CKe6i9x7eFE7QLZa700mIv
+qV3aDSCLXC14C7+uZYMCAwEAAaNQME4wHQYDVR0OBBYEFJIeqkz6XBLGyVb2T78R
+qTD1AwG+MB8GA1UdIwQYMBaAFJIeqkz6XBLGyVb2T78RqTD1AwG+MAwGA1UdEwQF
+MAMBAf8wDQYJKoZIhvcNAQELBQADggEBAFuYJ9WiMMgtHnNsuoo42U1bB7r3AT/b
+t9uwRAPnROXysLSnv+RvzRoOB/xH3gFO9NnbKE56h/n6AimDcuR7iX3YiPbGESyP
+AIM1UqfUoYQ237qluO/b6OCqLVOie1F51JcdY/3LekN14VTWp16XKevaT7nmTwOe
+i8bpbTLCgWZ60R/n/7kdL0YDRRa8mrjoWyQ1r1ujZs1ejLTB+o5kMr6fwNFDkJgY
+kHb1//oUcwpUckqvdzloI50atQNjYm2pep/Dn/1PFQUPq7QdSkESirbZYdzERe04
+DiYzNSxGsC1x/m4WMxfvvGT39sh7OipUqSYS5MZ3miH8xatOrmvPPjA=
+</ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </md:KeyDescriptor>
+    <md:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://login.offcampuspartners.com/simplesaml/module.php/saml/sp/saml2-logout.php/login.offcampuspartners.com"/>
+    <md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</md:NameIDFormat>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://login.offcampuspartners.com/simplesaml/module.php/saml/sp/saml2-acs.php/login.offcampuspartners.com" index="0"/>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:1.0:profiles:browser-post" Location="https://login.offcampuspartners.com/simplesaml/module.php/saml/sp/saml1-acs.php/login.offcampuspartners.com" index="1"/>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Artifact" Location="https://login.offcampuspartners.com/simplesaml/module.php/saml/sp/saml2-acs.php/login.offcampuspartners.com" index="2"/>
+    <md:AssertionConsumerService Binding="urn:oasis:names:tc:SAML:1.0:profiles:artifact-01" Location="https://login.offcampuspartners.com/simplesaml/module.php/saml/sp/saml1-acs.php/login.offcampuspartners.com/artifact" index="3"/>
+  </md:SPSSODescriptor>
+  <md:Organization>
+    <md:OrganizationName xml:lang="en">Off Campus Partners</md:OrganizationName>
+    <md:OrganizationDisplayName xml:lang="en">Off Campus Partners</md:OrganizationDisplayName>
+    <md:OrganizationURL xml:lang="en">http://www.offcampuspartners.com</md:OrganizationURL>
+  </md:Organization>
+  <md:ContactPerson contactType="technical">
+    <md:GivenName>Wilson</md:GivenName>
+    <md:SurName>Whitaker</md:SurName>
+    <md:EmailAddress>mailto:wilson@offcampuspartners.com</md:EmailAddress>
+  </md:ContactPerson>
+</md:EntityDescriptor>

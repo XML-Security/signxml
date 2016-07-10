@@ -187,6 +187,8 @@ class TestSignXML(unittest.TestCase):
         def get_x509_cert(signature_file):
             if "windows_store_signature" in signature_file:
                 return open(os.path.join(interop_dir, "xml-crypto", "windows_store_certificate.pem")).read()
+            elif "pyXMLSecurity" in signature_file:
+                return open(os.path.join(interop_dir, "pyXMLSecurity", "test.pem")).read()
             else:
                 return None
 
@@ -210,6 +212,7 @@ class TestSignXML(unittest.TestCase):
         signature_files = glob(os.path.join(interop_dir, "*", "signature*.xml"))
         signature_files += glob(os.path.join(interop_dir, "aleksey*", "*.xml"))
         signature_files += glob(os.path.join(interop_dir, "xml-crypto", "*.xml"))
+        signature_files += glob(os.path.join(interop_dir, "pyXMLSecurity", "*.xml"))
         for signature_file in signature_files:
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
