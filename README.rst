@@ -158,8 +158,6 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
         :target: https://codecov.io/github/kislyuk/signxml?branch=master
 .. image:: https://img.shields.io/pypi/v/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
-.. image:: https://img.shields.io/pypi/dm/signxml.svg
-        :target: https://pypi.python.org/pypi/signxml
 .. image:: https://img.shields.io/pypi/l/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
