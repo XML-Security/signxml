@@ -118,9 +118,7 @@ generate, pass the ``method`` argument to ``sign()``:
 
 For detached signatures, the code above will use the ``Id`` or ``ID`` attribute of ``root`` to generate a relative URI
 (``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
-``sign()``.
-
-To verify a detached signature that refers to an external entity, pass a callable resolver in
+``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``xmldsig.verify(uri_resolver=...)``.
 
 See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
