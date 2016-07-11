@@ -100,7 +100,8 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  by that signature.
 
  In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
- data returned by the ``verify()`` method. The return value is the XML node or string that was signed.
+ data returned by the ``verify()`` method. The ``signed_xml`` attribute of the return value is the XML node or string that
+ was signed.
 
  **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
