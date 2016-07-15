@@ -1,3 +1,7 @@
+Version 1.0.1 (2016-07-14)
+--------------------------
+- Packaging fix: remove stray .pyc file
+
 Version 1.0.0 (2016-04-08)
 --------------------------
 - Major API change: Return signature information in verify() return value (#41, #50). Thanks to @klondi.
