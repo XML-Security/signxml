@@ -607,7 +607,7 @@ class xmldsig(object):
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
         :param search_anywhere:
-            If this is set to True the Signature will also be searched for in all the subelemements on all levels beneath 
+            If this is set to True the Signature will also be searched for in all the subelemements on all levels beneath
             the current element
         :type search_anywhere: boolean
 
