@@ -554,7 +554,7 @@ class xmldsig(object):
         return payload
 
     def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
-               validate_schema=True, parser=None, uri_resolver=None, id_attribute=None):
+               validate_schema=True, parser=None, uri_resolver=None, id_attribute=None, search_anywhere=True):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -606,6 +606,10 @@ class xmldsig(object):
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
+        :param search_anywhere:
+            If this is set to True the Signature will also be searched for in all the subelemements on all levels beneath 
+            the current element
+        :type search_anywhere: boolean
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
 
@@ -635,7 +639,7 @@ class xmldsig(object):
         if root.tag == ds_tag("Signature"):
             signature_ref = root
         else:
-            signature_ref = self._find(root, "Signature", anywhere=True)
+            signature_ref = self._find(root, "Signature", anywhere=search_anywhere)
 
         # HACK: deep copy won't keep root's namespaces
         signature = fromstring(etree.tostring(signature_ref), parser=parser)
