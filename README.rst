@@ -97,7 +97,8 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  It is important to understand and follow the best practice rule of "See what is signed" when verifying XML
  signatures. The gist of this rule is: if your application neglects to verify that the information it trusts is
  what was actually signed, the attacker can supply a valid signature but point you to malicious data that wasn't signed
- by that signature.
+ by that signature. Failure to follow this rule can lead to vulnerability against attacks like
+ `SAML signature wrapping <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_.
 
  In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
  data returned by the ``verify()`` method. The ``signed_xml`` attribute of the return value is the XML node or string that
@@ -142,6 +143,7 @@ Links
 * `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
 * `XMLSec: Related links <https://www.aleksey.com/xmlsec/related.html>`_
+* `OWASP SAML Security Cheat Sheet <https://www.owasp.org/index.php/SAML_Security_Cheat_Sheet>`_
 
 Bugs
 ~~~~
