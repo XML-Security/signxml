@@ -37,7 +37,8 @@ namespaces = _Namespace(
     dsig2="http://www.w3.org/2010/xmldsig2#",
     ec="http://www.w3.org/2001/10/xml-exc-c14n#",
     dsig_more="http://www.w3.org/2001/04/xmldsig-more#",
-    enc="http://www.w3.org/2001/04/xmlenc#"
+    xenc="http://www.w3.org/2001/04/xmlenc#",
+    xenc11="http://www.w3.org/2009/xmlenc11#"
 )
 
 def ds_tag(tag):
@@ -138,10 +139,10 @@ class xmldsig(object):
 
     known_digest_methods = {
         namespaces.ds + "sha1": SHA1,
-        namespaces.enc + "sha256": SHA256,
+        namespaces.xenc + "sha256": SHA256,
         namespaces.dsig_more + "sha224": SHA224,
         namespaces.dsig_more + "sha384": SHA384,
-        namespaces.enc + "sha512": SHA512,
+        namespaces.xenc + "sha512": SHA512,
     }
 
     known_hmac_digest_methods = {
