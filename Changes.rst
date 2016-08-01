@@ -1,3 +1,7 @@
+Version 1.0.2 (2016-08-01)
+--------------------------
+- Update xmlenc namespaces for downstream encryptxml support
+
 Version 1.0.1 (2016-07-14)
 --------------------------
 - Packaging fix: remove stray .pyc file
