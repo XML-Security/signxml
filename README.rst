@@ -62,13 +62,13 @@ SignXML uses the ElementTree API (also supported by lxml) to work with XML data.
 
 .. code-block:: python
 
-    from signxml import xmldsig
+    from signxml import XMLSigner, XMLVerifier
 
     cert = open("example.pem").read()
     key = open("example.key").read()
     root = ElementTree.fromstring(signature_data)
-    signed_root = xmldsig(root).sign(key=key, cert=cert)
-    verified_data = xmldsig(signed_root).verify().signed_xml
+    signed_root = XMLSigner().sign(root, key=key, cert=cert)
+    verified_data = XMLVerifier().verify(signed_root).signed_xml
 
 Verifying SAML assertions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,18 +79,18 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 
     from lxml import etree
     from base64 import b64decode
-    from signxml import xmldsig
+    from signxml import XMLVerifier
 
     with open("metadata.xml", "rb") as fh:
         cert = etree.parse(fh).find("//ds:X509Certificate").text
 
-    assertion_data = xmldsig(b64decode(assertion_body)).verify(x509_cert=cert).signed_xml
+    assertion_data = XMLVerifier().verify(b64decode(assertion_body), x509_cert=cert).signed_xml
 
 .. admonition:: Signing SAML assertions
 
  The SAML assertion schema specifies a location for the enveloped XML signature (between ``<Issuer>`` and
  ``<Subject>``). To sign a SAML assertion in a schema-compliant way, insert a signature placeholder tag at that location
- before calling xmldsig: ``<ds:Signature Id="placeholder"></ds:Signature>``.
+ before calling XMLSigner: ``<ds:Signature Id="placeholder"></ds:Signature>``.
 
 .. admonition:: See what is signed
 
@@ -114,13 +114,13 @@ generate, pass the ``method`` argument to ``sign()``:
 
 .. code-block:: python
 
-    signed_root = xmldsig(root).sign(method=signxml.methods.detached, key=key, cert=cert)
-    verified_data = xmldsig(signed_root).verify().signed_xml
+    signed_root = XMLSigner(method=signxml.methods.detached).sign(root, key=key, cert=cert)
+    verified_data = XMLVerifier().verify(signed_root).signed_xml
 
 For detached signatures, the code above will use the ``Id`` or ``ID`` attribute of ``root`` to generate a relative URI
 (``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
 ``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
-``xmldsig.verify(uri_resolver=...)``.
+``XMLVerifier().verify(data, uri_resolver=...)``.
 
 See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
 

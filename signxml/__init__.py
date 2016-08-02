@@ -1,37 +1,28 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os
 from base64 import b64encode, b64decode
 from enum import Enum
-from xml.etree import ElementTree as stdlibElementTree
 
 from eight import str, bytes
 from lxml import etree
 from lxml.etree import Element, SubElement
 from defusedxml.lxml import fromstring
 
-import cryptography.exceptions
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
 
-from pyasn1.type import univ
 from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
-from .util import bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, _Namespace
+from .exceptions import InvalidSignature, InvalidDigest, InvalidCertificate, InvalidInput
+from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
+                   XMLProcessor, DERSequenceOfIntegers)
 from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
 
-class DERSequenceOfIntegers(univ.SequenceOf):
-    componentType = univ.Integer()
-    def __init__(self, integers):
-        univ.SequenceOf.__init__(self)
-        for pos, i in enumerate(integers):
-            self.setComponentByPosition(pos, i)
-
-namespaces = _Namespace(
+namespaces = Namespace(
     ds="http://www.w3.org/2000/09/xmldsig#",
     dsig11="http://www.w3.org/2009/xmldsig11#",
     dsig2="http://www.w3.org/2010/xmldsig2#",
@@ -46,26 +37,6 @@ def ds_tag(tag):
 
 def dsig11_tag(tag):
     return "{" + namespaces.dsig11 + "}" + tag
-
-class InvalidSignature(cryptography.exceptions.InvalidSignature):
-    """
-    Raised when signature validation fails.
-    """
-
-class InvalidDigest(InvalidSignature):
-    """
-    Raised when digest validation fails (causing the signature to be untrusted).
-    """
-
-class InvalidCertificate(InvalidSignature):
-    """
-    Raised when certificate validation fails.
-    """
-
-class InvalidInput(ValueError):
-    pass
-
-_schema = None
 
 def _remove_sig(signature):
     """
@@ -96,13 +67,6 @@ def _remove_sig(signature):
                 signatures.tail = signature.tail
     signaturep.remove(signature)
 
-def _get_schema():
-    global _schema
-    if _schema is None:
-        schema_file = os.path.join(os.path.dirname(__file__), "schemas", "xmldsig1-schema.xsd")
-        _schema = etree.XMLSchema(etree.parse(schema_file))
-    return _schema
-
 class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_xml")):
     """
     The results of a verification return the signed data, the signed xml and the signature xml
@@ -114,28 +78,13 @@ class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_
     :param signature_xml: The signature element parsed as XML
     :type signed_xml: ElementTree
 
-    This class is a namedtuple representing structured data returned by ``xmldsig.verify()``. As with any namedtuple, elements of the return value can be accessed as attributes. For example::
-        verified_data = xmldsig(input_data).verify().signed_xml
+    This class is a namedtuple representing structured data returned by ``signxml.XMLVerifier.verify()``. As with any
+    namedtuple, elements of the return value can be accessed as attributes. For example::
+        verified_data = signxml.XMLVerifier().verify(input_data).signed_xml
     """
 
-class xmldsig(object):
-    """
-    Create a new XML Signature object. This is the main entry point to the functionality of the module.
-
-    :param data: Data to sign, or signature data to verify
-    :type data: String or XML ElementTree Element API compatible object
-    :param digest_algorithm: Digest algorithm that will be used to hash the data during signature generation
-    :type digest_algorithm: string
-    """
-    def __init__(self, data, digest_algorithm="sha256"):
-        self.digest_alg = digest_algorithm
-        self.signature_alg = None
-        self._namespaces = dict(ds=namespaces.ds)
-        self.data = data
-
-        if isinstance(data, stdlibElementTree.Element):
-            # TODO: add debug level logging statement re: performance impact here
-            self.data = fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
+class XMLSignatureProcessor(XMLProcessor):
+    schema_file = "xmldsig1-schema.xsd"
 
     known_digest_methods = {
         namespaces.ds + "sha1": SHA1,
@@ -231,77 +180,23 @@ class xmldsig(object):
         return self._get_digest_method_by_tag(signature_algorithm_tag, methods=self.known_signature_digest_methods,
                                               known_tags=self.known_signature_digest_tags)
 
-    def _get_payload_c14n(self, method, c14n_algorithm=default_c14n_algorithm):
-        self.payload = self.data
-        self.sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
-        if method == methods.enveloped:
-            if isinstance(self.data, (str, bytes)):
-                raise InvalidInput("When using enveloped signature, **data** must be an XML element")
-
-            signature_placeholders = self._findall(self.data, "Signature[@Id='placeholder']", anywhere=True)
-
-            c14n_payload = fromstring(etree.tostring(self.payload))
-            if len(signature_placeholders) == 0:
-                self.payload.append(self.sig_root)
-            elif len(signature_placeholders) == 1:
-                self.sig_root = signature_placeholders[0]
-                del self.sig_root.attrib["Id"]
-                _remove_sig(self._findall(c14n_payload, "Signature[@Id='placeholder']", anywhere=True)[0])
-            else:
-                raise InvalidInput("Enveloped signature input contains more than one placeholder")
-
-            if self._reference_uri is None:
-                self._reference_uri = ""
-            # get signed data id attribute value for reference uri
-            payloadId = self.payload.get("Id", self.payload.get("ID"))
-            if payloadId is not None:
-                # set default reference uri based on data id attribute value
-                self._reference_uri = "#{}".format(payloadId)
-        elif method == methods.detached:
-            if self._reference_uri is None:
-                self._reference_uri = "#{}".format(self.payload.get("Id", self.payload.get("ID", "object")))
-            c14n_payload = self.payload
+    def _find(self, element, query, require=True, namespace="ds", anywhere=False):
+        if anywhere:
+            result = element.find('.//' + namespace + ":" + query, namespaces=namespaces)
         else:
-            self.payload = Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")
-            if isinstance(self.data, (str, bytes)):
-                self.payload.text = self.data
-            else:
-                self.payload.append(self.data)
-            self._reference_uri = "#object"
-            c14n_payload = self.payload
+            result = element.find(namespace + ":" + query, namespaces=namespaces)
 
-        c14n = self._c14n(c14n_payload, algorithm=c14n_algorithm)
-        return c14n
+        if require and result is None:
+            raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
+        return result
 
-    def _serialize_key_value(self, key, key_info_element):
-        key_value = SubElement(key_info_element, ds_tag("KeyValue"))
-        if self.signature_alg.startswith("rsa-"):
-            rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
-            modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
-            modulus.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().n)))
-            exponent = SubElement(rsa_key_value, ds_tag("Exponent"))
-            exponent.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().e)))
-        elif self.signature_alg.startswith("dsa-"):
-            dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
-            for field in "p", "q", "g", "y":
-                e = SubElement(dsa_key_value, ds_tag(field.upper()))
+    def _findall(self, element, query, namespace="ds", anywhere=False):
+        if anywhere:
+            return element.findall('.//' + namespace + ":" + query, namespaces=namespaces)
+        else:
+            return element.findall(namespace + ":" + query, namespaces=namespaces)
 
-                if field == "y":
-                    key_params = key.public_key().public_numbers()
-                else:
-                    key_params = key.parameters().parameter_numbers()
-
-                e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
-        elif self.signature_alg.startswith("ecdsa-"):
-            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
-            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),
-                                     URI=self.known_ecdsa_curve_oids[key.curve.name])
-            public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
-            x = key.public_key().public_numbers().x
-            y = key.public_key().public_numbers().y
-            public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
-
-    def _c14n(self, node, algorithm=default_c14n_algorithm, inclusive_ns_prefixes=None):
+    def _c14n(self, node, algorithm, inclusive_ns_prefixes=None):
         exclusive, with_comments = False, False
 
         if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
@@ -318,22 +213,47 @@ class xmldsig(object):
             c14n = c14n.replace(b' xmlns=""', b'')
         return c14n
 
-    def sign(self, method=methods.enveloped, algorithm="rsa-sha256", key=None, passphrase=None, cert=None,
-             c14n_algorithm=default_c14n_algorithm, reference_uri=None, key_name=None):
+class XMLSigner(XMLSignatureProcessor):
+    """
+    Create a new XML Signature Signer object, which can be used to hold configuration information and sign multiple
+    pieces of data.
+
+    :param method:
+        ``signxml.methods.enveloped``, ``signxml.methods.enveloping``, or ``signxml.methods.detached``. See the list
+        of signature types under `XML Signature Syntax and Processing Version 2.0, Definitions
+        <http://www.w3.org/TR/xmldsig-core2/#sec-Definitions>`_.
+    :type method: :py:class:`methods`
+    :param signature_algorithm:
+        Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest
+        algorithm, separated by a hyphen. All algorithm IDs listed under the `Algorithm Identifiers and
+        Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature
+        1.1 standard are supported.
+    :type signature_algorithm: string
+    :param digest_algorithm: Algorithm that will be used to hash the data during signature generation. All algorithm IDs
+        listed under the `Algorithm Identifiers and Implementation Requirements
+        <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
+    :type digest_algorithm: string
+    """
+    def __init__(self, method=methods.enveloped, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
+                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm):
+        if method not in methods:
+            raise InvalidInput("Unknown signature method {}".format(method))
+        self.method = method
+        self.sign_alg = signature_algorithm
+        assert self.sign_alg in self.known_signature_digest_tags or self.sign_alg in self.known_hmac_digest_tags
+        assert digest_algorithm in self.known_digest_tags
+        self.digest_alg = digest_algorithm
+        assert c14n_algorithm in self.known_c14n_algorithms
+        self.c14n_alg = c14n_algorithm
+        self.namespaces = dict(ds=namespaces.ds)
+        self._parser = None
+
+    def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None):
         """
         Sign the data and return the root element of the resulting XML tree.
 
-        :param method:
-            ``signxml.methods.enveloped``, ``signxml.methods.enveloping``, or ``signxml.methods.detached``. See the list
-            of signature types under `XML Signature Syntax and Processing Version 2.0, Definitions
-            <http://www.w3.org/TR/xmldsig-core2/#sec-Definitions>`_.
-        :type method: :py:class:`methods`
-        :param algorithm:
-            Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest
-            algorithm, separated by a hyphen. All algorthm IDs listed under the `Algorithm Identifiers and
-            Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature
-            1.1 standard are supported.
-        :type algorithm: string
+        :param data: Data to sign
+        :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param key:
             Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string
             containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`,
@@ -351,93 +271,67 @@ class xmldsig(object):
             array of strings or OpenSSL.crypto.X509 objects containing the certificate and a chain of intermediate
             certificates.
         :type cert: string, array of strings, or array of OpenSSL.crypto.X509 objects
-        :param c14n_algorithm:
-            Canonicalization (c14n) algorithm to use. Supported algorithms are listed in the class variable
-            ``xmldsig.known_c14n_algorithms``.
-        :type c14n_algorithm: string
         :param reference_uri:
             Custom reference URI to incorporate into the signature. Only used when ``method`` is set to ``detached``.
         :type reference_uri: string
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
-            key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to sign
-            the message
+            key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
+            sign the message.
         :type key_name: string
 
-        :returns: A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and the payload data.
+        :returns:
+            A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
+            the payload data.
 
-        To specify the location of an enveloped signature within **data**, insert a `<Signature Id="placeholder"></Signature>`
-        element in **data**. This element will be replaced by the generated signature, and excised when generating the digest.
+        To specify the location of an enveloped signature within **data**, insert a
+        `<Signature Id="placeholder"></Signature>` element in **data**. This element will be replaced by the generated
+        signature, and excised when generating the digest.
         """
-        self.signature_alg = algorithm
-        self.key = key
-        self._reference_uri = reference_uri
-
-        if not isinstance(method, methods):
-            raise InvalidInput("Unknown signature method {}".format(method))
-
         if isinstance(cert, (str, bytes)):
             cert_chain = [cert]
         else:
             cert_chain = cert
 
-        self.payload_c14n = self._get_payload_c14n(method, c14n_algorithm=c14n_algorithm)
+        sig_root, doc_root, c14n_input, reference_uri = self._unpack(data, reference_uri)
+        payload_c14n = self._c14n(c14n_input, algorithm=self.c14n_alg)
+        digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
+        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uri, digest)
 
-        self.digest = self._get_digest(self.payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
-
-        signed_info = SubElement(self.sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
-        c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=c14n_algorithm)
-        if self.signature_alg.startswith("hmac-"):
-            algorithm_id = self.known_hmac_digest_tags[self.signature_alg]
-        else:
-            algorithm_id = self.known_signature_digest_tags[self.signature_alg]
-        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
-        reference = SubElement(signed_info, ds_tag("Reference"), URI=self._reference_uri)
-        if method == methods.enveloped:
-            transforms = SubElement(reference, ds_tag("Transforms"))
-            SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-            SubElement(transforms, ds_tag("Transform"), Algorithm=c14n_algorithm)
-        digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
-        digest_value = SubElement(reference, ds_tag("DigestValue"))
-        digest_value.text = self.digest
-        signature_value = SubElement(self.sig_root, ds_tag("SignatureValue"))
-
-        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
-        if self.signature_alg.startswith("hmac-"):
+        signed_info_c14n = self._c14n(signed_info_element, algorithm=self.c14n_alg)
+        if self.sign_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
-            signer = HMAC(key=self.key,
-                          algorithm=self._get_hmac_digest_method_by_tag(self.signature_alg),
+            signer = HMAC(key=key,
+                          algorithm=self._get_hmac_digest_method_by_tag(self.sign_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)
-            signature_value.text = ensure_str(b64encode(signer.finalize()))
-            self.sig_root.append(signature_value)
-        elif self.signature_alg.startswith("dsa-") or self.signature_alg.startswith("rsa-") or self.signature_alg.startswith("ecdsa-"):
-            if isinstance(self.key, (str, bytes)):
+            signature_value_element.text = ensure_str(b64encode(signer.finalize()))
+            sig_root.append(signature_value_element)
+        elif any(self.sign_alg.startswith(i) for i in ["dsa-", "rsa-", "ecdsa-"]):
+            if isinstance(key, (str, bytes)):
                 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-                key = load_pem_private_key(self.key, password=passphrase, backend=default_backend())
-            else:
-                key = self.key
+                key = load_pem_private_key(key, password=passphrase, backend=default_backend())
 
-            hash_alg = self._get_signature_digest_method_by_tag(self.signature_alg)
-            if self.signature_alg.startswith("dsa-"):
+            hash_alg = self._get_signature_digest_method_by_tag(self.sign_alg)
+            if self.sign_alg.startswith("dsa-"):
                 signer = key.signer(signature_algorithm=hash_alg)
-            elif self.signature_alg.startswith("ecdsa-"):
+            elif self.sign_alg.startswith("ecdsa-"):
                 signer = key.signer(signature_algorithm=ec.ECDSA(algorithm=hash_alg))
-            elif self.signature_alg.startswith("rsa-"):
+            elif self.sign_alg.startswith("rsa-"):
                 signer = key.signer(padding=PKCS1v15(), algorithm=hash_alg)
             else:
                 raise NotImplementedError()
             signer.update(signed_info_c14n)
             signature = signer.finalize()
-            if self.signature_alg.startswith("dsa-"):
+            if self.sign_alg.startswith("dsa-"):
                 # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
                 decoded_signature = der_decoder.decode(signature)[0]
                 r = decoded_signature.getComponentByPosition(0)
                 s = decoded_signature.getComponentByPosition(1)
                 signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
 
-            signature_value.text = ensure_str(b64encode(signature))
+            signature_value_element.text = ensure_str(b64encode(signature))
 
-            key_info = SubElement(self.sig_root, ds_tag("KeyInfo"))
+            key_info = SubElement(sig_root, ds_tag("KeyInfo"))
             if key_name is not None:
                 keyname = SubElement(key_info, ds_tag("KeyName"))
                 keyname.text = key_name
@@ -456,13 +350,102 @@ class xmldsig(object):
         else:
             raise NotImplementedError()
 
-        if method == methods.enveloped:
-            return self.payload
-        elif method == methods.enveloping:
-            self.sig_root.append(self.payload)
-            return self.sig_root
-        elif method == methods.detached:
-            return self.sig_root
+        if self.method == methods.enveloping:
+            doc_root.append(c14n_input)
+        return doc_root
+
+    def _unpack(self, data, reference_uri):
+        sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
+        doc_root = sig_root
+        if self.method == methods.enveloped:
+            if isinstance(data, (str, bytes)):
+                raise InvalidInput("When using enveloped signature, **data** must be an XML element")
+            c14n_input = self.get_root(data)
+            doc_root = self.get_root(data)
+            signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
+            if len(signature_placeholders) == 0:
+                doc_root.append(sig_root)
+            elif len(signature_placeholders) == 1:
+                sig_root = signature_placeholders[0]
+                del sig_root.attrib["Id"]
+                _remove_sig(self._findall(c14n_input, "Signature[@Id='placeholder']", anywhere=True)[0])
+            else:
+                raise InvalidInput("Enveloped signature input contains more than one placeholder")
+
+            if reference_uri is None:
+                reference_uri = ""
+            # get signed data id attribute value for reference uri
+            payload_id = c14n_input.get("Id", c14n_input.get("ID"))
+            if payload_id is not None:
+                # set default reference uri based on data id attribute value
+                reference_uri = "#{}".format(payload_id)
+        elif self.method == methods.detached:
+            if reference_uri is None:
+                reference_uri = "#{}".format(data.get("Id", data.get("ID", "object")))
+            c14n_input = self.get_root(data)
+        elif self.method == methods.enveloping:
+            c14n_input = Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")
+            if isinstance(data, (str, bytes)):
+                c14n_input.text = data
+            else:
+                c14n_input.append(self.get_root(data))
+            reference_uri = "#object"
+        return sig_root, doc_root, c14n_input, reference_uri
+
+    def _build_sig(self, sig_root, reference_uri, digest):
+        signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
+        c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        if self.sign_alg.startswith("hmac-"):
+            algorithm_id = self.known_hmac_digest_tags[self.sign_alg]
+        else:
+            algorithm_id = self.known_signature_digest_tags[self.sign_alg]
+        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
+        reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+        if self.method == methods.enveloped:
+            transforms = SubElement(reference, ds_tag("Transforms"))
+            SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
+            SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+        digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
+        digest_value = SubElement(reference, ds_tag("DigestValue"))
+        digest_value.text = digest
+        signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
+        return signed_info, signature_value
+
+    def _serialize_key_value(self, key, key_info_element):
+        key_value = SubElement(key_info_element, ds_tag("KeyValue"))
+        if self.sign_alg.startswith("rsa-"):
+            rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
+            modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
+            modulus.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().n)))
+            exponent = SubElement(rsa_key_value, ds_tag("Exponent"))
+            exponent.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().e)))
+        elif self.sign_alg.startswith("dsa-"):
+            dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
+            for field in "p", "q", "g", "y":
+                e = SubElement(dsa_key_value, ds_tag(field.upper()))
+
+                if field == "y":
+                    key_params = key.public_key().public_numbers()
+                else:
+                    key_params = key.parameters().parameter_numbers()
+
+                e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
+        elif self.sign_alg.startswith("ecdsa-"):
+            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
+            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),
+                                     URI=self.known_ecdsa_curve_oids[key.curve.name])
+            public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
+            x = key.public_key().public_numbers().x
+            y = key.public_key().public_numbers().y
+            public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
+
+class XMLVerifier(XMLSignatureProcessor):
+    """
+    Create a new XML Signature Verifier object, which can be used to hold configuration information and verify multiple
+    pieces of data.
+    """
+    def __init__(self):
+        pass
 
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
         if "ecdsa-" in signature_alg:
@@ -483,15 +466,17 @@ class xmldsig(object):
             y = self._get_long(dsa_key_value, "Y")
             pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
             key = pn.public_key(backend=default_backend())
-            sig_as_der_seq = der_encoder.encode(DERSequenceOfIntegers([bytes_to_long(raw_signature[:len(raw_signature)//2]),
-                                                                       bytes_to_long(raw_signature[len(raw_signature)//2:])]))
+            der_seq = DERSequenceOfIntegers([bytes_to_long(raw_signature[:len(raw_signature)//2]),
+                                             bytes_to_long(raw_signature[len(raw_signature)//2:])])
+            sig_as_der_seq = der_encoder.encode(der_seq)
             verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")
             modulus = self._get_long(rsa_key_value, "Modulus")
             exponent = self._get_long(rsa_key_value, "Exponent")
             key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
-            verifier = key.verifier(raw_signature, padding=PKCS1v15(), algorithm=self._get_signature_digest_method(signature_alg))
+            verifier = key.verifier(raw_signature, padding=PKCS1v15(),
+                                    algorithm=self._get_signature_digest_method(signature_alg))
         else:
             raise NotImplementedError()
 
@@ -507,7 +492,8 @@ class xmldsig(object):
             # doc_root.xpath(uri.lstrip("#"))[0]
         elif uri.startswith("#"):
             for id_attribute in self.id_attributes:
-                # results = doc_root.xpath("..//*[@*[local-name() = '{}']=$uri]".format(id_attribute), uri=uri.lstrip("#"))
+                # results = doc_root.xpath("..//*[@*[local-name() = '{}']=$uri]".format(id_attribute),
+                #                          uri=uri.lstrip("#"))
                 results = doc_root.xpath("..//*[@{}=$uri]".format(id_attribute), uri=uri.lstrip("#"))
                 if len(results) > 1:
                     raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
@@ -554,7 +540,7 @@ class xmldsig(object):
 
         return payload
 
-    def verify(self, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
+    def verify(self, data, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
                validate_schema=True, parser=None, uri_resolver=None, id_attribute=None):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
@@ -577,6 +563,8 @@ class xmldsig(object):
 
         TODO: CN verification
 
+        :param data: Signature data to verify
+        :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param require_x509:
             If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other
             types of valid signatures (e.g. HMAC or RSA public key) are accepted.
@@ -626,13 +614,8 @@ class xmldsig(object):
         else:
             self.id_attributes = (id_attribute, )
 
-        if isinstance(self.data, (str, bytes)):
-            root = fromstring(self.data, parser=parser)
-        else:
-            # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
-            # We use a copy so we can modify the tree
-            root = fromstring(etree.tostring(self.data))
-
+        self._parser = parser
+        root = self.get_root(data)
         if root.tag == ds_tag("Signature"):
             signature_ref = root
         else:
@@ -642,7 +625,7 @@ class xmldsig(object):
         signature = fromstring(etree.tostring(signature_ref), parser=parser)
 
         if validate_schema:
-            _get_schema().assertValid(signature)
+            self.schema().assertValid(signature)
 
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
@@ -666,7 +649,8 @@ class xmldsig(object):
                     raise InvalidInput("Expected a X.509 certificate based signature")
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
                 if not certs:
-                    raise InvalidInput("Expected to find an X509Certificate element in the signature (X509SubjectName, X509SKI are not supported)")
+                    msg = "Expected to find an X509Certificate element in the signature (X509SubjectName, X509SKI are not supported)"  # noqa
+                    raise InvalidInput(msg)
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
             elif isinstance(self.x509_cert, X509):
@@ -714,35 +698,11 @@ class xmldsig(object):
             payload_c14n_xml = None
         return VerifyResult(payload_c14n, payload_c14n_xml, signature)
 
-    @property
-    def namespaces(self):
-        return self._namespaces
-
-    @namespaces.setter
-    def namespaces(self, new_namespaces):
-        self._namespaces = new_namespaces
-
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
         if result is not None:
             result = bytes_to_long(b64decode(result.text))
         return result
-
-    def _find(self, element, query, require=True, namespace="ds", anywhere=False):
-        if anywhere:
-            result = element.find('.//' + namespace + ":" + query, namespaces=namespaces)
-        else:
-            result = element.find(namespace + ":" + query, namespaces=namespaces)
-
-        if require and result is None:
-            raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
-        return result
-
-    def _findall(self, element, query, namespace="ds", anywhere=False):
-        if anywhere:
-            return element.findall('.//' + namespace + ":" + query, namespaces=namespaces)
-        else:
-            return element.findall(namespace + ":" + query, namespaces=namespaces)
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     from OpenSSL import SSL

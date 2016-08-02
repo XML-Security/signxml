@@ -35,7 +35,7 @@ install:
 
 script:
   - source env/bin/activate
-  - flake8 signxml --ignore E501,E301,E302,F841,E226,E401
+  - flake8 signxml
   - coverage run --source=signxml ./test/test.py
 # - coverage report --show-missing
 

@@ -6,15 +6,17 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os, sys, unittest, itertools, re
 from glob import glob
 from xml.etree import ElementTree as stdlibElementTree
+from base64 import b64encode, b64decode
 
 from lxml import etree
 import cryptography.exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
-from eight import *
+from eight import str, open
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from signxml import *
+from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, InvalidSignature,
+                     InvalidCertificate, InvalidDigest)
 
 def reset_tree(t, method):
     if not isinstance(t, str):
@@ -42,17 +44,17 @@ class TestSignXML(unittest.TestCase):
 
     def test_basic_signxml_statements(self):
         with self.assertRaisesRegexp(InvalidInput, "Unknown signature method"):
-            xmldsig("x").sign(method=None)
+            signer = XMLSigner(method=None)
 
         with self.assertRaisesRegexp(InvalidInput, "must be an XML element"):
-            xmldsig("x").sign()
+            XMLSigner().sign("x")
 
         digest_algs = {"sha1", "sha224", "sha256", "sha384", "sha512"}
         sig_algs = {"hmac", "dsa", "rsa", "ecdsa"}
         hash_algs = {"sha1", "sha256"}
         c14n_algs = {"http://www.w3.org/2001/10/xml-exc-c14n#",
                      "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
-                     xmldsig.default_c14n_algorithm}
+                     XMLSignatureProcessor.default_c14n_algorithm}
 
         all_methods = itertools.product(digest_algs, sig_algs, hash_algs, methods, c14n_algs)
         for digest_alg, sig_alg, hash_alg, method, c14n_alg in all_methods:
@@ -65,11 +67,12 @@ class TestSignXML(unittest.TestCase):
                     continue
                 print(digest_alg, sig_alg, hash_alg, c14n_alg, method, type(d))
                 reset_tree(d, method)
-                signer = xmldsig(d, digest_algorithm=digest_alg)
-                signed = signer.sign(method=method,
-                                     algorithm="-".join([sig_alg, hash_alg]),
+                signer = XMLSigner(method=method,
+                                   signature_algorithm="-".join([sig_alg, hash_alg]),
+                                   digest_algorithm=digest_alg,
+                                   c14n_algorithm=c14n_alg)
+                signed = signer.sign(d,
                                      key=self.keys[sig_alg],
-                                     c14n_algorithm=c14n_alg,
                                      reference_uri="URI" if method == methods.detached else None)
                 # print(etree.tostring(signed))
                 hmac_key = self.keys["hmac"] if sig_alg == "hmac" else None
@@ -84,9 +87,9 @@ class TestSignXML(unittest.TestCase):
                     verify_kwargs["uri_resolver"] = resolver
 
                 signed_data = etree.tostring(signed)
-                xmldsig(signed_data).verify(**verify_kwargs)
-                xmldsig(signed_data).verify(parser=parser, **verify_kwargs)
-                (_d, _x, _s) = xmldsig(signed_data).verify(id_attribute="Id", **verify_kwargs)
+                XMLVerifier().verify(signed_data, **verify_kwargs)
+                XMLVerifier().verify(signed_data, parser=parser, **verify_kwargs)
+                (_d, _x, _s) = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
 
                 if _x is not None:
                     # Ensure the signature is not part of the signed data
@@ -98,19 +101,19 @@ class TestSignXML(unittest.TestCase):
 
                 if method == methods.enveloping:
                     with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
-                        xmldsig(signed_data).verify(id_attribute="X", **verify_kwargs)
+                        XMLVerifier().verify(signed_data, id_attribute="X", **verify_kwargs)
 
                 with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
-                    xmldsig(signed_data).verify(hmac_key=hmac_key, uri_resolver=verify_kwargs.get("uri_resolver"))
+                    XMLVerifier().verify(signed_data, hmac_key=hmac_key, uri_resolver=verify_kwargs.get("uri_resolver"))
 
                 if method != methods.detached:
                     with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
                         mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
-                        xmldsig(mangled_sig).verify(**verify_kwargs)
+                        XMLVerifier().verify(mangled_sig, **verify_kwargs)
 
                 with self.assertRaises(cryptography.exceptions.InvalidSignature):
                     mangled_sig = signed_data.replace(b"<ds:DigestValue>", b"<ds:DigestValue>!")
-                    xmldsig(mangled_sig).verify(**verify_kwargs)
+                    XMLVerifier().verify(mangled_sig, **verify_kwargs)
 
                 with self.assertRaises(cryptography.exceptions.InvalidSignature):
                     sig_value = re.search(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
@@ -119,15 +122,15 @@ class TestSignXML(unittest.TestCase):
                         b"<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + b"</ds:SignatureValue>",
                         signed_data
                     )
-                    xmldsig(mangled_sig).verify(**verify_kwargs)
+                    XMLVerifier().verify(mangled_sig, **verify_kwargs)
 
                 with self.assertRaises(etree.XMLSyntaxError):
-                    xmldsig("").verify(hmac_key=hmac_key, require_x509=False)
+                    XMLVerifier().verify("", hmac_key=hmac_key, require_x509=False)
 
                 if sig_alg == "hmac":
                     with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
                         verify_kwargs["hmac_key"] = b"SECRET"
-                        xmldsig(signed_data).verify(**verify_kwargs)
+                        XMLVerifier().verify(signed_data, **verify_kwargs)
 
     def test_x509_certs(self):
         from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
@@ -143,20 +146,18 @@ class TestSignXML(unittest.TestCase):
                 print(hash_alg, method)
                 data = tree.getroot()
                 reset_tree(data, method)
-                signed = xmldsig(data).sign(method=method,
-                                            algorithm="rsa-" + hash_alg,
-                                            key=key,
-                                            cert=crt)
+                signer = XMLSigner(method=method, signature_algorithm="rsa-" + hash_alg)
+                signed = signer.sign(data, key=key, cert=crt)
                 signed_data = etree.tostring(signed)
-                xmldsig(signed_data).verify(ca_pem_file=ca_pem_file)
-                xmldsig(signed_data).verify(x509_cert=crt)
-                xmldsig(signed_data).verify(x509_cert=load_certificate(FILETYPE_PEM, crt))
+                XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
+                XMLVerifier().verify(signed_data, x509_cert=crt)
+                XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
 
                 with self.assertRaises(OpenSSLCryptoError):
-                    xmldsig(signed_data).verify(x509_cert=crt[::-1])
+                    XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
 
                 with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
-                    xmldsig(signed_data).verify()
+                    XMLVerifier().verify(signed_data)
                 # TODO: negative: verify with wrong cert, wrong CA
 
     def test_xmldsig_interop_examples(self):
@@ -165,7 +166,7 @@ class TestSignXML(unittest.TestCase):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
                 with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
-                    xmldsig(fh.read()).verify(ca_pem_file=ca_pem_file)
+                    XMLVerifier().verify(fh.read(), ca_pem_file=ca_pem_file)
 
     def test_xmldsig_interop(self):
         interop_dir = os.path.join(os.path.dirname(__file__), "interop")
@@ -218,12 +219,13 @@ class TestSignXML(unittest.TestCase):
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
-                    xmldsig(sig).verify(require_x509=False,
-                                        hmac_key="test" if "phaos" in signature_file else "secret",
-                                        validate_schema=True,
-                                        uri_resolver=resolver,
-                                        x509_cert=get_x509_cert(signature_file),
-                                        ca_pem_file=get_ca_pem_file(signature_file))
+                    XMLVerifier().verify(sig,
+                                         require_x509=False,
+                                         hmac_key="test" if "phaos" in signature_file else "secret",
+                                         validate_schema=True,
+                                         uri_resolver=resolver,
+                                         x509_cert=get_x509_cert(signature_file),
+                                         ca_pem_file=get_ca_pem_file(signature_file))
                     if "HMACOutputLength" in sig.decode("utf-8") or "bad" in signature_file or "expired" in signature_file:
                         raise BaseException("Expected an exception to occur")
                 except Exception as e:
@@ -273,9 +275,9 @@ class TestSignXML(unittest.TestCase):
 
     def test_signxml_changing_signature_namespace_prefix(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
-        signer = xmldsig(data)
+        signer = XMLSigner()
         signer.namespaces = dict(digi_sign=namespaces['ds'])
-        signed = signer.sign(key=self.keys["rsa"])
+        signed = signer.sign(data, key=self.keys["rsa"])
         signed_data = etree.tostring(signed)
         expected_match = ("<digi_sign:Signature xmlns:"
                           "digi_sign=\"%s\">") % namespaces['ds']
@@ -283,19 +285,19 @@ class TestSignXML(unittest.TestCase):
 
     def test_signxml_changing_signature_namespace_prefix_to_default(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
-        signer = xmldsig(data)
+        signer = XMLSigner()
         ns = dict()
         ns[None] = namespaces['ds']
         signer.namespaces = ns
-        signed = signer.sign(key=self.keys["rsa"])
+        signed = signer.sign(data, key=self.keys["rsa"])
         signed_data = etree.tostring(signed)
         expected_match = ("<Signature xmlns=\"%s\">") % namespaces['ds']
         self.assertTrue(re.search(expected_match.encode('ascii'), signed_data))
 
     def test_elementtree_compat(self):
         data = stdlibElementTree.parse(self.example_xml_files[0]).getroot()
-        signer = xmldsig(data)
-        signed = signer.sign(key=self.keys["rsa"])
+        signer = XMLSigner()
+        signed = signer.sign(data, key=self.keys["rsa"])
 
 if __name__ == '__main__':
     unittest.main()
