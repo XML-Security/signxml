@@ -18,7 +18,7 @@ all of the required components of the standard, and most recommended ones. Its f
   <https://bitbucket.org/tiran/defusedxml>`_, `cryptography <https://github.com/pyca/cryptography>`_, `eight
   <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
 * Comprehensive testing (including the XMLDSig interoperability suite) and `continuous integration
-  <https://travis-ci.org/kislyuk/signxml>`_
+  <https://travis-ci.org/XML-Security/signxml>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
 
@@ -130,10 +130,10 @@ Authors
 
 Links
 -----
-* `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
+* `Project home page (GitHub) <https://github.com/XML-Security/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.io/en/latest/>`_
 * `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
-* `Change log <https://github.com/kislyuk/signxml/blob/master/Changes.rst>`_
+* `Change log <https://github.com/XML-Security/signxml/blob/master/Changes.rst>`_
 * `List of W3C XML Signature standards and drafts <http://www.w3.org/TR/#tr_XML_Signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
@@ -147,16 +147,16 @@ Links
 
 Bugs
 ~~~~
-Please report bugs, issues, feature requests, etc. on `GitHub <https://github.com/kislyuk/signxml/issues>`_.
+Please report bugs, issues, feature requests, etc. on `GitHub <https://github.com/XML-Security/signxml/issues>`_.
 
 License
 -------
 Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_.
 
-.. image:: https://img.shields.io/travis/kislyuk/signxml.svg
-        :target: https://travis-ci.org/kislyuk/signxml
-.. image:: https://codecov.io/github/kislyuk/signxml/coverage.svg?branch=master
-        :target: https://codecov.io/github/kislyuk/signxml?branch=master
+.. image:: https://img.shields.io/travis/XML-Security/signxml.svg
+        :target: https://travis-ci.org/XML-Security/signxml
+.. image:: https://codecov.io/github/XML-Security/signxml/coverage.svg?branch=master
+        :target: https://codecov.io/github/XML-Security/signxml?branch=master
 .. image:: https://img.shields.io/pypi/v/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://img.shields.io/pypi/l/signxml.svg
