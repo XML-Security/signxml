@@ -444,9 +444,6 @@ class XMLVerifier(XMLSignatureProcessor):
     Create a new XML Signature Verifier object, which can be used to hold configuration information and verify multiple
     pieces of data.
     """
-    def __init__(self):
-        pass
-
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
         if "ecdsa-" in signature_alg:
             ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
@@ -605,6 +602,7 @@ class XMLVerifier(XMLSignatureProcessor):
         self.hmac_key = hmac_key
         self.require_x509 = require_x509
         self.x509_cert = x509_cert
+        self._parser = parser
 
         if x509_cert:
             self.require_x509 = True
@@ -614,7 +612,6 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             self.id_attributes = (id_attribute, )
 
-        self._parser = parser
         root = self.get_root(data)
         if root.tag == ds_tag("Signature"):
             signature_ref = root
