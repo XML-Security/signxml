@@ -18,7 +18,7 @@ all of the required components of the standard, and most recommended ones. Its f
   <https://bitbucket.org/tiran/defusedxml>`_, `cryptography <https://github.com/pyca/cryptography>`_, `eight
   <https://github.com/kislyuk/eight>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
 * Comprehensive testing (including the XMLDSig interoperability suite) and `continuous integration
-  <https://travis-ci.org/kislyuk/signxml>`_
+  <https://travis-ci.org/XML-Security/signxml>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
 
@@ -62,13 +62,13 @@ SignXML uses the ElementTree API (also supported by lxml) to work with XML data.
 
 .. code-block:: python
 
-    from signxml import xmldsig
+    from signxml import XMLSigner, XMLVerifier
 
     cert = open("example.pem").read()
     key = open("example.key").read()
     root = ElementTree.fromstring(signature_data)
-    signed_root = xmldsig(root).sign(key=key, cert=cert)
-    verified_data = xmldsig(signed_root).verify().signed_xml
+    signed_root = XMLSigner().sign(root, key=key, cert=cert)
+    verified_data = XMLVerifier().verify(signed_root).signed_xml
 
 Verifying SAML assertions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -79,18 +79,18 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 
     from lxml import etree
     from base64 import b64decode
-    from signxml import xmldsig
+    from signxml import XMLVerifier
 
     with open("metadata.xml", "rb") as fh:
         cert = etree.parse(fh).find("//ds:X509Certificate").text
 
-    assertion_data = xmldsig(b64decode(assertion_body)).verify(x509_cert=cert).signed_xml
+    assertion_data = XMLVerifier().verify(b64decode(assertion_body), x509_cert=cert).signed_xml
 
 .. admonition:: Signing SAML assertions
 
  The SAML assertion schema specifies a location for the enveloped XML signature (between ``<Issuer>`` and
  ``<Subject>``). To sign a SAML assertion in a schema-compliant way, insert a signature placeholder tag at that location
- before calling xmldsig: ``<ds:Signature Id="placeholder"></ds:Signature>``.
+ before calling XMLSigner: ``<ds:Signature Id="placeholder"></ds:Signature>``.
 
 .. admonition:: See what is signed
 
@@ -114,13 +114,13 @@ generate, pass the ``method`` argument to ``sign()``:
 
 .. code-block:: python
 
-    signed_root = xmldsig(root).sign(method=signxml.methods.detached, key=key, cert=cert)
-    verified_data = xmldsig(signed_root).verify().signed_xml
+    signed_root = XMLSigner(method=signxml.methods.detached).sign(root, key=key, cert=cert)
+    verified_data = XMLVerifier().verify(signed_root).signed_xml
 
 For detached signatures, the code above will use the ``Id`` or ``ID`` attribute of ``root`` to generate a relative URI
 (``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
 ``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
-``xmldsig.verify(uri_resolver=...)``.
+``XMLVerifier().verify(data, uri_resolver=...)``.
 
 See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
 
@@ -130,10 +130,10 @@ Authors
 
 Links
 -----
-* `Project home page (GitHub) <https://github.com/kislyuk/signxml>`_
+* `Project home page (GitHub) <https://github.com/XML-Security/signxml>`_
 * `Documentation (Read the Docs) <https://signxml.readthedocs.io/en/latest/>`_
 * `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
-* `Change log <https://github.com/kislyuk/signxml/blob/master/Changes.rst>`_
+* `Change log <https://github.com/XML-Security/signxml/blob/master/Changes.rst>`_
 * `List of W3C XML Signature standards and drafts <http://www.w3.org/TR/#tr_XML_Signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing (Second Edition) <http://www.w3.org/TR/xmldsig-core/>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
@@ -147,16 +147,16 @@ Links
 
 Bugs
 ~~~~
-Please report bugs, issues, feature requests, etc. on `GitHub <https://github.com/kislyuk/signxml/issues>`_.
+Please report bugs, issues, feature requests, etc. on `GitHub <https://github.com/XML-Security/signxml/issues>`_.
 
 License
 -------
 Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_.
 
-.. image:: https://img.shields.io/travis/kislyuk/signxml.svg
-        :target: https://travis-ci.org/kislyuk/signxml
-.. image:: https://codecov.io/github/kislyuk/signxml/coverage.svg?branch=master
-        :target: https://codecov.io/github/kislyuk/signxml?branch=master
+.. image:: https://img.shields.io/travis/XML-Security/signxml.svg
+        :target: https://travis-ci.org/XML-Security/signxml
+.. image:: https://codecov.io/github/XML-Security/signxml/coverage.svg?branch=master
+        :target: https://codecov.io/github/XML-Security/signxml?branch=master
 .. image:: https://img.shields.io/pypi/v/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://img.shields.io/pypi/l/signxml.svg

@@ -6,9 +6,13 @@ bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import sys, re, struct, textwrap
+import os, sys, re, struct, textwrap
+from xml.etree import ElementTree as stdlibElementTree
 
 from eight import str, bytes
+from lxml import etree
+from defusedxml.lxml import fromstring
+from pyasn1.type import univ
 
 USING_PYTHON2 = True if sys.version_info < (3, 0) else False
 
@@ -95,5 +99,42 @@ def add_pem_header(bare_base64_cert):
         return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
 
-class _Namespace(dict):
+class DERSequenceOfIntegers(univ.SequenceOf):
+    componentType = univ.Integer()
+    def __init__(self, integers):
+        univ.SequenceOf.__init__(self)
+        for pos, i in enumerate(integers):
+            self.setComponentByPosition(pos, i)
+
+class Namespace(dict):
     __getattr__ = dict.__getitem__
+
+class XMLProcessor:
+    _schema, _default_parser = None, None
+
+    @classmethod
+    def schema(cls):
+        if cls._schema is None:
+            schema_path = os.path.join(os.path.dirname(__file__), "..", "schemas", cls.schema_file)
+            cls._schema = etree.XMLSchema(etree.parse(schema_path))
+        return cls._schema
+
+    @property
+    def parser(self):
+        if self._parser is None:
+            if self._default_parser is None:
+                self._default_parser = etree.XMLParser()
+            return self._default_parser
+        return self._parser
+
+    def get_root(self, data):
+        if isinstance(data, (str, bytes)):
+            return fromstring(data, parser=self.parser)
+        elif isinstance(data, stdlibElementTree.Element):
+            # TODO: add debug level logging statement re: performance impact here
+            return fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
+        else:
+            # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
+            # We use a copy so we can modify the tree
+            # TODO: turn this off for xmlenc
+            return fromstring(etree.tostring(data))
