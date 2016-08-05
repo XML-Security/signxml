@@ -1,3 +1,12 @@
+Version 2.0.0 (2016-08-05)
+--------------------------
+- Major API change: signxml.xmldsig(data).sign() -> signxml.XMLSigner().sign(data)
+- Major API change: signxml.xmldsig(data).verify() -> signxml.XMLVerifier().verify(data)
+- Signer and verifier objects now carry no data-specific state; instead carry system configuration state that is
+  expected to be reused
+- Signer and verifier objects should now be safe to reuse in reentrant environments
+- Internal architecture changes to improve modularity and eliminate data-specific latent state and side effects
+
 Version 1.0.2 (2016-08-01)
 --------------------------
 - Update xmlenc namespaces for downstream encryptxml support
