@@ -1,5 +1,4 @@
 SHELL=/bin/bash -eo pipefail
-GH_AUTH_FILE=~/.github_token
 CLEAN_DIRS=signxml
 
 release_major:
@@ -18,7 +17,7 @@ release:
 	@if [[ -z $$TAG ]]; then echo "Use release_{major,minor,patch}"; exit 1; fi
 	$(eval REMOTE=$(shell git remote get-url origin | perl -ne '/(\w+\/\w+)[^\/]+$$/; print $$1'))
 	$(eval GIT_USER=$(shell git config --get user.email))
-	$(eval GH_AUTH=$(shell if [[ -e $(GH_AUTH_FILE) ]]; then echo $(GIT_USER):$$(cat $(GH_AUTH_FILE)); else echo $(GIT_USER); fi))
+	$(eval GH_AUTH=$(shell if grep -q '@github.com' ~/.git-credentials; then echo $$(grep '@github.com' ~/.git-credentials | python3 -c 'import sys, urllib.parse as p; print(p.urlparse(sys.stdin.read()).netloc.split("@")[0])'); else echo $(GIT_USER); fi))
 	$(eval RELEASES_API=https://api.github.com/repos/${REMOTE}/releases)
 	$(eval UPLOADS_API=https://uploads.github.com/repos/${REMOTE}/releases)
 	git clean -x --force ${CLEAN_DIRS}
