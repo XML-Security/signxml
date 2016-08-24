@@ -86,10 +86,11 @@ def long_to_bytes(n, blocksize=0):
         s = (blocksize - len(s) % blocksize) * b'\000' + s
     return s
 
+pem_regexp = re.compile("{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER), flags=re.S)
+
 def strip_pem_header(cert):
-    pem_regexp = "{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER)
     try:
-        return re.search(pem_regexp, ensure_str(cert), flags=re.S).group(1)
+        return re.search(pem_regexp, ensure_str(cert)).group(1)
     except Exception:
         return ensure_str(cert)
 
@@ -98,6 +99,10 @@ def add_pem_header(bare_base64_cert):
     if bare_base64_cert.startswith(PEM_HEADER):
         return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
+
+def iterate_pem(s):
+    for match in re.findall(pem_regexp, s):
+        yield match
 
 class DERSequenceOfIntegers(univ.SequenceOf):
     componentType = univ.Integer()

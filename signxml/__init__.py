@@ -17,7 +17,7 @@ from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
 from .exceptions import InvalidSignature, InvalidDigest, InvalidCertificate, InvalidInput
 from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
-                   XMLProcessor, DERSequenceOfIntegers)
+                   XMLProcessor, DERSequenceOfIntegers, iterate_pem)
 from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
@@ -288,7 +288,7 @@ class XMLSigner(XMLSignatureProcessor):
         signature, and excised when generating the digest.
         """
         if isinstance(cert, (str, bytes)):
-            cert_chain = [cert]
+            cert_chain = list(iterate_pem(cert))
         else:
             cert_chain = cert
 
@@ -296,6 +296,9 @@ class XMLSigner(XMLSignatureProcessor):
         payload_c14n = self._c14n(c14n_input, algorithm=self.c14n_alg)
         digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
         signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uri, digest)
+
+        if key is None:
+            raise InvalidInput('Parameter "key" is required')
 
         signed_info_c14n = self._c14n(signed_info_element, algorithm=self.c14n_alg)
         if self.sign_alg.startswith("hmac-"):
