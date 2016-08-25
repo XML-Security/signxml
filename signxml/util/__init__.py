@@ -100,8 +100,8 @@ def add_pem_header(bare_base64_cert):
         return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
 
-def iterate_pem(s):
-    for match in re.findall(pem_regexp, s):
+def iterate_pem(certs):
+    for match in re.findall(pem_regexp, ensure_str(certs)):
         yield match
 
 class DERSequenceOfIntegers(univ.SequenceOf):
