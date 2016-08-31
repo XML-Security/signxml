@@ -114,7 +114,7 @@ class DERSequenceOfIntegers(univ.SequenceOf):
 class Namespace(dict):
     __getattr__ = dict.__getitem__
 
-class XMLProcessor:
+class XMLProcessor(object):
     _schema, _default_parser = None, None
 
     @classmethod

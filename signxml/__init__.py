@@ -248,6 +248,16 @@ class XMLSigner(XMLSignatureProcessor):
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
 
+    def key_value_serialization_is_required(self, cert_chain):
+        """Returns `True` if a `KeyValue` XML element should be included in the
+        signature, or `False` otherwise.
+
+        By default, key values are only serialized if there is no chain of
+        certificates (`cert_chain` is `None`). You can override this method in
+        subclasses to change this behavior.
+        """
+        return cert_chain is None
+
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None):
         """
         Sign the data and return the root element of the resulting XML tree.
@@ -339,9 +349,9 @@ class XMLSigner(XMLSignatureProcessor):
                 keyname = SubElement(key_info, ds_tag("KeyName"))
                 keyname.text = key_name
 
-            if cert_chain is None:
+            if self.key_value_serialization_is_required(cert_chain):
                 self._serialize_key_value(key, key_info)
-            else:
+            if cert_chain is not None:
                 x509_data = SubElement(key_info, ds_tag("X509Data"))
                 for cert in cert_chain:
                     x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
@@ -404,10 +414,10 @@ class XMLSigner(XMLSignatureProcessor):
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
         signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
         reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+        transforms = SubElement(reference, ds_tag("Transforms"))
         if self.method == methods.enveloped:
-            transforms = SubElement(reference, ds_tag("Transforms"))
             SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-            SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+        SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
         digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
         digest_value = SubElement(reference, ds_tag("DigestValue"))
         digest_value.text = digest
