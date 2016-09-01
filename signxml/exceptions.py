@@ -23,3 +23,6 @@ class InvalidCertificate(InvalidSignature):
 
 class InvalidInput(ValueError):
     pass
+
+class RedundantCert(Exception):
+    pass
