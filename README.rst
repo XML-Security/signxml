@@ -1,8 +1,10 @@
 SignXML: XML Signature in Python
 ================================
+
 *SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard in
 Python. This standard (also known as XMLDSig and `RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_) is used to provide
-payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, among other uses.  Three versions of the
+payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_ and
+`WS-Security <https://en.wikipedia.org/wiki/WS-Security>`_, among other uses.  Three versions of the
 standard exist (`Version 1 "Second Edition" <http://www.w3.org/TR/xmldsig-core/>`_, `Version 1.1
 <http://www.w3.org/TR/xmldsig-core1/>`_, and `Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_). *SignXML* implements
 all of the required components of the standard, and most recommended ones. Its features are:
