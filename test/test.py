@@ -152,9 +152,13 @@ class TestSignXML(unittest.TestCase):
                 XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
                 XMLVerifier().verify(signed_data, x509_cert=crt)
                 XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
+                XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
 
                 with self.assertRaises(OpenSSLCryptoError):
                     XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
+
+                with self.assertRaises(InvalidSignature):
+                    XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="test")
 
                 with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
                     XMLVerifier().verify(signed_data)

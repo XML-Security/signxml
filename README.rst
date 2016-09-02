@@ -72,6 +72,8 @@ SignXML uses the ElementTree API (also supported by lxml) to work with XML data.
     signed_root = XMLSigner().sign(root, key=key, cert=cert)
     verified_data = XMLVerifier().verify(signed_root).signed_xml
 
+.. _verifying-saml-assertions:
+
 Verifying SAML assertions
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -540,8 +540,8 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return payload
 
-    def verify(self, data, require_x509=True, x509_cert=None, ca_pem_file=None, ca_path=None, hmac_key=None,
-               validate_schema=True, parser=None, uri_resolver=None, id_attribute=None):
+    def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, ca_pem_file=None, ca_path=None,
+               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, id_attribute=None):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -561,17 +561,25 @@ class XMLVerifier(XMLSignatureProcessor):
 
          **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
-        TODO: CN verification
+        .. admonition:: Establish trust
+
+         If you do not supply any keyword arguments to ``verify()``, the default behavior is to trust **any** valid XML
+         signature generated using a valid X.509 certificate trusted by your system's CA store. This means anyone can
+         get an SSL certificate and generate a signature that you will trust. To establish trust in the signer, use the
+         ``x509_cert`` argument to specify a certificate that was pre-shared out-of-band (e.g. via SAML metadata, as
+         shown in :ref:`Verifying SAML assertions <verifying-saml-assertions>`), or ``cert_subject_name`` to specify a
+         subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
+         domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
 
         :param data: Signature data to verify
         :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param require_x509:
-            If ``True``, a valid X.509 certificate-based signature is required to pass validation. If ``False``, other
-            types of valid signatures (e.g. HMAC or RSA public key) are accepted.
+            If ``True``, a valid X.509 certificate-based signature with an established chain of trust is required to
+            pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :type require_x509: boolean
         :param x509_cert:
-            An external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use for
-            verification. Overrides any X.509 certificate information supplied by the signature. If left set to
+            A trusted external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use
+            for verification. Overrides any X.509 certificate information supplied by the signature. If left set to
             ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the
             known certificate authorities. Implies **require_x509=True**.
         :type x509_cert: string or OpenSSL.crypto.X509
@@ -584,6 +592,9 @@ class XMLVerifier(XMLSignatureProcessor):
             certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle
             provided by :py:mod:`certifi` will be loaded.
         :type ca_path: string
+        :param cert_subject_name:
+            Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.
+        :type cert_subject_name: string
         :param hmac_key: If using HMAC, a string containing the shared secret.
         :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
@@ -657,6 +668,9 @@ class XMLVerifier(XMLSignatureProcessor):
                 signing_cert = self.x509_cert
             else:
                 signing_cert = load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))
+
+            if cert_subject_name and signing_cert.get_subject().commonName != cert_subject_name:
+                raise InvalidSignature("Certificate subject common name mismatch")
 
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
             try:
