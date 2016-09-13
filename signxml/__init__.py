@@ -147,6 +147,8 @@ class XMLSignatureProcessor(XMLProcessor):
     }
     default_c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
 
+    id_attributes = ("Id", "ID", "id", "xml:id")
+
     def _get_digest(self, data, digest_algorithm):
         hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
         hasher.update(data)
@@ -213,6 +215,31 @@ class XMLSignatureProcessor(XMLProcessor):
             c14n = c14n.replace(b' xmlns=""', b'')
         return c14n
 
+    def _resolve_reference(self, doc_root, reference, uri_resolver=None):
+        uri = reference.get("URI")
+        if uri == "":
+            return doc_root
+        elif uri.startswith("#xpointer("):
+            raise InvalidInput("XPointer references are not supported")
+            # doc_root.xpath(uri.lstrip("#"))[0]
+        elif uri.startswith("#"):
+            for id_attribute in self.id_attributes:
+                # results = doc_root.xpath("..//*[@*[local-name() = '{}']=$uri]".format(id_attribute),
+                #                          uri=uri.lstrip("#"))
+                results = doc_root.xpath("//*[@{}=$uri]".format(id_attribute), uri=uri.lstrip("#"))
+                if len(results) > 1:
+                    raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
+                elif len(results) == 1:
+                    return results[0]
+            raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
+        else:
+            if uri_resolver is None:
+                raise InvalidInput("External URI dereferencing is not configured: {}".format(uri))
+            result = uri_resolver(uri)
+            if result is None:
+                raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
+            return result
+
 class XMLSigner(XMLSignatureProcessor):
     """
     Create a new XML Signature Signer object, which can be used to hold configuration information and sign multiple
@@ -248,7 +275,7 @@ class XMLSigner(XMLSignatureProcessor):
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
 
-    def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None):
+    def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, id_attribute=None):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -272,12 +299,17 @@ class XMLSigner(XMLSignatureProcessor):
             certificates.
         :type cert: string, array of strings, or array of OpenSSL.crypto.X509 objects
         :param reference_uri:
-            Custom reference URI to incorporate into the signature. Only used when ``method`` is set to ``detached``.
+            Custom reference URI to incorporate into the signature. When ``method`` is set to ``detached``, the URI
+            is set to this value. When ```method``` is set to ```enveloped```, the URI is set to this value and only
+            the referenced element is signed.
         :type reference_uri: string
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
         :type key_name: string
+        :param id_attribute:
+            Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
+        :type id_attribute: string
 
         :returns:
             A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
@@ -291,6 +323,9 @@ class XMLSigner(XMLSignatureProcessor):
             cert_chain = list(iterate_pem(cert))
         else:
             cert_chain = cert
+
+        if id_attribute is not None:
+            self.id_attributes = (id_attribute, )
 
         sig_root, doc_root, c14n_input, reference_uri = self._unpack(data, reference_uri)
         payload_c14n = self._c14n(c14n_input, algorithm=self.c14n_alg)
@@ -365,6 +400,14 @@ class XMLSigner(XMLSignatureProcessor):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             c14n_input = self.get_root(data)
             doc_root = self.get_root(data)
+            if reference_uri is not None:
+                # Only sign the referenced element
+                if not reference_uri.startswith('#'):
+                    reference_uri = '#'+reference_uri
+                c14n_input = self.get_root(self._resolve_reference(doc_root, {'URI': reference_uri}))
+            else:
+                reference_uri = ""
+
             signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
             if len(signature_placeholders) == 0:
                 doc_root.append(sig_root)
@@ -375,8 +418,6 @@ class XMLSigner(XMLSignatureProcessor):
             else:
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
-            if reference_uri is None:
-                reference_uri = ""
             # get signed data id attribute value for reference uri
             payload_id = c14n_input.get("Id", c14n_input.get("ID"))
             if payload_id is not None:
@@ -482,31 +523,6 @@ class XMLVerifier(XMLSignatureProcessor):
 
         verifier.update(signed_info_c14n)
         verifier.verify()
-
-    def _resolve_reference(self, doc_root, reference, uri_resolver=None):
-        uri = reference.get("URI")
-        if uri == "":
-            return doc_root
-        elif uri.startswith("#xpointer("):
-            raise InvalidInput("XPointer references are not supported")
-            # doc_root.xpath(uri.lstrip("#"))[0]
-        elif uri.startswith("#"):
-            for id_attribute in self.id_attributes:
-                # results = doc_root.xpath("..//*[@*[local-name() = '{}']=$uri]".format(id_attribute),
-                #                          uri=uri.lstrip("#"))
-                results = doc_root.xpath("..//*[@{}=$uri]".format(id_attribute), uri=uri.lstrip("#"))
-                if len(results) > 1:
-                    raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
-                elif len(results) == 1:
-                    return results[0]
-            raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
-        else:
-            if uri_resolver is None:
-                raise InvalidInput("External URI dereferencing is not configured: {}".format(uri))
-            result = uri_resolver(uri)
-            if result is None:
-                raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
-            return result
 
     def _get_inclusive_ns_prefixes(self, transform_node):
         inclusive_namespaces = transform_node.find("./ec:InclusiveNamespaces[@PrefixList]", namespaces=namespaces)
@@ -621,9 +637,7 @@ class XMLVerifier(XMLSignatureProcessor):
         if x509_cert:
             self.require_x509 = True
 
-        if id_attribute is None:
-            self.id_attributes = ("Id", "ID", "id", "xml:id")
-        else:
+        if id_attribute is not None:
             self.id_attributes = (id_attribute, )
 
         root = self.get_root(data)
