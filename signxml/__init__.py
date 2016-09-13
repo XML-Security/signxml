@@ -365,6 +365,10 @@ class XMLSigner(XMLSignatureProcessor):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             c14n_input = self.get_root(data)
             doc_root = self.get_root(data)
+            if reference_uri is not None:
+                targets = self._findall(doc_root,'*[@Id="{0}"]'.format(reference_uri), anywhere=True)
+                if len(targets)==1:
+                    c14n_root = targets[0]
             signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
             if len(signature_placeholders) == 0:
                 doc_root.append(sig_root)
