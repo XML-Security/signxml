@@ -303,5 +303,37 @@ class TestSignXML(unittest.TestCase):
         signer = XMLSigner()
         signed = signer.sign(data, key=self.keys["rsa"])
 
+    def test_reference_uri_in_enveloped(self):
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
+            crt = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
+            key = fh.read()
+
+        # Both ID and Id formats. XPath 1 doesn't have case insensitive attribute search
+        for d in ['''<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                                     xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="responseId">
+                      <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                      xmlns:xs="http://www.w3.org/2001/XMLSchema" ID="assertionId">
+                       <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
+                      </saml:Assertion>
+                     </samlp:Response>''',
+                  '''<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                                     xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Id="responseId">
+                      <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                      xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertionId">
+                       <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
+                      </saml:Assertion>
+                     </samlp:Response>''']:
+            data = etree.fromstring(d)
+            signed_root = XMLSigner().sign(data, reference_uri="assertionId", key=key, cert=crt)
+            signed_data_root = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt)[1]
+            ref = signed_root.xpath('/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference',
+                                    namespaces={"ds": "http://www.w3.org/2000/09/xmldsig#",
+                                                "saml": "urn:oasis:names:tc:SAML:2.0:assertion",
+                                                "samlp": "urn:oasis:names:tc:SAML:2.0:protocol"})
+            self.assertEqual("assertionId", ref[0].attrib['URI'][1:])
+
+            self.assertEqual("{urn:oasis:names:tc:SAML:2.0:assertion}Assertion", signed_data_root.tag)
+
 if __name__ == '__main__':
     unittest.main()
