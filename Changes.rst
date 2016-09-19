@@ -1,3 +1,18 @@
+Changes for v2.1.3 (2016-09-18)
+===============================
+
+-  Only sign the referenced element when passed reference\_uri (thanks
+   to @soby).
+
+-  Add CN validation - instead of a full X.509 certificate, it is now
+   possible to pass a common name that will be matched against the CN of
+   a cert trusted by the CA store.
+
+-  Order-agnostic cert chain validation and friendlier ingestion of cert
+   chains.
+
+-  Minor/internal changes; packaging fix for 2.1.0
+
 Changes for v2.1.2 (2016-09-18)
 ===============================
 
