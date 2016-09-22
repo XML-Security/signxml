@@ -303,7 +303,7 @@ class TestSignXML(unittest.TestCase):
         signer = XMLSigner()
         signed = signer.sign(data, key=self.keys["rsa"])
 
-    def test_reference_uri_in_enveloped(self):
+    def test_reference_uris_in_enveloped(self):
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
             crt = fh.read()
         with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
@@ -323,10 +323,14 @@ class TestSignXML(unittest.TestCase):
                                       xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertionId">
                        <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
                       </saml:Assertion>
+                      <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                      xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertion2">
+                      </saml:Assertion>
                      </samlp:Response>''']:
             data = etree.fromstring(d)
-            signed_root = XMLSigner().sign(data, reference_uri="assertionId", key=key, cert=crt)
-            signed_data_root = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt)[1]
+            reference_uri = ["assertionId", "assertion2"] if "assertion2" in d else "assertionId"
+            signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
+            signed_data_root = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)[1]
             ref = signed_root.xpath('/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference',
                                     namespaces={"ds": "http://www.w3.org/2000/09/xmldsig#",
                                                 "saml": "urn:oasis:names:tc:SAML:2.0:assertion",

@@ -38,19 +38,22 @@ def ds_tag(tag):
 def dsig11_tag(tag):
     return "{" + namespaces.dsig11 + "}" + tag
 
-def _remove_sig(signature):
+def _remove_sig(signature, idempotent=False):
     """
-    Remove the signature node from payload keeping any tail element.
+    Remove the signature node from its parent, keeping any tail element.
     This is needed for eneveloped signatures.
 
-    :param payload: Payload to remove signature from
-    :type data: XML ElementTree Element
     :param signature: Signature to remove from payload
-    :type digest_algorithm: XML ElementTree Element
+    :type signature: XML ElementTree Element
+    :param idempotent:
+        If True, don't raise an error if signature is already detached from parent.
+    :type idempotent: boolean
     """
     try:
         signaturep = next(signature.iterancestors())
     except StopIteration:
+        if idempotent:
+            return
         raise ValueError("Can't remove the root signature node")
     if signature.tail is not None:
         try:
@@ -198,7 +201,7 @@ class XMLSignatureProcessor(XMLProcessor):
         else:
             return element.findall(namespace + ":" + query, namespaces=namespaces)
 
-    def _c14n(self, node, algorithm, inclusive_ns_prefixes=None):
+    def _c14n(self, nodes, algorithm, inclusive_ns_prefixes=None):
         exclusive, with_comments = False, False
 
         if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
@@ -206,8 +209,13 @@ class XMLSignatureProcessor(XMLProcessor):
         if algorithm.endswith("#WithComments"):
             with_comments = True
 
-        c14n = etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
-                              inclusive_ns_prefixes=inclusive_ns_prefixes)
+        if not isinstance(nodes, list):
+            nodes = [nodes]
+
+        c14n = b""
+        for node in nodes:
+            c14n += etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
+                                   inclusive_ns_prefixes=inclusive_ns_prefixes)  # TODO: optimize if needed
         if exclusive is False:
             # TODO: there must be a nicer way to do this. See also:
             # http://www.w3.org/TR/xml-c14n, "namespace axis"
@@ -299,9 +307,9 @@ class XMLSigner(XMLSignatureProcessor):
             certificates.
         :type cert: string, array of strings, or array of OpenSSL.crypto.X509 objects
         :param reference_uri:
-            Custom reference URI to incorporate into the signature. When ``method`` is set to ``detached``, the URI
-            is set to this value. When ```method``` is set to ```enveloped```, the URI is set to this value and only
-            the referenced element is signed.
+            Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
+            ``detached``, reference URIs are set to this value. When ``method`` is set to ``enveloped``, the URIs are
+            set to this value and only the referenced elements are signed.
         :type reference_uri: string
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
@@ -319,18 +327,24 @@ class XMLSigner(XMLSignatureProcessor):
         `<Signature Id="placeholder"></Signature>` element in **data**. This element will be replaced by the generated
         signature, and excised when generating the digest.
         """
+        if id_attribute is not None:
+            self.id_attributes = (id_attribute, )
+
         if isinstance(cert, (str, bytes)):
             cert_chain = list(iterate_pem(cert))
         else:
             cert_chain = cert
 
-        if id_attribute is not None:
-            self.id_attributes = (id_attribute, )
+        if isinstance(reference_uri, (str, bytes)):
+            reference_uris = [reference_uri]
+        else:
+            reference_uris = reference_uri
 
-        sig_root, doc_root, c14n_input, reference_uri = self._unpack(data, reference_uri)
-        payload_c14n = self._c14n(c14n_input, algorithm=self.c14n_alg)
+        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
+
+        payload_c14n = self._c14n(c14n_inputs, algorithm=self.c14n_alg)
         digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
-        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uri, digest)
+        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, digest)
 
         if key is None:
             raise InvalidInput('Parameter "key" is required')
@@ -389,24 +403,25 @@ class XMLSigner(XMLSignatureProcessor):
             raise NotImplementedError()
 
         if self.method == methods.enveloping:
-            doc_root.append(c14n_input)
+            for c14n_input in c14n_inputs:
+                doc_root.append(c14n_input)
         return doc_root
 
-    def _unpack(self, data, reference_uri):
+    def _unpack(self, data, reference_uris):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         doc_root = sig_root
         if self.method == methods.enveloped:
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
-            c14n_input = self.get_root(data)
+            c14n_inputs = [self.get_root(data)]
             doc_root = self.get_root(data)
-            if reference_uri is not None:
-                # Only sign the referenced element
-                if not reference_uri.startswith('#'):
-                    reference_uri = '#'+reference_uri
-                c14n_input = self.get_root(self._resolve_reference(doc_root, {'URI': reference_uri}))
-            else:
-                reference_uri = ""
+            if reference_uris is not None:
+                # Only sign the referenced element(s)
+                c14n_inputs = []
+                for i in range(len(reference_uris)):
+                    if not reference_uris[i].startswith('#'):
+                        reference_uris[i] = '#' + reference_uris[i]
+                    c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {'URI': reference_uris[i]})))
 
             signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
             if len(signature_placeholders) == 0:
@@ -414,29 +429,34 @@ class XMLSigner(XMLSignatureProcessor):
             elif len(signature_placeholders) == 1:
                 sig_root = signature_placeholders[0]
                 del sig_root.attrib["Id"]
-                _remove_sig(self._findall(c14n_input, "Signature[@Id='placeholder']", anywhere=True)[0])
+                for c14n_input in c14n_inputs:
+                    placeholders = self._findall(c14n_input, "Signature[@Id='placeholder']", anywhere=True)
+                    if placeholders:
+                        assert len(placeholders) == 1
+                        _remove_sig(placeholders[0])
             else:
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
-            # get signed data id attribute value for reference uri
-            payload_id = c14n_input.get("Id", c14n_input.get("ID"))
-            if payload_id is not None:
-                # set default reference uri based on data id attribute value
-                reference_uri = "#{}".format(payload_id)
+            if reference_uris is None:
+                # Set default reference URIs based on signed data ID attribute values
+                reference_uris = []
+                for c14n_input in c14n_inputs:
+                    payload_id = c14n_input.get("Id", c14n_input.get("ID"))
+                    reference_uris.append("#{}".format(payload_id) if payload_id is not None else "")
         elif self.method == methods.detached:
-            if reference_uri is None:
-                reference_uri = "#{}".format(data.get("Id", data.get("ID", "object")))
-            c14n_input = self.get_root(data)
+            if reference_uris is None:
+                reference_uris = ["#{}".format(data.get("Id", data.get("ID", "object")))]
+            c14n_inputs = [self.get_root(data)]
         elif self.method == methods.enveloping:
-            c14n_input = Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")
+            c14n_inputs = [Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")]
             if isinstance(data, (str, bytes)):
-                c14n_input.text = data
+                c14n_inputs[0].text = data
             else:
-                c14n_input.append(self.get_root(data))
-            reference_uri = "#object"
-        return sig_root, doc_root, c14n_input, reference_uri
+                c14n_inputs[0].append(self.get_root(data))
+            reference_uris = ["#object"]
+        return sig_root, doc_root, c14n_inputs, reference_uris
 
-    def _build_sig(self, sig_root, reference_uri, digest):
+    def _build_sig(self, sig_root, reference_uris, digest):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
         if self.sign_alg.startswith("hmac-"):
@@ -444,14 +464,16 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
         signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
-        reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
-        if self.method == methods.enveloped:
-            transforms = SubElement(reference, ds_tag("Transforms"))
-            SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-            SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
-        digest_method = SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
-        digest_value = SubElement(reference, ds_tag("DigestValue"))
-        digest_value.text = digest
+        for reference_uri in reference_uris:
+            reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+            if self.method == methods.enveloped:
+                transforms = SubElement(reference, ds_tag("Transforms"))
+                SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
+                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+            digest_method = SubElement(reference, ds_tag("DigestMethod"),
+                                       Algorithm=self.known_digest_tags[self.digest_alg])
+            digest_value = SubElement(reference, ds_tag("DigestValue"))
+            digest_value.text = digest
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
 
@@ -538,7 +560,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         for transform in transforms:
             if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#enveloped-signature":
-                _remove_sig(signature)
+                _remove_sig(signature, idempotent=True)
 
         for transform in transforms:
             if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#base64":
@@ -557,7 +579,8 @@ class XMLVerifier(XMLSignatureProcessor):
         return payload
 
     def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, ca_pem_file=None, ca_path=None,
-               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, id_attribute=None):
+               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, id_attribute=None,
+               expect_references=1):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -622,6 +645,10 @@ class XMLVerifier(XMLSignatureProcessor):
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
+        :param expect_references:
+            Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
+            If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
+        :type id_attribute: int or boolean
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
 
@@ -655,16 +682,12 @@ class XMLVerifier(XMLSignatureProcessor):
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
         c14n_algorithm = c14n_method.get("Algorithm")
-        reference = self._find(signed_info, "Reference")
-        transforms = self._find(reference, "Transforms", require=False)
-        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
-        digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
-        digest_value = self._find(reference, "DigestValue")
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = signature_method.get("Algorithm")
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
+        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
 
         if x509_data is not None or self.require_x509:
             from OpenSSL.crypto import load_certificate, X509, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
@@ -716,18 +739,32 @@ class XMLVerifier(XMLSignatureProcessor):
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
-        payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
-        payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
+        payload_c14ns = []
+        for reference in self._findall(signed_info, "Reference"):
+            transforms = self._find(reference, "Transforms", require=False)
+            digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
+            digest_value = self._find(reference, "DigestValue")
+            payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
+            payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
+            payload_c14ns.append(payload_c14n)
 
-        if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
+        if digest_value.text != self._get_digest(b"".join(payload_c14ns), self._get_digest_method(digest_algorithm)):
             raise InvalidDigest("Digest mismatch")
 
         # We return the signed XML (and only that) to ensure no access to unsigned data happens
-        try:
-            payload_c14n_xml = fromstring(payload_c14n)
-        except etree.XMLSyntaxError:
-            payload_c14n_xml = None
-        return VerifyResult(payload_c14n, payload_c14n_xml, signature)
+        verify_results = []
+        for payload_c14n in payload_c14ns:
+            try:
+                payload_c14n_xml = fromstring(payload_c14n)
+            except etree.XMLSyntaxError:
+                payload_c14n_xml = None
+            verify_results.append(VerifyResult(payload_c14n, payload_c14n_xml, signature))
+
+        if type(expect_references) is int and len(verify_results) != expect_references:
+            msg = "Expected to find {} references, but found {}"
+            raise InvalidSignature(msg.format(expect_references, len(verify_results)))
+
+        return verify_results if expect_references > 1 else verify_results[0]
 
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
