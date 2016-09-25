@@ -39,19 +39,19 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 +==============+=========+=============================================================================================+
 | Ubuntu 16.04 | Python 2| apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev                  |
 |              |         | python-lxml python-cryptography python-openssl python-certifi python-defusedxml             |
-|              +---------+---------------------------------------------------------------------------------------------+
-|              | Python 3| apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev                |
++--------------+---------+---------------------------------------------------------------------------------------------+
+| Ubuntu 16.04 | Python 3| apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev                |
 |              |         | python3-lxml python3-cryptography python3-openssl python3-certifi python3-defusedxml        |
 +--------------+---------+---------------------------------------------------------------------------------------------+
 | Ubuntu 14.04 | Python 2| apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev                  |
-+              +---------+---------------------------------------------------------------------------------------------+
-|              | Python 3| apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev                |
++--------------+---------+---------------------------------------------------------------------------------------------+
+| Ubuntu 14.04 | Python 3| apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev                |
 +--------------+---------+---------------------------------------------------------------------------------------------+
 | Ubuntu 12.04 | Python 2| apt-get install python-dev libxml2-dev libxslt1-dev libssl-dev; pip install cffi            |
 +--------------+---------+---------------------------------------------------------------------------------------------+
 | Red Hat      | Python 2| yum install python-devel python-cffi libxml2-devel libxslt1-devel openssl-devel             |
-+              +---------+---------------------------------------------------------------------------------------------+
-|              | Python 3| yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel           |
++--------------+---------+---------------------------------------------------------------------------------------------+
+| Red Hat      | Python 3| yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel           |
 +--------------+---------+---------------------------------------------------------------------------------------------+
 | OS X/Homebrew|         | xcode-select --install; brew install openssl;                                               |
 |              |         | export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include" |
@@ -114,7 +114,7 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  signature generated using a valid X.509 certificate trusted by your system's CA store. This means anyone can
  get an SSL certificate and generate a signature that you will trust. To establish trust in the signer, use the
  ``x509_cert`` argument to specify a certificate that was pre-shared out-of-band (e.g. via SAML metadata, as
- shown in :ref:`Verifying SAML assertions <verifying-saml-assertions>`), or ``cert_subject_name`` to specify a
+ shown in *Verifying SAML assertions*), or ``cert_subject_name`` to specify a
  subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
  domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
 
