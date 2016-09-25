@@ -340,6 +340,12 @@ class TestSignXML(unittest.TestCase):
 
             self.assertEqual("{urn:oasis:names:tc:SAML:2.0:assertion}Assertion", signed_data_root.tag)
 
+            custom_key_info = etree.fromstring('''
+            <wsse:SecurityTokenReference xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+                <wsse:Reference ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" URI="#uuid-639b8970-7644-4f9e-9bc4-9c2e367808fc-1"/>
+            </wsse:SecurityTokenReference>''')
+            XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt, key_info=custom_key_info)
+
     def test_ws_security(self):
         wsse_dir = os.path.join(interop_dir, "ws-security", "ws.js")
         with open(os.path.join(wsse_dir, "examples", "server_public.pem"), "rb") as fh:
