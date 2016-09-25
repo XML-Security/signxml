@@ -1,3 +1,10 @@
+Changes for v2.2.0 (2016-09-25)
+===============================
+
+-  Support custom key info when signing
+-  Initial elements of ws-security support
+-  Support signing and verifying multiple references
+
 Changes for v2.1.4 (2016-09-18)
 ===============================
 
