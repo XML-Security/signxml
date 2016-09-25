@@ -232,9 +232,8 @@ class XMLSignatureProcessor(XMLProcessor):
             # doc_root.xpath(uri.lstrip("#"))[0]
         elif uri.startswith("#"):
             for id_attribute in self.id_attributes:
-                # results = doc_root.xpath("..//*[@*[local-name() = '{}']=$uri]".format(id_attribute),
-                #                          uri=uri.lstrip("#"))
-                results = doc_root.xpath("//*[@{}=$uri]".format(id_attribute), uri=uri.lstrip("#"))
+                xpath_query = "//*[@*[local-name() = '{}']=$uri]".format(id_attribute)
+                results = doc_root.xpath(xpath_query, uri=uri.lstrip("#"))
                 if len(results) > 1:
                     raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
                 elif len(results) == 1:
@@ -341,10 +340,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = reference_uri
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
-
-        payload_c14n = self._c14n(c14n_inputs, algorithm=self.c14n_alg)
-        digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
-        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, digest)
+        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs)
 
         if key is None:
             raise InvalidInput('Parameter "key" is required')
@@ -456,7 +452,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = ["#object"]
         return sig_root, doc_root, c14n_inputs, reference_uris
 
-    def _build_sig(self, sig_root, reference_uris, digest):
+    def _build_sig(self, sig_root, reference_uris, c14n_inputs):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
         if self.sign_alg.startswith("hmac-"):
@@ -464,7 +460,7 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
         signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
-        for reference_uri in reference_uris:
+        for i, reference_uri in enumerate(reference_uris):
             reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
             if self.method == methods.enveloped:
                 transforms = SubElement(reference, ds_tag("Transforms"))
@@ -473,6 +469,8 @@ class XMLSigner(XMLSignatureProcessor):
             digest_method = SubElement(reference, ds_tag("DigestMethod"),
                                        Algorithm=self.known_digest_tags[self.digest_alg])
             digest_value = SubElement(reference, ds_tag("DigestValue"))
+            payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
+            digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
             digest_value.text = digest
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
@@ -739,21 +737,17 @@ class XMLVerifier(XMLSignatureProcessor):
 
             self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
 
-        payload_c14ns = []
+        verify_results = []
         for reference in self._findall(signed_info, "Reference"):
             transforms = self._find(reference, "Transforms", require=False)
             digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
             digest_value = self._find(reference, "DigestValue")
             payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
             payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
-            payload_c14ns.append(payload_c14n)
+            if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
+                raise InvalidDigest("Digest mismatch for reference {}".format(len(verify_results)))
 
-        if digest_value.text != self._get_digest(b"".join(payload_c14ns), self._get_digest_method(digest_algorithm)):
-            raise InvalidDigest("Digest mismatch")
-
-        # We return the signed XML (and only that) to ensure no access to unsigned data happens
-        verify_results = []
-        for payload_c14n in payload_c14ns:
+            # We return the signed XML (and only that) to ensure no access to unsigned data happens
             try:
                 payload_c14n_xml = fromstring(payload_c14n)
             except etree.XMLSyntaxError:

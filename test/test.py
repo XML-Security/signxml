@@ -33,6 +33,8 @@ class URIResolver(etree.Resolver):
 parser = etree.XMLParser(load_dtd=True)
 parser.resolvers.add(URIResolver())
 
+interop_dir = os.path.join(os.path.dirname(__file__), "interop")
+
 class TestSignXML(unittest.TestCase):
     def setUp(self):
         self.example_xml_files = (os.path.join(os.path.dirname(__file__), "example.xml"),
@@ -173,7 +175,6 @@ class TestSignXML(unittest.TestCase):
                     XMLVerifier().verify(fh.read(), ca_pem_file=ca_pem_file)
 
     def test_xmldsig_interop(self):
-        interop_dir = os.path.join(os.path.dirname(__file__), "interop")
         def resolver(uri):
             if uri == "document.xml":
                 with open(os.path.join(interop_dir, "phaos-xmldsig-three", uri), "rb") as fh:
@@ -338,6 +339,18 @@ class TestSignXML(unittest.TestCase):
             self.assertEqual("assertionId", ref[0].attrib['URI'][1:])
 
             self.assertEqual("{urn:oasis:names:tc:SAML:2.0:assertion}Assertion", signed_data_root.tag)
+
+    def test_ws_security(self):
+        wsse_dir = os.path.join(interop_dir, "ws-security", "ws.js")
+        with open(os.path.join(wsse_dir, "examples", "server_public.pem"), "rb") as fh:
+            crt = fh.read()
+        data = etree.parse(os.path.join(wsse_dir, "test", "unit", "client", "files", "valid wss resp.xml"))
+        XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2)
+
+        data = etree.parse(os.path.join(wsse_dir, "test", "unit", "client", "files",
+                                        "invalid wss resp - changed content.xml"))
+        with self.assertRaisesRegexp(InvalidDigest, "Digest mismatch for reference 0"):
+            XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2)
 
 if __name__ == '__main__':
     unittest.main()
