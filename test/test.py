@@ -358,5 +358,14 @@ class TestSignXML(unittest.TestCase):
         with self.assertRaisesRegexp(InvalidDigest, "Digest mismatch for reference 0"):
             XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2)
 
+    def test_psha1(self):
+        from signxml.util import p_sha1
+        a, b, c, d = ("grrlUUfhuNwlvQzQ4bV6TT3wA8ieZPltIf4+H7nIvCE=",
+                      "YLABh3ZmZyiO5gvVLZe9J4JPd9w59KGeTFwE85XlzxE=",
+                      "Wv3QzY84KfgwSkn1z3QV+LXEoo3nPraZPysJYtA3u4c=",
+                      "g/uYZmYX7rOm/X7UV4usrvjIPCiWMWwNZJL0ejvz6Y4=")
+        self.assertEqual(p_sha1(a, b), c)
+        self.assertEqual(p_sha1(b, a), d)
+
 if __name__ == '__main__':
     unittest.main()

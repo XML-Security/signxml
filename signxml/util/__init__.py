@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, re, struct, textwrap
 from xml.etree import ElementTree as stdlibElementTree
+from base64 import b64encode, b64decode
 
 from eight import str, bytes
 from lxml import etree
@@ -151,7 +152,7 @@ def hmac_sha1(key, message):
     hasher.update(message)
     return hasher.finalize()
 
-def p_sha1(secret, seed, sizes=()):
+def raw_p_sha1(secret, seed, sizes=()):
     """
     Derive one or more keys from secret and seed.
     (See specs part 6, 6.7.5 and RFC 2246 - TLS v1.0)
@@ -176,3 +177,7 @@ def p_sha1(secret, seed, sizes=()):
         parts.append(result[:size])
         result = result[size:]
     return tuple(parts)
+
+def p_sha1(client_b64_bytes, server_b64_bytes):
+    client_bytes, server_bytes = b64decode(client_b64_bytes), b64decode(server_b64_bytes)
+    return b64encode(raw_p_sha1(client_bytes, server_bytes, (len(client_bytes), len(server_bytes)))[0]).decode()
