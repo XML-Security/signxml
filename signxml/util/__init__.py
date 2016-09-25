@@ -143,3 +143,36 @@ class XMLProcessor:
             # We use a copy so we can modify the tree
             # TODO: turn this off for xmlenc
             return fromstring(etree.tostring(data))
+
+def hmac_sha1(key, message):
+    from cryptography.hazmat.primitives import hashes, hmac
+    from cryptography.hazmat.backends import default_backend
+    hasher = hmac.HMAC(key, hashes.SHA1(), backend=default_backend())
+    hasher.update(message)
+    return hasher.finalize()
+
+def p_sha1(secret, seed, sizes=()):
+    """
+    Derive one or more keys from secret and seed.
+    (See specs part 6, 6.7.5 and RFC 2246 - TLS v1.0)
+    Lengths of keys will match sizes argument
+
+    Source: https://github.com/FreeOpcUa/python-opcua
+    key_sizes = (signature_key_size, symmetric_key_size, 16)
+    (sigkey, key, init_vec) = p_sha1(nonce2, nonce1, key_sizes)
+    """
+    full_size = 0
+    for size in sizes:
+        full_size += size
+
+    result = b''
+    accum = seed
+    while len(result) < full_size:
+        accum = hmac_sha1(secret, accum)
+        result += hmac_sha1(secret, accum + seed)
+
+    parts = []
+    for size in sizes:
+        parts.append(result[:size])
+        result = result[size:]
+    return tuple(parts)
