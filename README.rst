@@ -108,6 +108,16 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  data returned by the ``verify()`` method. The ``signed_xml`` attribute of the return value is the XML node or string that
  was signed.
 
+.. admonition:: Establish trust
+
+ If you do not supply any keyword arguments to ``verify()``, the default behavior is to trust **any** valid XML
+ signature generated using a valid X.509 certificate trusted by your system's CA store. This means anyone can
+ get an SSL certificate and generate a signature that you will trust. To establish trust in the signer, use the
+ ``x509_cert`` argument to specify a certificate that was pre-shared out-of-band (e.g. via SAML metadata, as
+ shown in :ref:`Verifying SAML assertions <verifying-saml-assertions>`), or ``cert_subject_name`` to specify a
+ subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
+ domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
+
  **Recommended reading:** `W3C XML Signature Best Practices for Applications <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `OWASP: On Breaking SAML: Be Whoever You Want to Be <https://www.owasp.org/images/2/28/Breaking_SAML_Be_Whoever_You_Want_to_Be_-_Juraj_Somorovsky%2BChristian_Mainka.pdf>`_
 
 XML signature methods: enveloped, detached, enveloping
