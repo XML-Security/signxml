@@ -15,6 +15,8 @@ from lxml import etree
 from defusedxml.lxml import fromstring
 from pyasn1.type import univ
 
+from ..exceptions import RedundantCert, InvalidCertificate
+
 USING_PYTHON2 = True if sys.version_info < (3, 0) else False
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
@@ -181,3 +183,53 @@ def raw_p_sha1(secret, seed, sizes=()):
 def p_sha1(client_b64_bytes, server_b64_bytes):
     client_bytes, server_bytes = b64decode(client_b64_bytes), b64decode(server_b64_bytes)
     return b64encode(raw_p_sha1(client_bytes, server_bytes, (len(client_bytes), len(server_bytes)))[0]).decode()
+
+
+def _add_cert_to_store(store, cert):
+    from OpenSSL.crypto import X509StoreContext, X509StoreContextError, Error as OpenSSLCryptoError
+    try:
+        X509StoreContext(store, cert).verify_certificate()
+    except X509StoreContextError as e:
+        raise InvalidCertificate(e)
+    try:
+        store.add_cert(cert)
+        return cert
+    except OpenSSLCryptoError as e:
+        if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
+            raise RedundantCert(e)
+        raise
+
+def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
+    """
+    Look at certs in the cert chain and add them to the store one by one.
+    Return the cert at the end of the chain. That is the cert to be used by the caller for verifying.
+    From https://www.w3.org/TR/xmldsig-core2/#sec-X509Data:
+    "All certificates appearing in an X509Data element must relate to the validation key by either containing it
+    or being part of a certification chain that terminates in a certificate containing the validation key.
+    No ordering is implied by the above constraints"
+    """
+    from OpenSSL import SSL
+    context = SSL.Context(SSL.TLSv1_METHOD)
+    if ca_pem_file is None and ca_path is None:
+        import certifi
+        ca_pem_file = certifi.where()
+    context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
+    store = context.get_cert_store()
+    certs = list(reversed(cert_chain))
+    end_of_chain, last_error = None, None
+    while len(certs) > 0:
+        for cert in certs:
+            try:
+                end_of_chain = _add_cert_to_store(store, cert)
+                certs.remove(cert)
+                break
+            except RedundantCert:
+                certs.remove(cert)
+                if end_of_chain is None:
+                    end_of_chain = cert
+                break
+            except Exception as e:
+                last_error = e
+        else:
+            raise last_error
+    return end_of_chain

@@ -15,9 +15,9 @@ from cryptography.hazmat.backends import default_backend
 
 from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
 
-from .exceptions import InvalidSignature, InvalidDigest, InvalidCertificate, InvalidInput, RedundantCert
+from .exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
 from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
-                   XMLProcessor, DERSequenceOfIntegers, iterate_pem)
+                   XMLProcessor, DERSequenceOfIntegers, iterate_pem, verify_x509_cert_chain)
 from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
@@ -772,52 +772,3 @@ class XMLVerifier(XMLSignatureProcessor):
         if result is not None:
             result = bytes_to_long(b64decode(result.text))
         return result
-
-def _add_cert_to_store(store, cert):
-    from OpenSSL.crypto import X509StoreContext, X509StoreContextError, Error as OpenSSLCryptoError
-    try:
-        X509StoreContext(store, cert).verify_certificate()
-    except X509StoreContextError as e:
-        raise InvalidCertificate(e)
-    try:
-        store.add_cert(cert)
-        return cert
-    except OpenSSLCryptoError as e:
-        if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
-            raise RedundantCert(e)
-        raise
-
-def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
-    """
-    Look at certs in the cert chain and add them to the store one by one.
-    Return the cert at the end of the chain. That is the cert to be used by the caller for verifying.
-    From https://www.w3.org/TR/xmldsig-core2/#sec-X509Data:
-    "All certificates appearing in an X509Data element must relate to the validation key by either containing it
-    or being part of a certification chain that terminates in a certificate containing the validation key.
-    No ordering is implied by the above constraints"
-    """
-    from OpenSSL import SSL
-    context = SSL.Context(SSL.TLSv1_METHOD)
-    if ca_pem_file is None and ca_path is None:
-        import certifi
-        ca_pem_file = certifi.where()
-    context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
-    store = context.get_cert_store()
-    certs = list(reversed(cert_chain))
-    end_of_chain, last_error = None, None
-    while len(certs) > 0:
-        for cert in certs:
-            try:
-                end_of_chain = _add_cert_to_store(store, cert)
-                certs.remove(cert)
-                break
-            except RedundantCert:
-                certs.remove(cert)
-                if end_of_chain is None:
-                    end_of_chain = cert
-                break
-            except Exception as e:
-                last_error = e
-        else:
-            raise last_error
-    return end_of_chain
