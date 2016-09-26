@@ -120,6 +120,12 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
 
  **Recommended reading:** `W3C XML Signature Best Practices for Applications <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `OWASP: On Breaking SAML: Be Whoever You Want to Be <https://www.owasp.org/images/2/28/Breaking_SAML_Be_Whoever_You_Want_to_Be_-_Juraj_Somorovsky%2BChristian_Mainka.pdf>`_
 
+Example: Signing and verifying a SAML assertion
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+    TODO
+
 XML signature methods: enveloped, detached, enveloping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
@@ -135,6 +141,12 @@ For detached signatures, the code above will use the ``Id`` or ``ID`` attribute 
 (``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
 ``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``XMLVerifier().verify(data, uri_resolver=...)``.
+
+Example: Signing and verifying a SOAP WS-Security envelope
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+    TODO
 
 See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
 
