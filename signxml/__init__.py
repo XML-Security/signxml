@@ -310,7 +310,7 @@ class XMLSigner(XMLSignatureProcessor):
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached``, reference URIs are set to this value. When ``method`` is set to ``enveloped``, the URIs are
             set to this value and only the referenced elements are signed.
-        :type reference_uri: string
+        :type reference_uri: string or list
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
@@ -327,7 +327,7 @@ class XMLSigner(XMLSignatureProcessor):
             the payload data.
 
         To specify the location of an enveloped signature within **data**, insert a
-        `<Signature Id="placeholder"></Signature>` element in **data**. This element will be replaced by the generated
+        ``<Signature Id="placeholder"></Signature>`` element in **data**. This element will be replaced by the generated
         signature, and excised when generating the digest.
         """
         if id_attribute is not None:
@@ -653,7 +653,7 @@ class XMLVerifier(XMLSignatureProcessor):
         :param expect_references:
             Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
             If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
-        :type id_attribute: int or boolean
+        :type expect_references: int or boolean
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
 
