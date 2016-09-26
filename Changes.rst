@@ -1,3 +1,10 @@
+Changes for v2.2.1 (2016-09-26)
+===============================
+
+-  Fix handling of reference URIs in detached signing
+
+-  Test infra fixes
+
 Changes for v2.2.0 (2016-09-25)
 ===============================
 
