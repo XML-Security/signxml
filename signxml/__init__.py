@@ -308,8 +308,8 @@ class XMLSigner(XMLSignatureProcessor):
         :type cert: string, array of strings, or array of OpenSSL.crypto.X509 objects
         :param reference_uri:
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
-            ``detached``, reference URIs are set to this value. When ``method`` is set to ``enveloped``, the URIs are
-            set to this value and only the referenced elements are signed.
+            ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
+            signed.
         :type reference_uri: string or list
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
@@ -408,23 +408,27 @@ class XMLSigner(XMLSignatureProcessor):
         if self.method == methods.enveloping:
             for c14n_input in c14n_inputs:
                 doc_root.append(c14n_input)
-        return doc_root
+        return doc_root if self.method == methods.enveloped else sig_root
+
+    def _get_c14n_inputs_from_reference_uris(self, doc_root, reference_uris):
+        c14n_inputs, new_reference_uris = [], []
+        for reference_uri in reference_uris:
+            if not reference_uri.startswith('#'):
+                reference_uri = '#' + reference_uri
+            c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {'URI': reference_uri})))
+            new_reference_uris.append(reference_uri)
+        return c14n_inputs, new_reference_uris
 
     def _unpack(self, data, reference_uris):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
-        doc_root = sig_root
         if self.method == methods.enveloped:
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
-            c14n_inputs = [self.get_root(data)]
             doc_root = self.get_root(data)
+            c14n_inputs = [self.get_root(data)]
             if reference_uris is not None:
                 # Only sign the referenced element(s)
-                c14n_inputs = []
-                for i in range(len(reference_uris)):
-                    if not reference_uris[i].startswith('#'):
-                        reference_uris[i] = '#' + reference_uris[i]
-                    c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {'URI': reference_uris[i]})))
+                c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
 
             signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
             if len(signature_placeholders) == 0:
@@ -447,10 +451,16 @@ class XMLSigner(XMLSignatureProcessor):
                     payload_id = c14n_input.get("Id", c14n_input.get("ID"))
                     reference_uris.append("#{}".format(payload_id) if payload_id is not None else "")
         elif self.method == methods.detached:
+            doc_root = self.get_root(data)
             if reference_uris is None:
                 reference_uris = ["#{}".format(data.get("Id", data.get("ID", "object")))]
-            c14n_inputs = [self.get_root(data)]
+                c14n_inputs = [self.get_root(data)]
+            try:
+                c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
+            except InvalidInput:  # Dummy reference URI
+                c14n_inputs = [self.get_root(data)]
         elif self.method == methods.enveloping:
+            doc_root = sig_root
             c14n_inputs = [Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")]
             if isinstance(data, (str, bytes)):
                 c14n_inputs[0].text = data

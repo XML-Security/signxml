@@ -304,7 +304,7 @@ class TestSignXML(unittest.TestCase):
         signer = XMLSigner()
         signed = signer.sign(data, key=self.keys["rsa"])
 
-    def test_reference_uris_in_enveloped(self):
+    def test_reference_uris_and_custom_key_info(self):
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
             crt = fh.read()
         with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
@@ -340,6 +340,10 @@ class TestSignXML(unittest.TestCase):
 
             self.assertEqual("{urn:oasis:names:tc:SAML:2.0:assertion}Assertion", signed_data_root.tag)
 
+            # Also test with detached signing
+            XMLSigner(method=methods.detached).sign(data, reference_uri=reference_uri, key=key, cert=crt)
+
+            # Test setting custom key info
             custom_key_info = etree.fromstring('''
             <wsse:SecurityTokenReference xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
                 <wsse:Reference ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" URI="#uuid-639b8970-7644-4f9e-9bc4-9c2e367808fc-1"/>
