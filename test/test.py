@@ -239,7 +239,7 @@ class TestSignXML(unittest.TestCase):
                                          "x509data", "signature-x509-ski", "signature-x509-is")
                     todo_cases = ("signature-big", "enveloping-dsa-x509chain",
                                   "enveloping-sha512-hmac-sha512", "enveloping-sha512-rsa-sha512")
-                    if signature_file.endswith("expired-cert.xml"):
+                    if signature_file.endswith("expired-cert.xml") or signature_file.endswith("wsfederation_metadata.xml"):
                         with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
                             raise
                     elif signature_file.endswith("invalid_enveloped_transform.xml"):

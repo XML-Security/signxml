@@ -20,6 +20,7 @@ release:
 	$(eval GH_AUTH=$(shell if grep -q '@github.com' ~/.git-credentials; then echo $$(grep '@github.com' ~/.git-credentials | python3 -c 'import sys, urllib.parse as p; print(p.urlparse(sys.stdin.read()).netloc.split("@")[0])'); else echo $(GIT_USER); fi))
 	$(eval RELEASES_API=https://api.github.com/repos/${REMOTE}/releases)
 	$(eval UPLOADS_API=https://uploads.github.com/repos/${REMOTE}/releases)
+	git pull
 	git clean -x --force ${CLEAN_DIRS}
 	sed -i -e "s/version=\([\'\"]\)[0-9]\+\.[0-9]\+\.[0-9]\+/version=\1$${TAG:1}/" setup.py
 	git add setup.py
