@@ -1,3 +1,8 @@
+Changes for v2.2.3 (2016-12-20)
+===============================
+
+-  Release automation: parse repo name correctly
+
 Changes for v2.2.2 (2016-12-20)
 ===============================
 
