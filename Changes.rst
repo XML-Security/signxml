@@ -1,3 +1,10 @@
+Changes for v2.2.2 (2016-12-20)
+===============================
+
+-  Expand supported cryptography version range. Fixes #74
+
+-  Documentation and release automation improvements
+
 Changes for v2.2.1 (2016-09-26)
 ===============================
 
