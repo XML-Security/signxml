@@ -19,6 +19,7 @@ docs:
 	$(MAKE) -C docs html
 
 install:
+	-rm -rf dist
 	python setup.py bdist_wheel
 	pip install --upgrade dist/*.whl
 
