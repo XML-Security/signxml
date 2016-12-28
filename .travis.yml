@@ -40,6 +40,7 @@ install:
       fi
   - if [[ $TRAVIS_OS_NAME == osx ]]; then brew install openssl; fi
   - if [[ $TRAVIS_OS_NAME == osx ]]; then export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"; fi
+  - pip install --upgrade pip virtualenv
   - virtualenv --python=python env
   - source env/bin/activate
   - make install
