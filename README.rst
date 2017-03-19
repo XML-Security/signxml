@@ -124,6 +124,7 @@ Example: Signing and verifying a SAML assertion
 """""""""""""""""""""""""""""""""""""""""""""""
 
 .. code-block:: python
+
     TODO
 
 XML signature methods: enveloped, detached, enveloping
@@ -146,6 +147,7 @@ Example: Signing and verifying a SOAP WS-Security envelope
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 .. code-block:: python
+
     TODO
 
 See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
