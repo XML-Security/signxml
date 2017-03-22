@@ -150,7 +150,7 @@ Example: Signing and verifying a SOAP WS-Security envelope
 
     TODO
 
-See the `API documentation <https://signxml.readthedocs.io/en/latest/#id3>`_ for more.
+See the `API documentation <https://signxml.readthedocs.io/en/latest/#id4>`_ for more.
 
 Authors
 -------
