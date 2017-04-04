@@ -712,7 +712,8 @@ class XMLVerifier(XMLSignatureProcessor):
                     raise InvalidInput("Expected a X.509 certificate based signature")
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
                 if not certs:
-                    msg = "Expected to find an X509Certificate element in the signature (X509SubjectName, X509SKI are not supported)"  # noqa
+                    msg = "Expected to find an X509Certificate element in the signature"
+                    msg += " (X509SubjectName, X509SKI are not supported)"
                     raise InvalidInput(msg)
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 signing_cert = verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
