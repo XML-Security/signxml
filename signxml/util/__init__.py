@@ -13,7 +13,6 @@ from base64 import b64encode, b64decode
 from eight import str, bytes
 from lxml import etree
 from defusedxml.lxml import fromstring
-from pyasn1.type import univ
 
 from ..exceptions import RedundantCert, InvalidCertificate
 
@@ -106,13 +105,6 @@ def add_pem_header(bare_base64_cert):
 def iterate_pem(certs):
     for match in re.findall(pem_regexp, ensure_str(certs)):
         yield match
-
-class DERSequenceOfIntegers(univ.SequenceOf):
-    componentType = univ.Integer()
-    def __init__(self, integers):
-        univ.SequenceOf.__init__(self)
-        for pos, i in enumerate(integers):
-            self.setComponentByPosition(pos, i)
 
 class Namespace(dict):
     __getattr__ = dict.__getitem__
