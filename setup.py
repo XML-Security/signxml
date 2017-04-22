@@ -12,7 +12,7 @@ setup(
     description='Python XML Signature library',
     long_description=open('README.rst').read(),
     install_requires=[
-        'lxml >= 3.5.0, < 3.8',
+        'lxml >= 3.5.0, < 4',
         'defusedxml >= 0.4.1, < 0.6',
         'eight >= 0.3.0, < 0.5',
         'cryptography >= 1.2.3, < 1.8',
