@@ -15,7 +15,7 @@ setup(
         'lxml >= 3.5.0, < 3.8',
         'defusedxml >= 0.4.1, < 0.6',
         'eight >= 0.3.0, < 0.5',
-        'cryptography >= 1.2.3, < 1.9',
+        'cryptography >= 1.2.3, < 1.8',
         'pyOpenSSL >= 0.15.1, < 18',
         'certifi >= 2015.11.20.1'
     ],
