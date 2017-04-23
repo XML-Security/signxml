@@ -13,11 +13,11 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
 
-from pyasn1.codec.der import encoder as der_encoder, decoder as der_decoder
+from asn1crypto.algos import DSASignature
 
 from .exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
 from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
-                   XMLProcessor, DERSequenceOfIntegers, iterate_pem, verify_x509_cert_chain)
+                   XMLProcessor, iterate_pem, verify_x509_cert_chain)
 from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
@@ -376,9 +376,9 @@ class XMLSigner(XMLSignatureProcessor):
             signature = signer.finalize()
             if self.sign_alg.startswith("dsa-"):
                 # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
-                decoded_signature = der_decoder.decode(signature)[0]
-                r = decoded_signature.getComponentByPosition(0)
-                s = decoded_signature.getComponentByPosition(1)
+                decoded_signature = DSASignature.load(signature).native
+                r = decoded_signature['r']
+                s = decoded_signature['s']
                 signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
 
             signature_value_element.text = ensure_str(b64encode(signature))
@@ -544,9 +544,7 @@ class XMLVerifier(XMLSignatureProcessor):
             y = self._get_long(dsa_key_value, "Y")
             pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
             key = pn.public_key(backend=default_backend())
-            der_seq = DERSequenceOfIntegers([bytes_to_long(raw_signature[:len(raw_signature)//2]),
-                                             bytes_to_long(raw_signature[len(raw_signature)//2:])])
-            sig_as_der_seq = der_encoder.encode(der_seq)
+            sig_as_der_seq = DSASignature.from_p1363(raw_signature).dump()
             verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")

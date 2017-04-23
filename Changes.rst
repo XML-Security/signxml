@@ -1,4 +1,6 @@
-
+Changes for v2.3.0 (2017-??-??)
+===============================
+-  Replace pyasn1 with asn1crypto to match cryptography library
 
 Changes for v2.2.4 (2017-03-19)
 ===============================

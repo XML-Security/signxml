@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='signxml',
-    version="2.2.6",
+    version="2.3.0",
     url='https://github.com/kislyuk/signxml',
     license='Apache Software License',
     author='Andrey Kislyuk',
@@ -15,7 +15,7 @@ setup(
         'lxml >= 3.5.0, < 4',
         'defusedxml >= 0.4.1, < 0.6',
         'eight >= 0.3.0, < 0.5',
-        'cryptography >= 1.2.3, < 1.8',
+        'cryptography >= 1.8, < 1.9',
         'pyOpenSSL >= 0.15.1, < 18',
         'certifi >= 2015.11.20.1'
     ],
