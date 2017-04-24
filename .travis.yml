@@ -24,6 +24,10 @@ matrix:
   allow_failures:
     - python: pypy3
 
+os:
+    - linux
+    - osx
+
 install:
   - |
       if [ "$TRAVIS_PYTHON_VERSION" = "pypy" ]; then
