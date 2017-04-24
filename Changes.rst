@@ -1,3 +1,19 @@
+Changes for v2.3.0 (2017-04-24)
+===============================
+
+-  Add explicit dependency on asn1crypto to setup.py (#87)
+
+-  Remove use of Exception.message for py3 compatibility. Closes #36
+   (#86)
+
+-  Use asn1crypto instead of pyasn1 to match cryptography lib (#85)
+
+-  Pin to major version of lxml instead of minor
+
+-  Allow newer versions of several requirements (#84)
+
+-  Allow newer version of eight library (#83)
+
 Changes for v2.2.4 (2017-03-19)
 ===============================
 
