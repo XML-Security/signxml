@@ -16,6 +16,7 @@ setup(
         'defusedxml >= 0.4.1, < 0.6',
         'eight >= 0.3.0, < 0.5',
         'cryptography >= 1.8, < 1.9',
+        'asn1crypto >= 0.21.0',
         'pyOpenSSL >= 0.15.1, < 18',
         'certifi >= 2015.11.20.1'
     ],
