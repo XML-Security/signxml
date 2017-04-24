@@ -8,6 +8,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os, sys, re, struct, textwrap
 from xml.etree import ElementTree as stdlibElementTree
+from lxml.etree import XMLSyntaxError
 from base64 import b64encode, b64decode
 
 from eight import str, bytes
@@ -129,7 +130,10 @@ class XMLProcessor:
 
     def get_root(self, data):
         if isinstance(data, (str, bytes)):
-            return fromstring(data, parser=self.parser)
+            try:
+                return fromstring(data, parser=self.parser)
+            except XMLSyntaxError:
+                return data
         elif isinstance(data, stdlibElementTree.Element):
             # TODO: add debug level logging statement re: performance impact here
             return fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))

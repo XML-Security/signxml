@@ -413,9 +413,12 @@ class XMLSigner(XMLSignatureProcessor):
     def _get_c14n_inputs_from_reference_uris(self, doc_root, reference_uris):
         c14n_inputs, new_reference_uris = [], []
         for reference_uri in reference_uris:
-            if not reference_uri.startswith('#'):
+            if reference_uri.startswith('http'):
+                #todo fetch external resource, for now assume data=referenced resource
+                c14n_inputs.append(doc_root)
+            elif not reference_uri.startswith('#'):
                 reference_uri = '#' + reference_uri
-            c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {'URI': reference_uri})))
+                c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {'URI': reference_uri})))
             new_reference_uris.append(reference_uri)
         return c14n_inputs, new_reference_uris
 
@@ -453,7 +456,7 @@ class XMLSigner(XMLSignatureProcessor):
         elif self.method == methods.detached:
             doc_root = self.get_root(data)
             if reference_uris is None:
-                reference_uris = ["#{}".format(data.get("Id", data.get("ID", "object")))]
+                reference_uris = ["#{}".format(doc_root.get("Id", doc_root.get("ID", "object")))]
                 c14n_inputs = [self.get_root(data)]
             try:
                 c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
@@ -486,7 +489,10 @@ class XMLSigner(XMLSignatureProcessor):
             digest_method = SubElement(reference, ds_tag("DigestMethod"),
                                        Algorithm=self.known_digest_tags[self.digest_alg])
             digest_value = SubElement(reference, ds_tag("DigestValue"))
-            payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
+            if isinstance(c14n_inputs[i], (str, bytes)):
+                payload_c14n = c14n_inputs[i]
+            else:
+                payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
             digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
             digest_value.text = digest
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
