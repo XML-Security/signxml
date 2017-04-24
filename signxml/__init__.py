@@ -728,7 +728,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 verify(signing_cert, raw_signature, signed_info_c14n, signature_digest_method)
             except OpenSSLCryptoError as e:
                 try:
-                    lib, func, reason = e.message[0]
+                    lib, func, reason = e.args[0][0]
                 except Exception:
                     reason = e
                 raise InvalidSignature("Signature verification failed: {}".format(reason))
