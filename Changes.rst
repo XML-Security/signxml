@@ -1,3 +1,10 @@
+Changes for v2.4.0 (2017-07-10)
+===============================
+
+-  Import asn1crypto on demand
+
+-  Allow newer versions of cryptography library (#89)
+
 Changes for v2.3.0 (2017-04-24)
 ===============================
 
