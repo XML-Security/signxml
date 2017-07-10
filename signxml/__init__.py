@@ -452,7 +452,7 @@ class XMLSigner(XMLSignatureProcessor):
         elif self.method == methods.detached:
             doc_root = self.get_root(data)
             if reference_uris is None:
-                reference_uris = ["#{}".format(data.get("Id", data.get("ID", "object")))]
+                reference_uris = ["#{}".format(doc_root.get("Id", doc_root.get("ID", "object")))]
                 c14n_inputs = [self.get_root(data)]
             try:
                 c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
