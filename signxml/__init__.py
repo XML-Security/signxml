@@ -13,8 +13,6 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
 
-from asn1crypto.algos import DSASignature
-
 from .exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
 from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
                    XMLProcessor, iterate_pem, verify_x509_cert_chain)
@@ -376,6 +374,7 @@ class XMLSigner(XMLSignatureProcessor):
             signature = signer.finalize()
             if self.sign_alg.startswith("dsa-"):
                 # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
+                from asn1crypto.algos import DSASignature
                 decoded_signature = DSASignature.load(signature).native
                 r = decoded_signature['r']
                 s = decoded_signature['s']
@@ -544,6 +543,7 @@ class XMLVerifier(XMLSignatureProcessor):
             y = self._get_long(dsa_key_value, "Y")
             pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
             key = pn.public_key(backend=default_backend())
+            from asn1crypto.algos import DSASignature
             sig_as_der_seq = DSASignature.from_p1363(raw_signature).dump()
             verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
