@@ -88,13 +88,13 @@ def long_to_bytes(n, blocksize=0):
         s = (blocksize - len(s) % blocksize) * b'\000' + s
     return s
 
-pem_regexp = re.compile("{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER), flags=re.S)
+pem_regexp = re.compile("{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER), flags=re.S)
 
 def strip_pem_header(cert):
     try:
-        return re.search(pem_regexp, ensure_str(cert)).group(1)
+        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r","")
     except Exception:
-        return ensure_str(cert)
+        return ensure_str(cert).replace("\r","")
 
 def add_pem_header(bare_base64_cert):
     bare_base64_cert = ensure_str(bare_base64_cert)
