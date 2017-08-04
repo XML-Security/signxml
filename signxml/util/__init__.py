@@ -21,6 +21,7 @@ USING_PYTHON2 = True if sys.version_info < (3, 0) else False
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
 
+
 def ensure_bytes(x, encoding="utf-8", none_ok=False):
     if none_ok is True and x is None:
         return x
@@ -28,12 +29,14 @@ def ensure_bytes(x, encoding="utf-8", none_ok=False):
         x = x.encode(encoding)
     return x
 
+
 def ensure_str(x, encoding="utf-8", none_ok=False):
     if none_ok is True and x is None:
         return x
     if not isinstance(x, str):
         x = x.decode(encoding)
     return x
+
 
 def bytes_to_long(s):
     """bytes_to_long(string) : long
@@ -54,8 +57,9 @@ def bytes_to_long(s):
         s = b'\000' * extra + s
         length = length + extra
     for i in range(0, length, 4):
-        acc = (acc << 32) + unpack(b'>I', s[i:i+4])[0]
+        acc = (acc << 32) + unpack(b'>I', s[i:i + 4])[0]
     return acc
+
 
 def long_to_bytes(n, blocksize=0):
     """long_to_bytes(n:long, blocksize:int) : string
@@ -88,13 +92,17 @@ def long_to_bytes(n, blocksize=0):
         s = (blocksize - len(s) % blocksize) * b'\000' + s
     return s
 
-pem_regexp = re.compile("{header}\n(.+?){footer}".format(header=PEM_HEADER, footer=PEM_FOOTER), flags=re.S)
+
+pem_regexp = re.compile("{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER),
+                        flags=re.S)
+
 
 def strip_pem_header(cert):
     try:
-        return re.search(pem_regexp, ensure_str(cert)).group(1)
+        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r", "")
     except Exception:
-        return ensure_str(cert)
+        return ensure_str(cert).replace("\r", "")
+
 
 def add_pem_header(bare_base64_cert):
     bare_base64_cert = ensure_str(bare_base64_cert)
@@ -102,12 +110,15 @@ def add_pem_header(bare_base64_cert):
         return bare_base64_cert
     return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
 
+
 def iterate_pem(certs):
     for match in re.findall(pem_regexp, ensure_str(certs)):
         yield match
 
+
 class Namespace(dict):
     __getattr__ = dict.__getitem__
+
 
 class XMLProcessor:
     _schema, _default_parser = None, None
@@ -139,12 +150,14 @@ class XMLProcessor:
             # TODO: turn this off for xmlenc
             return fromstring(etree.tostring(data))
 
+
 def hmac_sha1(key, message):
     from cryptography.hazmat.primitives import hashes, hmac
     from cryptography.hazmat.backends import default_backend
     hasher = hmac.HMAC(key, hashes.SHA1(), backend=default_backend())
     hasher.update(message)
     return hasher.finalize()
+
 
 def raw_p_sha1(secret, seed, sizes=()):
     """
@@ -172,6 +185,7 @@ def raw_p_sha1(secret, seed, sizes=()):
         result = result[size:]
     return tuple(parts)
 
+
 def p_sha1(client_b64_bytes, server_b64_bytes):
     client_bytes, server_bytes = b64decode(client_b64_bytes), b64decode(server_b64_bytes)
     return b64encode(raw_p_sha1(client_bytes, server_bytes, (len(client_bytes), len(server_bytes)))[0]).decode()
@@ -190,6 +204,7 @@ def _add_cert_to_store(store, cert):
         if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
             raise RedundantCert(e)
         raise
+
 
 def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     """
