@@ -172,6 +172,7 @@ Links
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
 * `XMLSec: Related links <https://www.aleksey.com/xmlsec/related.html>`_
 * `OWASP SAML Security Cheat Sheet <https://www.owasp.org/index.php/SAML_Security_Cheat_Sheet>`_
+* `Okta Developer Docs: SAML <https://developer.okta.com/standards/SAML/>`_
 
 Bugs
 ~~~~
