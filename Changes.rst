@@ -1,3 +1,12 @@
+Changes for v2.5.0 (2017-12-07)
+===============================
+
+-  Relax dependency version constraints.
+
+-  Drop Python 3.3 support.
+
+-  Support for PEM files with CR+LF line endings (#93).
+
 Changes for v2.4.0 (2017-07-10)
 ===============================
 
