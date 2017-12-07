@@ -3,7 +3,6 @@ cache: pip
 
 python:
   - 2.7
-  - 3.3
   - 3.4
   - 3.5
   - 3.6
@@ -16,10 +15,10 @@ matrix:
       python: 2.7
       os: osx
     - language: generic
-      python: 3.3
+      python: 3.5
       os: osx
     - language: generic
-      python: 3.5
+      python: 3.6
       os: osx
   allow_failures:
     - python: pypy3
