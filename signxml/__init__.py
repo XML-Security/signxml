@@ -265,9 +265,9 @@ class XMLSigner(XMLSignatureProcessor):
         listed under the `Algorithm Identifiers and Implementation Requirements
         <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
     :type digest_algorithm: string
-    :param include_c14n_transform: If this parameter equal ``True`` c14n transformation will be included in ``Transform`` XML node.
-        This parameter is needed, because some software can uses hard restrictions on Transform XML node, that prohibit 
-        include c14n transformation into Transform XML node.
+    :param include_c14n_transform: If this parameter equal ``True`` c14n transformation will be included 
+        in ``Transform`` XML node. This parameter is needed, because some software can uses hard restrictions 
+        on Transform XML node, that prohibit include c14n transformation into Transform XML node.
     :type include_c14n_transform: string
     """
     def __init__(self, method=methods.enveloped, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
