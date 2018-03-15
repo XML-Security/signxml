@@ -24,7 +24,7 @@ matrix:
 
 install:
   - if [[ $TRAVIS_OS_NAME == osx ]]; then brew update; fi
-  - if [[ $TRAVIS_OS_NAME == osx ]]; then brew install openssl python$PYTHON_VERSION; fi
+  - if [[ $TRAVIS_OS_NAME == osx ]]; then brew upgrade openssl python$PYTHON_VERSION; fi
   - if [[ $TRAVIS_OS_NAME == osx ]]; then export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"; fi
   - virtualenv --python=python$PYTHON_VERSION env
   - source env/bin/activate
