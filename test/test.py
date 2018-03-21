@@ -34,6 +34,7 @@ parser = etree.XMLParser(load_dtd=True)
 parser.resolvers.add(URIResolver())
 
 interop_dir = os.path.join(os.path.dirname(__file__), "interop")
+include_c14_transformation = {True, False}
 
 class TestSignXML(unittest.TestCase):
     def setUp(self):
@@ -69,70 +70,73 @@ class TestSignXML(unittest.TestCase):
                     continue
                 print(digest_alg, sig_alg, hash_alg, c14n_alg, method, type(d))
                 reset_tree(d, method)
-                signer = XMLSigner(method=method,
-                                   signature_algorithm="-".join([sig_alg, hash_alg]),
-                                   digest_algorithm=digest_alg,
-                                   c14n_algorithm=c14n_alg)
-                signed = signer.sign(d,
-                                     key=self.keys[sig_alg],
-                                     reference_uri="URI" if method == methods.detached else None)
-                # print(etree.tostring(signed))
-                hmac_key = self.keys["hmac"] if sig_alg == "hmac" else None
-                verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True)
+                for c14_transform_option in include_c14_transformation:
+                    signer = XMLSigner(method=method,
+                                       signature_algorithm="-".join([sig_alg, hash_alg]),
+                                       digest_algorithm=digest_alg,
+                                       c14n_algorithm=c14n_alg,
+                                       include_c14n_transform=c14_transform_option)
+                    signed = signer.sign(d,
+                                         key=self.keys[sig_alg],
+                                         reference_uri="URI" if method == methods.detached else None)
+                    # print(etree.tostring(signed))
+                    hmac_key = self.keys["hmac"] if sig_alg == "hmac" else None
+                    verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True)
 
-                if method == methods.detached:
-                    def resolver(uri):
-                        if isinstance(d, stdlibElementTree.Element):
-                            return etree.fromstring(stdlibElementTree.tostring(d))
-                        else:
-                            return d
-                    verify_kwargs["uri_resolver"] = resolver
+                    if method == methods.detached:
+                        def resolver(uri):
+                            if isinstance(d, stdlibElementTree.Element):
+                                return etree.fromstring(stdlibElementTree.tostring(d))
+                            else:
+                                return d
+                        verify_kwargs["uri_resolver"] = resolver
 
-                signed_data = etree.tostring(signed)
-                XMLVerifier().verify(signed_data, **verify_kwargs)
-                XMLVerifier().verify(signed_data, parser=parser, **verify_kwargs)
-                (_d, _x, _s) = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
+                    signed_data = etree.tostring(signed)
+                    XMLVerifier().verify(signed_data, **verify_kwargs)
+                    XMLVerifier().verify(signed_data, parser=parser, **verify_kwargs)
+                    (_d, _x, _s) = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
 
-                if _x is not None:
-                    # Ensure the signature is not part of the signed data
-                    self.assertIsNone(_x.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
-                    self.assertNotEqual(_x.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                    if _x is not None:
+                        # Ensure the signature is not part of the signed data
+                        self.assertIsNone(_x.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
+                        self.assertNotEqual(_x.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
-                # Ensure the signature was returned
-                self.assertEqual(_s.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                    # Ensure the signature was returned
+                    self.assertEqual(_s.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
-                if method == methods.enveloping:
-                    with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
-                        XMLVerifier().verify(signed_data, id_attribute="X", **verify_kwargs)
+                    if method == methods.enveloping:
+                        with self.assertRaisesRegexp(InvalidInput, "Unable to resolve reference URI"):
+                            XMLVerifier().verify(signed_data, id_attribute="X", **verify_kwargs)
 
-                with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
-                    XMLVerifier().verify(signed_data, hmac_key=hmac_key, uri_resolver=verify_kwargs.get("uri_resolver"))
+                    with self.assertRaisesRegexp(InvalidInput, "Expected a X.509 certificate based signature"):
+                        XMLVerifier().verify(signed_data, hmac_key=hmac_key,
+                                             uri_resolver=verify_kwargs.get("uri_resolver"))
 
-                if method != methods.detached:
-                    with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
-                        mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
+                    if method != methods.detached:
+                        with self.assertRaisesRegexp(InvalidSignature, "Digest mismatch"):
+                            mangled_sig = signed_data.replace(b"Austria", b"Mongolia").replace(b"x y", b"a b")
+                            XMLVerifier().verify(mangled_sig, **verify_kwargs)
+
+                    with self.assertRaises(cryptography.exceptions.InvalidSignature):
+                        mangled_sig = signed_data.replace(b"<ds:DigestValue>", b"<ds:DigestValue>!")
                         XMLVerifier().verify(mangled_sig, **verify_kwargs)
 
-                with self.assertRaises(cryptography.exceptions.InvalidSignature):
-                    mangled_sig = signed_data.replace(b"<ds:DigestValue>", b"<ds:DigestValue>!")
-                    XMLVerifier().verify(mangled_sig, **verify_kwargs)
+                    with self.assertRaises(cryptography.exceptions.InvalidSignature):
+                        sig_value = re.search(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
+                        mangled_sig = re.sub(
+                            b"<ds:SignatureValue>(.+?)</ds:SignatureValue>",
+                            b"<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + b"</ds:SignatureValue>",
+                            signed_data
+                        )
+                        XMLVerifier().verify(mangled_sig, **verify_kwargs)
 
-                with self.assertRaises(cryptography.exceptions.InvalidSignature):
-                    sig_value = re.search(b"<ds:SignatureValue>(.+?)</ds:SignatureValue>", signed_data).group(1)
-                    mangled_sig = re.sub(
-                        b"<ds:SignatureValue>(.+?)</ds:SignatureValue>",
-                        b"<ds:SignatureValue>" + b64encode(b64decode(sig_value)[::-1]) + b"</ds:SignatureValue>",
-                        signed_data
-                    )
-                    XMLVerifier().verify(mangled_sig, **verify_kwargs)
+                    with self.assertRaises(etree.XMLSyntaxError):
+                        XMLVerifier().verify("", hmac_key=hmac_key, require_x509=False)
 
-                with self.assertRaises(etree.XMLSyntaxError):
-                    XMLVerifier().verify("", hmac_key=hmac_key, require_x509=False)
-
-                if sig_alg == "hmac":
-                    with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
-                        verify_kwargs["hmac_key"] = b"SECRET"
-                        XMLVerifier().verify(signed_data, **verify_kwargs)
+                    if sig_alg == "hmac":
+                        with self.assertRaisesRegexp(InvalidSignature, "Signature mismatch"):
+                            verify_kwargs["hmac_key"] = b"SECRET"
+                            XMLVerifier().verify(signed_data, **verify_kwargs)
 
     def test_x509_certs(self):
         from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
@@ -145,26 +149,28 @@ class TestSignXML(unittest.TestCase):
             key = fh.read()
         for hash_alg in "sha1", "sha256":
             for method in methods.enveloped, methods.enveloping:
-                print(hash_alg, method)
-                data = tree.getroot()
-                reset_tree(data, method)
-                signer = XMLSigner(method=method, signature_algorithm="rsa-" + hash_alg)
-                signed = signer.sign(data, key=key, cert=crt)
-                signed_data = etree.tostring(signed)
-                XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
-                XMLVerifier().verify(signed_data, x509_cert=crt)
-                XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
-                XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
+                for c14_transform_option in include_c14_transformation:
+                    print(hash_alg, method)
+                    data = tree.getroot()
+                    reset_tree(data, method)
+                    signer = XMLSigner(method=method, signature_algorithm="rsa-" + hash_alg,
+                                       include_c14n_transform=c14_transform_option)
+                    signed = signer.sign(data, key=key, cert=crt)
+                    signed_data = etree.tostring(signed)
+                    XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
+                    XMLVerifier().verify(signed_data, x509_cert=crt)
+                    XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
+                    XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
 
-                with self.assertRaises(OpenSSLCryptoError):
-                    XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
+                    with self.assertRaises(OpenSSLCryptoError):
+                        XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
 
-                with self.assertRaises(InvalidSignature):
-                    XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="test")
+                    with self.assertRaises(InvalidSignature):
+                        XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="test")
 
-                with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
-                    XMLVerifier().verify(signed_data)
-                # TODO: negative: verify with wrong cert, wrong CA
+                    with self.assertRaisesRegexp(InvalidCertificate, "unable to get local issuer certificate"):
+                        XMLVerifier().verify(signed_data)
+                    # TODO: negative: verify with wrong cert, wrong CA
 
     def test_xmldsig_interop_examples(self):
         ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
@@ -341,7 +347,10 @@ class TestSignXML(unittest.TestCase):
             self.assertEqual("{urn:oasis:names:tc:SAML:2.0:assertion}Assertion", signed_data_root.tag)
 
             # Also test with detached signing
-            XMLSigner(method=methods.detached).sign(data, reference_uri=reference_uri, key=key, cert=crt)
+            for c14_transform_option in include_c14_transformation:
+                XMLSigner(method=methods.detached,
+                          include_c14n_transform=c14_transform_option
+                          ).sign(data, reference_uri=reference_uri, key=key, cert=crt)
 
             # Test setting custom key info
             custom_key_info = etree.fromstring('''
