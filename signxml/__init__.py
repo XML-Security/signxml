@@ -363,15 +363,14 @@ class XMLSigner(XMLSignatureProcessor):
 
             hash_alg = self._get_signature_digest_method_by_tag(self.sign_alg)
             if self.sign_alg.startswith("dsa-"):
-                signer = key.signer(signature_algorithm=hash_alg)
+                signature = key.sign(signed_info_c14n, algorithm=hash_alg)
             elif self.sign_alg.startswith("ecdsa-"):
-                signer = key.signer(signature_algorithm=ec.ECDSA(algorithm=hash_alg))
+                signature = key.sign(signed_info_c14n, signature_algorithm=ec.ECDSA(algorithm=hash_alg))
             elif self.sign_alg.startswith("rsa-"):
-                signer = key.signer(padding=PKCS1v15(), algorithm=hash_alg)
+                signature = key.sign(signed_info_c14n, padding=PKCS1v15(), algorithm=hash_alg)
             else:
                 raise NotImplementedError()
-            signer.update(signed_info_c14n)
-            signature = signer.finalize()
+
             if self.sign_alg.startswith("dsa-"):
                 # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
                 from asn1crypto.algos import DSASignature
