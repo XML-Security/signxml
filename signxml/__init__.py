@@ -533,7 +533,7 @@ class XMLVerifier(XMLSignatureProcessor):
             y = bytes_to_long(key_data[len(key_data)//2:])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
             key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
-            verifier = key.verifier(raw_signature, ec.ECDSA(self._get_signature_digest_method(signature_alg)))
+            key.verify(raw_signature, signed_info_c14n, ec.ECDSA(self._get_signature_digest_method(signature_alg)))
         elif "dsa-" in signature_alg:
             dsa_key_value = self._find(key_value, "DSAKeyValue")
             p = self._get_long(dsa_key_value, "P")
@@ -544,19 +544,16 @@ class XMLVerifier(XMLSignatureProcessor):
             key = pn.public_key(backend=default_backend())
             from asn1crypto.algos import DSASignature
             sig_as_der_seq = DSASignature.from_p1363(raw_signature).dump()
-            verifier = key.verifier(sig_as_der_seq, self._get_signature_digest_method(signature_alg))
+            key.verify(sig_as_der_seq, signed_info_c14n, algorithm=self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
             rsa_key_value = self._find(key_value, "RSAKeyValue")
             modulus = self._get_long(rsa_key_value, "Modulus")
             exponent = self._get_long(rsa_key_value, "Exponent")
             key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
-            verifier = key.verifier(raw_signature, padding=PKCS1v15(),
+            key.verify(raw_signature, signed_info_c14n, padding=PKCS1v15(),
                                     algorithm=self._get_signature_digest_method(signature_alg))
         else:
             raise NotImplementedError()
-
-        verifier.update(signed_info_c14n)
-        verifier.verify()
 
     def _get_inclusive_ns_prefixes(self, transform_node):
         inclusive_namespaces = transform_node.find("./ec:InclusiveNamespaces[@PrefixList]", namespaces=namespaces)
