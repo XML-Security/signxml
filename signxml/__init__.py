@@ -551,7 +551,7 @@ class XMLVerifier(XMLSignatureProcessor):
             exponent = self._get_long(rsa_key_value, "Exponent")
             key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
             key.verify(raw_signature, signed_info_c14n, padding=PKCS1v15(),
-                                    algorithm=self._get_signature_digest_method(signature_alg))
+                       algorithm=self._get_signature_digest_method(signature_alg))
         else:
             raise NotImplementedError()
 
