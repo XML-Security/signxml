@@ -396,7 +396,7 @@ class XMLSigner(XMLSignatureProcessor):
                             x509_certificate.text = strip_pem_header(cert)
                         else:
                             from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
-                            x509_certificate.text = dump_certificate(FILETYPE_PEM, cert)
+                            x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
             else:
                 sig_root.append(key_info)
         else:
