@@ -15,18 +15,22 @@ matrix:
       python: 2.7
       env: PYTHON_VERSION=2
       os: osx
+      osx_image: xcode9.4
     - language: generic
       python: 3.6
       env: PYTHON_VERSION=3
       os: osx
+      osx_image: xcode9.4
   allow_failures:
     - python: pypy3
 
 install:
-  - if [[ $TRAVIS_OS_NAME == osx ]] && [[ $PYTHON_VERSION == 3 ]]; then brew upgrade python; pip3 install --ignore-installed virtualenv; fi
+  - if [[ $TRAVIS_OS_NAME == osx ]]; then pip2 freeze; pip3 freeze; fi
+  - if [[ $TRAVIS_OS_NAME == osx && $PYTHON_VERSION == 3 ]]; then brew upgrade python; fi
+  - if [[ $TRAVIS_OS_NAME == osx ]]; then brew list openssl &>/dev/null || brew install openssl; fi
   - if [[ $TRAVIS_OS_NAME == osx ]]; then export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"; fi
   - if [[ $TRAVIS_OS_NAME == osx && $PYTHON_VERSION == 3 ]]; then python3 -m venv env; fi
-  - if [[ $TRAVIS_OS_NAME == osx && $PYTHON_VERSION == 2 ]]; then virtualenv --python=python env; fi
+  - if [[ $TRAVIS_OS_NAME == osx && $PYTHON_VERSION == 2 ]]; then pip2 install virtualenv; virtualenv --python=python env; fi
   - if [[ $TRAVIS_OS_NAME != osx ]]; then virtualenv --python=python$PYTHON_VERSION env; fi
   - source env/bin/activate
   - make install
