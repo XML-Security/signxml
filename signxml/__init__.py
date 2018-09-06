@@ -593,9 +593,9 @@ class XMLVerifier(XMLSignatureProcessor):
 
     def _get_serial_number(self, comps, serial):
         for v in comps:
-            if len(v) == 2 \
-            and v[0].decode('utf-8') in 'serialNumber' \
-            and v[1].decode('utf-8') in serial:
+            if len(v) == 2 and \
+               v[0].decode('utf-8') in 'serialNumber' and \
+               v[1].decode('utf-8') in serial:
                 return True
         return False
 
@@ -726,13 +726,16 @@ class XMLVerifier(XMLSignatureProcessor):
             elif isinstance(self.x509_cert, X509):
                 signing_cert = self.x509_cert
             else:
-                signing_cert = load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))
+                signing_cert = load_certificate(FILETYPE_PEM,
+                                                add_pem_header(self.x509_cert))
                 comps = signing_cert.get_subject().get_components()
-                has_serial = self._get_serial_number(comps, cert_subject_serial)
-            if (cert_subject_name and signing_cert.get_subject().commonName != cert_subject_name) \
-                or not (cert_subject_serial and has_serial):
-                raise InvalidSignature("Certificate subject common name mismatch")
-
+                has_serial = self._get_serial_number(comps,
+                                                     cert_subject_serial)
+            if (cert_subject_name and
+                signing_cert.get_subject().commonName != cert_subject_name) \
+                    or not (cert_subject_serial and has_serial):
+                raise InvalidSignature('Certificate subject '
+                                       'common name mismatch')
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
             try:
                 verify(signing_cert, raw_signature, signed_info_c14n, signature_digest_method)
