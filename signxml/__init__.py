@@ -591,9 +591,17 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return payload
 
-    def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, ca_pem_file=None, ca_path=None,
-               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, id_attribute=None,
-               expect_references=1):
+    def _get_serial_number(self, comps, serial):
+        for v in comps:
+            if len(v) == 2 \
+            and v[0].decode('utf-8') in 'serialNumber' \
+            and v[1].decode('utf-8') in serial:
+                return True
+        return False
+
+    def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, cert_subject_serial=None,
+               ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, parser=None,
+               uri_resolver=None, id_attribute=None, expect_references=1):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -719,8 +727,10 @@ class XMLVerifier(XMLSignatureProcessor):
                 signing_cert = self.x509_cert
             else:
                 signing_cert = load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))
-
-            if cert_subject_name and signing_cert.get_subject().commonName != cert_subject_name:
+                comps = signing_cert.get_subject().get_components()
+                has_serial = self._get_serial_number(comps, cert_subject_serial)
+            if (cert_subject_name and signing_cert.get_subject().commonName != cert_subject_name) \
+                or not (cert_subject_serial and has_serial):
                 raise InvalidSignature("Certificate subject common name mismatch")
 
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
