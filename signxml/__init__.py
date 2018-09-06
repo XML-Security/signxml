@@ -734,7 +734,6 @@ class XMLVerifier(XMLSignatureProcessor):
             if (cert_subject_name and
                 signing_cert.get_subject().commonName != cert_subject_name) \
                     or (cert_subject_serial and has_serial is False):
-                    or not (cert_subject_serial and has_serial):
                 raise InvalidSignature('Certificate subject '
                                        'common name mismatch')
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
