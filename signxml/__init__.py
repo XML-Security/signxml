@@ -729,8 +729,11 @@ class XMLVerifier(XMLSignatureProcessor):
                 signing_cert = load_certificate(FILETYPE_PEM,
                                                 add_pem_header(self.x509_cert))
                 comps = signing_cert.get_subject().get_components()
-                has_serial = self._get_serial_number(comps,
-                                                     cert_subject_serial)
+                if not cert_subject_serial:
+                    has_serial = False
+                else:
+                    has_serial = self._get_serial_number(comps, cert_subject_serial)
+
             if (cert_subject_name and
                 signing_cert.get_subject().commonName != cert_subject_name) \
                     or (cert_subject_serial and has_serial is False):
