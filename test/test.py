@@ -237,8 +237,11 @@ class TestSignXML(unittest.TestCase):
                     unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
                                          "x509-data-issuer-serial", "x509-data-ski", "x509-data-subject-name",
                                          "x509data", "signature-x509-ski", "signature-x509-is")
-                    todo_cases = ("signature-big", "enveloping-dsa-x509chain",
-                                  "enveloping-sha512-hmac-sha512", "enveloping-sha512-rsa-sha512")
+                    bad_interop_cases = ("signature-big", "enveloping-dsa-x509chain",
+                                         "enveloping-sha512-hmac-sha512", "enveloping-sha512-rsa-sha512",
+                                         "enveloping-rsa-x509chain", "enveloping-sha1-rsa-sha1",
+                                         "enveloping-sha224-rsa-sha224", "enveloping-sha256-rsa-sha256",
+                                         "enveloping-sha384-rsa-sha384")
                     if signature_file.endswith("expired-cert.xml") or signature_file.endswith("wsfederation_metadata.xml"):
                         with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
                             raise
@@ -271,8 +274,8 @@ class TestSignXML(unittest.TestCase):
                         self.assertIsInstance(e, InvalidInput)
                     elif any(x in signature_file for x in unsupported_cases) or "EntitiesForbidden" in str(e):
                         print("Unsupported test case:", type(e), e)
-                    elif any(x in signature_file for x in todo_cases) or "Unable to resolve reference" in str(e):
-                        print("IGNORED test case:", type(e), e)
+                    elif any(x in signature_file for x in bad_interop_cases) or "Unable to resolve reference" in str(e):
+                        print("Bad interop test case:", type(e), e)
                     elif "certificate has expired" in str(e) and ("signature-dsa" in signature_file or "signature-rsa" in signature_file):
                         print("IGNORED:", type(e), e)
                     else:
