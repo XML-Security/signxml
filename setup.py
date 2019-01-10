@@ -21,7 +21,10 @@ setup(
         'certifi >= 2015.11.20.1'
     ],
     extras_require={
-        ':python_version == "2.7"': ['enum34 >= 1.0.4']
+        ':python_version == "2.7"': [
+            'enum34 >= 1.0.4',
+            'ipaddress >= 1.0.19, < 2'
+        ]
     },
     packages=find_packages(exclude=['test']),
     platforms=['MacOS X', 'Posix'],
