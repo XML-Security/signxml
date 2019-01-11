@@ -12,18 +12,18 @@ setup(
     description='Python XML Signature library',
     long_description=open('README.rst').read(),
     install_requires=[
-        'lxml >= 3.5.0, < 5',
-        'defusedxml >= 0.4.1, < 1',
-        'eight >= 0.3.0, < 1',
-        'cryptography >= 1.8, < 3',
-        'asn1crypto >= 0.21.0',
-        'pyOpenSSL >= 0.15.1, < 18',
-        'certifi >= 2015.11.20.1'
+        'lxml >= 4.2.1, < 5',
+        'defusedxml >= 0.5.0, < 1',
+        'eight >= 0.4.2, < 1',
+        'cryptography >= 2.1.4, < 3',
+        'asn1crypto >= 0.24.0',
+        'pyOpenSSL >= 17.5.0, < 19',
+        'certifi >= 2018.1.18'
     ],
     extras_require={
         ':python_version == "2.7"': [
-            'enum34 >= 1.0.4',
-            'ipaddress >= 1.0.19, < 2'
+            'enum34 >= 1.1.6, < 2',
+            'ipaddress >= 1.0.17, < 2'
         ]
     },
     packages=find_packages(exclude=['test']),
@@ -41,6 +41,8 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ]
 )
