@@ -12,10 +12,6 @@ python:
 matrix:
   include:
     - language: generic
-      python: 2.7
-      env: PYTHON_VERSION=2
-      os: osx
-    - language: generic
       python: 3.6
       env: PYTHON_VERSION=3
       os: osx
@@ -23,7 +19,7 @@ matrix:
     - python: pypy3
 
 install:
-  - if [[ $TRAVIS_OS_NAME == osx ]] && [[ $PYTHON_VERSION == 3 ]]; then brew upgrade python; pip3 install --ignore-installed virtualenv; fi
+  - if [[ $TRAVIS_OS_NAME == osx ]]; then brew upgrade python; pip3 install --ignore-installed virtualenv; fi
   - if [[ $TRAVIS_OS_NAME == osx ]]; then export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"; fi
   - virtualenv --python=python$PYTHON_VERSION env
   - source env/bin/activate
