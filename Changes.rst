@@ -1,3 +1,20 @@
+Changes for v2.6.0 (2019-01-10)
+===============================
+
+-  Update dependencies to baseline on Ubuntu 18.04
+
+-  Clarify documentation of Ubuntu installation dependencies
+
+-  List ipaddress as a dependency
+
+-  Strip PEM header from OpenSSL.crypto.X509 cert
+
+-  Doc updates: dependency versions, standard links
+
+-  Fix cryptography deprecation warnings. Closes #108
+
+-  Allow URI attribute of Reference to be absent (#102)
+
 Changes for v2.5.2 (2017-12-07)
 ===============================
 

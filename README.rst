@@ -36,15 +36,11 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
 | OS           | Python  | Command                                                                                                     |
 +==============+=========+=============================================================================================================+
-| Ubuntu 16.04,| Python 2| ``apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev``                   |
-| 18.04        |         | ``python-lxml python-cryptography python-openssl python-certifi python-defusedxml build-essential``         |
+| Ubuntu       | Python 2| ``apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev``                   |
+|              |         | ``python-lxml python-cryptography python-openssl python-certifi python-defusedxml build-essential``         |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
-| Ubuntu 16.04,| Python 3| ``apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev``                 |
-| 18.04        |         | ``python3-lxml python3-cryptography python3-openssl python3-certifi python3-defusedxml build-essential``    |
-+--------------+---------+-------------------------------------------------------------------------------------------------------------+
-| Ubuntu 14.04 | Python 2| ``apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev build-essential``   |
-+--------------+---------+-------------------------------------------------------------------------------------------------------------+
-| Ubuntu 14.04 | Python 3| ``apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev build-essential`` |
+| Ubuntu       | Python 3| ``apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev``                 |
+|              |         | ``python3-lxml python3-cryptography python3-openssl python3-certifi python3-defusedxml build-essential``    |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
 | Red Hat      | Python 2| ``yum install python-devel python-cffi libxml2-devel libxslt1-devel openssl-devel``                         |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
