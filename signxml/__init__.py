@@ -325,8 +325,9 @@ class XMLSigner(XMLSignatureProcessor):
             the payload data.
 
         To specify the location of an enveloped signature within **data**, insert a
-        ``<Signature Id="placeholder"></Signature>`` element in **data**. This element will be replaced by the generated
-        signature, and excised when generating the digest.
+        ``<ds:Signature Id="placeholder"></ds:Signature>`` element in **data** (where
+        "ds" is the "http://www.w3.org/2000/09/xmldsig#" namespace). This element will
+        be replaced by the generated signature, and excised when generating the digest.
         """
         if id_attribute is not None:
             self.id_attributes = (id_attribute, )
