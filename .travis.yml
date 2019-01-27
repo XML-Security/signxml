@@ -15,6 +15,10 @@ matrix:
       python: 3.6
       env: PYTHON_VERSION=3
       os: osx
+    - language: python
+      python: 3.7
+      dist: xenial
+      sudo: required
   allow_failures:
     - python: pypy3
 
