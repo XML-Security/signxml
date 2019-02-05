@@ -113,13 +113,6 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
  domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
 
-Example: Signing and verifying a SAML assertion
-"""""""""""""""""""""""""""""""""""""""""""""""
-
-.. code-block:: python
-
-    TODO
-
 XML signature methods: enveloped, detached, enveloping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
@@ -135,13 +128,6 @@ For detached signatures, the code above will use the ``Id`` or ``ID`` attribute 
 (``<Reference URI="#value"``). You can also override the value of ``URI`` by passing a ``reference_uri`` argument to
 ``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``XMLVerifier().verify(data, uri_resolver=...)``.
-
-Example: Signing and verifying a SOAP WS-Security envelope
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-.. code-block:: python
-
-    TODO
 
 See the `API documentation <https://signxml.readthedocs.io/en/latest/#id4>`_ for more.
 
