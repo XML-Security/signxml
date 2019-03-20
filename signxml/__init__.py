@@ -523,6 +523,12 @@ class XMLVerifier(XMLSignatureProcessor):
     Create a new XML Signature Verifier object, which can be used to hold configuration information and verify multiple
     pieces of data.
     """
+    def _get_signature(self, root):
+        if root.tag == ds_tag("Signature"):
+            return root
+        else:
+            return self._find(root, "Signature", anywhere=True)
+
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
         if "ecdsa-" in signature_alg:
             ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
@@ -683,10 +689,7 @@ class XMLVerifier(XMLSignatureProcessor):
             self.id_attributes = (id_attribute, )
 
         root = self.get_root(data)
-        if root.tag == ds_tag("Signature"):
-            signature_ref = root
-        else:
-            signature_ref = self._find(root, "Signature", anywhere=True)
+        signature_ref = self._get_signature(root)
 
         # HACK: deep copy won't keep root's namespaces
         signature = fromstring(etree.tostring(signature_ref), parser=parser)
@@ -757,11 +760,13 @@ class XMLVerifier(XMLSignatureProcessor):
 
         verify_results = []
         for reference in self._findall(signed_info, "Reference"):
+            copied_root = fromstring(etree.tostring(root), parser=parser)
+            copied_signature_ref = self._get_signature(copied_root)
             transforms = self._find(reference, "Transforms", require=False)
             digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
             digest_value = self._find(reference, "DigestValue")
-            payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
-            payload_c14n = self._apply_transforms(payload, transforms, signature_ref, c14n_algorithm)
+            payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
+            payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
             if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
                 raise InvalidDigest("Digest mismatch for reference {}".format(len(verify_results)))
 
