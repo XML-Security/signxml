@@ -46,8 +46,8 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
 | Red Hat      | Python 3| ``yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel``                       |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
-| OS X/Homebrew|         | ``xcode-select --install; brew install openssl;``                                                           |
-|              |         | ``export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"``             |
+| Mac OS       | Homebrew| ``xcode-select --install; brew install openssl;``                                                           |
+|              | Python  | ``export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"``             |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
 
 Synopsis
