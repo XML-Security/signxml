@@ -35,6 +35,17 @@ parser.resolvers.add(URIResolver())
 
 interop_dir = os.path.join(os.path.dirname(__file__), "interop")
 
+class TestVerifyXML(unittest.TestCase):
+    def test_example_multi(self):
+        with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
+            cert = fh.read()
+        example_file = os.path.join(os.path.dirname(__file__), "example-125.xml")
+        verify_results = XMLVerifier().verify(
+            data=etree.parse(example_file),
+            x509_cert=cert,
+            expect_references=2,
+        )
+
 class TestSignXML(unittest.TestCase):
     def setUp(self):
         self.example_xml_files = (os.path.join(os.path.dirname(__file__), "example.xml"),
