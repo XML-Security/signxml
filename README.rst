@@ -101,7 +101,7 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  data returned by the ``verify()`` method. The ``signed_xml`` attribute of the return value is the XML node or string that
  was signed.
 
- **Recommended reading:** `W3C XML Signature Best Practices for Applications <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `OWASP: On Breaking SAML: Be Whoever You Want to Be <https://www.owasp.org/images/2/28/Breaking_SAML_Be_Whoever_You_Want_to_Be_-_Juraj_Somorovsky%2BChristian_Mainka.pdf>`_
+ **Recommended reading:** `W3C XML Signature Best Practices for Applications <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `OWASP: On Breaking SAML: Be Whoever You Want to Be <https://www.owasp.org/images/2/28/Breaking_SAML_Be_Whoever_You_Want_to_Be_-_Juraj_Somorovsky%2BChristian_Mainka.pdf>`_, `Duo Finds SAML Vulnerabilities Affecting Multiple Implementations <https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations>`_
 
 .. admonition:: Establish trust
 
