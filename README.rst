@@ -27,7 +27,7 @@ Installation
 ------------
 ::
 
-    pip install signxml
+    pip3 install signxml
 
 Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptography
 <https://github.com/pyca/cryptography>`_, which in turn depend on `OpenSSL <https://www.openssl.org/>`_, `LibXML
@@ -46,8 +46,8 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
 | Red Hat      | Python 3| ``yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel``                       |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
-| Mac OS       | Homebrew| ``xcode-select --install; brew install openssl;``                                                           |
-|              | Python  | ``export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"``             |
+| Mac OS       | Homebrew| Install `Homebrew <https://brew.sh>`_, then run ``brew install python``.                                    |
+|              | Python  |                                                                                                             |
 +--------------+---------+-------------------------------------------------------------------------------------------------------------+
 
 Synopsis
