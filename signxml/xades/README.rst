@@ -41,3 +41,9 @@ Testing Conformance and Interoperability
 * `ETSI TS 119 134-3 V1.1.1 (2016-06) | Part 3: Test suites for testing interoperability of extended XAdES signatures <https://www.etsi.org/deliver/etsi_ts/119100_119199/11913403/01.01.01_60/ts_11913403v010101p.pdf>`_
 * `ETSI TS 119 134-4 V1.1.1 (2016-06) | Part 4: Testing Conformance of XAdES baseline signatures <https://www.etsi.org/deliver/etsi_ts/119100_119199/11913404/01.01.01_60/ts_11913404v010101p.pdf>`_
 * `ETSI TS 119 134-5 V2.1.1 (2016-06) | Part 5: Testing Conformance of extended XAdES signatures <https://www.etsi.org/deliver/etsi_ts/119100_119199/11913405/02.01.01_60/ts_11913405v020101p.pdf>`_
+
+Conformance Checker Tools
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* `XAdES baseline and XAdES extended signatures Conformance Testing Tools Documentation <https://signatures-conformance-checker.etsi.org/pub/XAdESConformanceTestChecker_v1.0.pdf>`_
+* `Free Online Tool <https://signatures-conformance-checker.etsi.org/pub/index.shtml>`_
