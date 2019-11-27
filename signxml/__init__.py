@@ -268,7 +268,7 @@ class XMLSigner(XMLSignatureProcessor):
     """
     def __init__(self, method=methods.enveloped, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
                  c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm):
-        if method not in methods:
+        if method is None or method not in methods:
             raise InvalidInput("Unknown signature method {}".format(method))
         self.method = method
         self.sign_alg = signature_algorithm
