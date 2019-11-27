@@ -1,34 +1,24 @@
 language: python
+sudo: required
 cache: pip
 
 python:
   - 2.7
-  - 3.4
   - 3.5
   - 3.6
+  - 3.7
+  - 3.8
   - pypy
   - pypy3
 
 matrix:
   include:
     - language: generic
-      python: 3.6
-      env: PYTHON_VERSION=3
+      python: 2.7
       os: osx
-    - language: python
-      python: 3.7
-      dist: xenial
-      sudo: required
-  allow_failures:
-    - python: pypy3
 
 install:
-  - if [[ $TRAVIS_OS_NAME == osx ]]; then brew upgrade python; pip3 install --ignore-installed virtualenv; fi
-  - if [[ $TRAVIS_OS_NAME == osx ]]; then export LDFLAGS="-L$(brew --prefix openssl)/lib" CFLAGS="-I$(brew --prefix openssl)/include"; fi
-  - virtualenv --python=python$PYTHON_VERSION env
-  - source env/bin/activate
   - make install
-  - if [[ $TRAVIS_PYTHON_VERSION == pypy ]]; then pip install lxml==3.8.0; fi
 
 script:
   - make test
