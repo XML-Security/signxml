@@ -469,20 +469,22 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
-        c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
         if self.sign_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.sign_alg]
         else:
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
-        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
+        SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
         for i, reference_uri in enumerate(reference_uris):
             reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+            transforms = SubElement(reference, ds_tag("Transforms"))
             if self.method == methods.enveloped:
-                transforms = SubElement(reference, ds_tag("Transforms"))
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
                 SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
-            digest_method = SubElement(reference, ds_tag("DigestMethod"),
-                                       Algorithm=self.known_digest_tags[self.digest_alg])
+            else:
+                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+
+            SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
             digest_value = SubElement(reference, ds_tag("DigestValue"))
             payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
             digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
