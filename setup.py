@@ -17,7 +17,7 @@ setup(
         'eight >= 0.4.2, < 1',
         'cryptography >= 2.1.4, < 3',
         'asn1crypto >= 0.24.0',
-        'pyOpenSSL >= 17.5.0, < 19',
+        'pyOpenSSL >= 17.5.0, < 20',
         'certifi >= 2018.1.18'
     ],
     extras_require={
