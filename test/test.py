@@ -14,7 +14,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
 from eight import str, open
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # noqa
 from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, InvalidSignature,
                      InvalidCertificate, InvalidDigest)
 
@@ -195,12 +195,6 @@ class TestSignXML(unittest.TestCase):
                     return fh.read()
             return None
 
-        #from ssl import DER_cert_to_PEM_cert
-        #with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.der"), "rb") as fh:
-        #    ca_pem_file = DER_cert_to_PEM_cert(fh.read())
-        #    with open(os.path.join(os.path.dirname(__file__), "interop", "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem"), "wb") as fh2:
-        #        fh2.write(ca_pem_file)
-
         def get_x509_cert(signature_file):
             if "windows_store_signature" in signature_file:
                 return open(os.path.join(interop_dir, "xml-crypto", "windows_store_certificate.pem")).read()
@@ -242,7 +236,8 @@ class TestSignXML(unittest.TestCase):
                                          uri_resolver=resolver,
                                          x509_cert=get_x509_cert(signature_file),
                                          ca_pem_file=get_ca_pem_file(signature_file))
-                    if "HMACOutputLength" in sig.decode("utf-8") or "bad" in signature_file or "expired" in signature_file:
+                    decoded_sig = sig.decode("utf-8")
+                    if "HMACOutputLength" in decoded_sig or "bad" in signature_file or "expired" in signature_file:
                         raise BaseException("Expected an exception to occur")
                 except Exception as e:
                     unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
@@ -253,21 +248,21 @@ class TestSignXML(unittest.TestCase):
                                          "enveloping-rsa-x509chain", "enveloping-sha1-rsa-sha1",
                                          "enveloping-sha224-rsa-sha224", "enveloping-sha256-rsa-sha256",
                                          "enveloping-sha384-rsa-sha384")
-                    if signature_file.endswith("expired-cert.xml") or signature_file.endswith("wsfederation_metadata.xml"):
+                    if signature_file.endswith("expired-cert.xml") or signature_file.endswith("wsfederation_metadata.xml"): # noqa
                         with self.assertRaisesRegexp(InvalidCertificate, "certificate has expired"):
                             raise
                     elif signature_file.endswith("invalid_enveloped_transform.xml"):
                         self.assertIsInstance(e, InvalidSignature)
-                        #with self.assertRaisesRegexp(ValueError, "Can't remove the root signature node"):
+                        # with self.assertRaisesRegexp(ValueError, "Can't remove the root signature node"):
                         #    raise
                     elif "md5" in signature_file or "ripemd160" in signature_file:
                         self.assertIsInstance(e, InvalidInput)
-                        #with self.assertRaisesRegexp(InvalidInput, "Algorithm .+ is not recognized"):
+                        # with self.assertRaisesRegexp(InvalidInput, "Algorithm .+ is not recognized"):
                         #    raise
                     elif "HMACOutputLength" in sig.decode("utf-8"):
                         self.assertIsInstance(e, (InvalidSignature, InvalidDigest))
                     elif signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
-                        #self.assertIsInstance(e, InvalidDigest)
+                        # self.assertIsInstance(e, InvalidDigest)
                         self.assertIsInstance(e, InvalidCertificate)
                     elif signature_file.endswith("signature-rsa-detached-xslt-transform-bad-retrieval-method.xml"):
                         self.assertIsInstance(e, InvalidInput)
@@ -287,7 +282,7 @@ class TestSignXML(unittest.TestCase):
                         print("Unsupported test case:", type(e), e)
                     elif any(x in signature_file for x in bad_interop_cases) or "Unable to resolve reference" in str(e):
                         print("Bad interop test case:", type(e), e)
-                    elif "certificate has expired" in str(e) and ("signature-dsa" in signature_file or "signature-rsa" in signature_file):
+                    elif "certificate has expired" in str(e) and ("signature-dsa" in signature_file or "signature-rsa" in signature_file): # noqa
                         print("IGNORED:", type(e), e)
                     else:
                         raise
@@ -345,7 +340,9 @@ class TestSignXML(unittest.TestCase):
             data = etree.fromstring(d)
             reference_uri = ["assertionId", "assertion2"] if "assertion2" in d else "assertionId"
             signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
-            signed_data_root = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)[1]
+            signed_data_root = XMLVerifier().verify(etree.tostring(signed_root),
+                                                    x509_cert=crt,
+                                                    expect_references=True)[1]
             ref = signed_root.xpath('/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference',
                                     namespaces={"ds": "http://www.w3.org/2000/09/xmldsig#",
                                                 "saml": "urn:oasis:names:tc:SAML:2.0:assertion",
@@ -359,8 +356,11 @@ class TestSignXML(unittest.TestCase):
 
             # Test setting custom key info
             custom_key_info = etree.fromstring('''
-            <wsse:SecurityTokenReference xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-                <wsse:Reference ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3" URI="#uuid-639b8970-7644-4f9e-9bc4-9c2e367808fc-1"/>
+            <wsse:SecurityTokenReference
+                xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+                <wsse:Reference
+                    ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3"
+                    URI="#uuid-639b8970-7644-4f9e-9bc4-9c2e367808fc-1"/>
             </wsse:SecurityTokenReference>''')
             XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt, key_info=custom_key_info)
 
