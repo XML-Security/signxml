@@ -352,7 +352,11 @@ class TestSignXML(unittest.TestCase):
             self.assertEqual("{urn:oasis:names:tc:SAML:2.0:assertion}Assertion", signed_data_root.tag)
 
             # Also test with detached signing
-            XMLSigner(method=methods.detached).sign(data, reference_uri=reference_uri, key=key, cert=crt)
+            ref_xpath = "/ds:Signature/ds:SignedInfo/ds:Reference"
+            s = XMLSigner(method=methods.detached).sign(data, reference_uri=reference_uri, key=key, cert=crt)
+            self.assertTrue(s.xpath(ref_xpath + "/ds:Transforms", namespaces=namespaces))
+            self.assertTrue(s.xpath(ref_xpath + "/ds:DigestMethod", namespaces=namespaces))
+            self.assertTrue(s.xpath(ref_xpath + "/ds:DigestValue", namespaces=namespaces))
 
             # Test setting custom key info
             custom_key_info = etree.fromstring('''
