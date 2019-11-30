@@ -1,3 +1,17 @@
+Changes for v2.7.0 (2019-11-30)
+===============================
+
+-  Drop defusedxml dependency; add security notes
+
+-  Add missing c14n transform for enveloping and detached methods (#107)
+
+-  Relax pyOpenSSL dependency version range to include version 19
+
+-  Apply transforms and digest calculations to copies of root. Closes
+   #125. (#126)
+
+-  Documentation and test improvements
+
 Changes for v2.6.0 (2019-01-10)
 ===============================
 
