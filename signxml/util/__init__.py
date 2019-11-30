@@ -223,6 +223,7 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     or being part of a certification chain that terminates in a certificate containing the validation key.
     No ordering is implied by the above constraints"
     """
+    # TODO: migrate to Cryptography (pending cert validation support) or https://github.com/wbond/certvalidator
     from OpenSSL import SSL
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:

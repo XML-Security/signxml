@@ -287,15 +287,15 @@ class XMLSigner(XMLSignatureProcessor):
         :param data: Data to sign
         :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param key:
-            Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string
-            containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`,
-            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or
-            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object. When signing with a
+            Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string/bytes
+            containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPrivateKey`,
+            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPrivateKey`, or
+            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePrivateKey` object. When signing with a
             HMAC, this should be a string containing the shared secret.
         :type key:
-            string, :py:class:`cryptography.hazmat.primitives.interfaces.RSAPublicKey`,
-            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPublicKey`, or
-            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePublicKey` object
+            string, bytes, :py:class:`cryptography.hazmat.primitives.interfaces.RSAPrivateKey`,
+            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPrivateKey`, or
+            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePrivateKey` object
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :type passphrase: string
         :param cert:
