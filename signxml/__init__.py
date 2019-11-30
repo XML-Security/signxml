@@ -359,7 +359,7 @@ class XMLSigner(XMLSignatureProcessor):
         elif any(self.sign_alg.startswith(i) for i in ["dsa-", "rsa-", "ecdsa-"]):
             if isinstance(key, (str, bytes)):
                 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-                key = load_pem_private_key(key, password=passphrase, backend=default_backend())
+                key = load_pem_private_key(ensure_bytes(key), password=passphrase, backend=default_backend())
 
             hash_alg = self._get_signature_digest_method_by_tag(self.sign_alg)
             if self.sign_alg.startswith("dsa-"):
