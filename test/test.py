@@ -375,6 +375,13 @@ class TestSignXML(unittest.TestCase):
             self.assertTrue(s3.xpath("/ds:Signature/ds:KeyInfo/wsse:SecurityTokenReference",
                                      namespaces=dict(namespaces, wsse=wsse_ns)))
 
+            # Test setting both X509Data and KeyInfo
+            s4 = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt, always_add_key_value=True)
+            with self.assertRaisesRegexp(InvalidInput, "Both X509Data and KeyValue found"):
+                XMLVerifier().verify(s4, x509_cert=crt)
+            expect_refs = etree.tostring(s4).decode().count("<ds:Reference")
+            XMLVerifier().verify(s4, x509_cert=crt, ignore_ambiguous_key_info=True, expect_references=expect_refs)
+
     def test_excision_of_untrusted_comments(self):
         pass  # TODO: test comments excision
 

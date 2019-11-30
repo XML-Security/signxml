@@ -320,7 +320,12 @@ class XMLSigner(XMLSignatureProcessor):
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
-        :param always_add_key_value: Write the key value to the KeyInfo element even if an X509 certificate is present.
+        :param always_add_key_value:
+            Write the key value to the KeyInfo element even if a X509 certificate is present. Use of this parameter
+            is discouraged, as it introduces an ambiguity and a security hazard. The public key used to sign the
+            document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
+            KeyValue or make sure it matches what's in the certificate. This parameter is provided for compatibility
+            purposes only.
         :type always_add_key_value: boolean
 
         :returns:
@@ -610,7 +615,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
     def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, ca_pem_file=None, ca_path=None,
                hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, id_attribute=None,
-               expect_references=1):
+               expect_references=1, ignore_ambiguous_key_info=False):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -681,6 +686,14 @@ class XMLVerifier(XMLSignatureProcessor):
             Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
             If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
         :type expect_references: int or boolean
+        :param ignore_ambiguous_key_info:
+            Ignore the presence of a KeyValue element when X509Data is present in the signature and used for verifying.
+            The presence of both elements is an ambiguity and a security hazard. The public key used to sign the
+            document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
+            KeyValue or make sure it matches what's in the certificate. SignXML does not implement the functionality
+            necessary to match the keys, and throws an InvalidInput error instead. Set this to True to bypass the error
+            and validate the signature using X509Data only.
+        :type ignore_ambiguous_key_info: boolean
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
 
@@ -716,6 +729,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_alg = signature_method.get("Algorithm")
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
+        key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
         signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
 
         # TODO: if both X509Data and KeyValue is present, match one against the other and raise an error on mismatch
@@ -749,6 +763,12 @@ class XMLVerifier(XMLSignatureProcessor):
                 except Exception:
                     reason = e
                 raise InvalidSignature("Signature verification failed: {}".format(reason))
+
+            if ignore_ambiguous_key_info is False:
+                if key_value is not None:
+                    raise InvalidInput("Both X509Data and KeyValue found. Use verify(ignore_ambiguous_key_info=True) "
+                                       "to ignore KeyValue and validate using X509Data only.")
+
             # TODO: CN verification goes here
             # TODO: require one of the following to be set: either x509_cert or (ca_pem_file or ca_path) or common_name
             # Use ssl.match_hostname or code from it to perform match
@@ -764,7 +784,6 @@ class XMLVerifier(XMLSignatureProcessor):
             if raw_signature != signer.finalize():
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
-            key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
             if key_value is None:
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
