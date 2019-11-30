@@ -278,7 +278,9 @@ class TestSignXML(unittest.TestCase):
                         self.assertIsInstance(e, InvalidCertificate)
                     elif signature_file.endswith("signature-retrievalmethod-rawx509crt.xml"):
                         self.assertIsInstance(e, InvalidInput)
-                    elif any(x in signature_file for x in unsupported_cases) or "EntitiesForbidden" in str(e):
+                    elif signature_file.endswith("merlin-xmldsig-twenty-three/signature.xml"):
+                        self.assertIsInstance(e, InvalidInput)
+                    elif any(x in signature_file for x in unsupported_cases):
                         print("Unsupported test case:", type(e), e)
                     elif any(x in signature_file for x in bad_interop_cases) or "Unable to resolve reference" in str(e):
                         print("Bad interop test case:", type(e), e)
@@ -388,6 +390,12 @@ class TestSignXML(unittest.TestCase):
                       "g/uYZmYX7rOm/X7UV4usrvjIPCiWMWwNZJL0ejvz6Y4=")
         self.assertEqual(p_sha1(a, b), c)
         self.assertEqual(p_sha1(b, a), d)
+
+    def test_xml_attacks(self):
+        for filename in glob(os.path.join(os.path.dirname(__file__), "defusedxml-test-data", "*.xml")):
+            with open(filename, "rb") as fh:
+                with self.assertRaises((InvalidInput, etree.XMLSyntaxError)):
+                    XMLVerifier().verify(fh.read())
 
 if __name__ == '__main__':
     unittest.main()

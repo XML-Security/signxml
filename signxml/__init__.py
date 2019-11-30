@@ -6,7 +6,6 @@ from enum import Enum
 from eight import str, bytes
 from lxml import etree
 from lxml.etree import Element, SubElement
-from defusedxml.lxml import fromstring
 
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
@@ -213,7 +212,7 @@ class XMLSignatureProcessor(XMLProcessor):
         c14n = b""
         for node in nodes:
             c14n += etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
-                                   inclusive_ns_prefixes=inclusive_ns_prefixes)  # TODO: optimize if needed
+                                   inclusive_ns_prefixes=inclusive_ns_prefixes)
         if exclusive is False:
             # TODO: there must be a nicer way to do this. See also:
             # http://www.w3.org/TR/xml-c14n, "namespace axis"
@@ -661,7 +660,9 @@ class XMLVerifier(XMLSignatureProcessor):
         :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :type validate_schema: boolean
-        :param parser: Custom XML parser instance to use when parsing **data**.
+        :param parser:
+            Custom XML parser instance to use when parsing **data**. The default parser arguments used by SignXML are:
+            ``resolve_entities=False``. See https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint.
         :type parser: :py:class:`lxml.etree.XMLParser` compatible parser
         :param uri_resolver: Function to use to resolve reference URIs that don't start with "#".
         :type uri_resolver: callable
@@ -694,7 +695,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_ref = self._get_signature(root)
 
         # HACK: deep copy won't keep root's namespaces
-        signature = fromstring(etree.tostring(signature_ref), parser=parser)
+        signature = self.fromstring(self.tostring(signature_ref))
 
         if validate_schema:
             self.schema().assertValid(signature)
@@ -762,7 +763,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         verify_results = []
         for reference in self._findall(signed_info, "Reference"):
-            copied_root = fromstring(etree.tostring(root), parser=parser)
+            copied_root = self.fromstring(self.tostring(root))
             copied_signature_ref = self._get_signature(copied_root)
             transforms = self._find(reference, "Transforms", require=False)
             digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
@@ -774,7 +775,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
             # We return the signed XML (and only that) to ensure no access to unsigned data happens
             try:
-                payload_c14n_xml = fromstring(payload_c14n)
+                payload_c14n_xml = self.fromstring(payload_c14n)
             except etree.XMLSyntaxError:
                 payload_c14n_xml = None
             verify_results.append(VerifyResult(payload_c14n, payload_c14n_xml, signature))
