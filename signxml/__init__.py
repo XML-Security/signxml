@@ -280,7 +280,7 @@ class XMLSigner(XMLSignatureProcessor):
         self._parser = None
 
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, key_info=None,
-             id_attribute=None):
+             id_attribute=None, always_add_key_value=False):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -312,12 +312,16 @@ class XMLSigner(XMLSignatureProcessor):
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
         :type key_name: string
-        :param key_info: A custom KeyInfo element to insert in the signature. Use this to supply
-            ``<wsse:SecurityTokenReference>`` or other custom key references.
+        :param key_info:
+            A custom KeyInfo element to insert in the signature. Use this to supply ``<wsse:SecurityTokenReference>``
+            or other custom key references. An example value can be found here:
+            https://github.com/XML-Security/signxml/blob/master/test/wsse_keyinfo.xml
         :type key_info: :py:class:`lxml.etree.Element`
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
+        :param always_add_key_value: Write the key value to the KeyInfo element even if an X509 certificate is present.
+        :type always_add_key_value: boolean
 
         :returns:
             A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
@@ -386,9 +390,10 @@ class XMLSigner(XMLSignatureProcessor):
                     keyname = SubElement(key_info, ds_tag("KeyName"))
                     keyname.text = key_name
 
-                if cert_chain is None:
+                if cert_chain is None or always_add_key_value:
                     self._serialize_key_value(key, key_info)
-                else:
+
+                if cert_chain is not None:
                     x509_data = SubElement(key_info, ds_tag("X509Data"))
                     for cert in cert_chain:
                         x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
@@ -492,6 +497,9 @@ class XMLSigner(XMLSignatureProcessor):
         return signed_info, signature_value
 
     def _serialize_key_value(self, key, key_info_element):
+        """
+        Add the public components of the key to the signature (see https://www.w3.org/TR/xmldsig-core2/#sec-KeyValue).
+        """
         key_value = SubElement(key_info_element, ds_tag("KeyValue"))
         if self.sign_alg.startswith("rsa-"):
             rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
@@ -617,8 +625,8 @@ class XMLVerifier(XMLSignatureProcessor):
 
          In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
          data returned by the ``verify()`` method. The return value is the XML node or string that was signed. Also,
-         depending on the signature settings used, comments in the XML data may not be subject to signing, so may need
-         to be untrusted.
+         depending on the canonicalization method used by the signature, comments in the XML data may not be subject to
+         signing, so may need to be untrusted. If so, they are excised from the return value of ``verify()``.
 
          **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
 
@@ -710,6 +718,7 @@ class XMLVerifier(XMLSignatureProcessor):
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
 
+        # TODO: if both X509Data and KeyValue is present, match one against the other and raise an error on mismatch
         if x509_data is not None or self.require_x509:
             from OpenSSL.crypto import load_certificate, X509, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
 

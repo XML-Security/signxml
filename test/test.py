@@ -355,20 +355,28 @@ class TestSignXML(unittest.TestCase):
 
             # Also test with detached signing
             ref_xpath = "/ds:Signature/ds:SignedInfo/ds:Reference"
-            s = XMLSigner(method=methods.detached).sign(data, reference_uri=reference_uri, key=key, cert=crt)
+            signer = XMLSigner(method=methods.detached)
+            s = signer.sign(data, reference_uri=reference_uri, key=key, cert=crt)
             self.assertTrue(s.xpath(ref_xpath + "/ds:Transforms", namespaces=namespaces))
             self.assertTrue(s.xpath(ref_xpath + "/ds:DigestMethod", namespaces=namespaces))
             self.assertTrue(s.xpath(ref_xpath + "/ds:DigestValue", namespaces=namespaces))
 
+            self.assertTrue(s.xpath("/ds:Signature/ds:KeyInfo/ds:X509Data", namespaces=namespaces))
+            self.assertFalse(s.xpath("/ds:Signature/ds:KeyInfo/ds:KeyValue", namespaces=namespaces))
+            s2 = signer.sign(data, reference_uri=reference_uri, key=key, cert=crt, always_add_key_value=True)
+            self.assertTrue(s2.xpath("/ds:Signature/ds:KeyInfo/ds:X509Data", namespaces=namespaces))
+            self.assertTrue(s2.xpath("/ds:Signature/ds:KeyInfo/ds:KeyValue", namespaces=namespaces))
+
             # Test setting custom key info
-            custom_key_info = etree.fromstring('''
-            <wsse:SecurityTokenReference
-                xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-                <wsse:Reference
-                    ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509v3"
-                    URI="#uuid-639b8970-7644-4f9e-9bc4-9c2e367808fc-1"/>
-            </wsse:SecurityTokenReference>''')
-            XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt, key_info=custom_key_info)
+            wsse_ns = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+            with open(os.path.join(os.path.dirname(__file__), "wsse_keyinfo.xml")) as fh:
+                custom_key_info = etree.fromstring(fh.read())
+            s3 = signer.sign(data, reference_uri=reference_uri, key=key, cert=crt, key_info=custom_key_info)
+            self.assertTrue(s3.xpath("/ds:Signature/ds:KeyInfo/wsse:SecurityTokenReference",
+                                     namespaces=dict(namespaces, wsse=wsse_ns)))
+
+    def test_excision_of_untrusted_comments(self):
+        pass  # TODO: test comments excision
 
     def test_ws_security(self):
         wsse_dir = os.path.join(interop_dir, "ws-security", "ws.js")
