@@ -1,3 +1,8 @@
+Changes for v2.7.1 (2019-11-30)
+===============================
+
+-  Accept PEM keys as either str or bytes
+
 Changes for v2.7.0 (2019-11-30)
 ===============================
 
