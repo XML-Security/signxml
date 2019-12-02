@@ -142,9 +142,9 @@ SignXML uses the `lxml <https://github.com/lxml/lxml>`_ ElementTree library, not
 `ElementTree from Python's standard library <https://docs.python.org/3.8/library/xml.etree.elementtree.html>`_,
 to work with XML. lxml is used due to its superior resistance to XML attacks, as well as XML canonicalization and
 namespace organization features. It is recommended that you pass XML string input directly to signxml before further
-parsing, and use lxml to work with untrusted XML input in general. If you do pass trusted ``xml.etree.ElementTree``
-objects to SignXML, you should be aware of differences in XML namespace handling between the two libraries. See the
-following references for more information:
+parsing, and use lxml to work with untrusted XML input in general. If you do pass ``xml.etree.ElementTree`` objects to
+SignXML, you should be aware of differences in XML namespace handling between the two libraries. See the following
+references for more information:
 
 * `How do I use lxml safely as a web-service endpoint? <https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint>`_
 * `ElementTree compatibility of lxml.etree <https://lxml.de/compatibility.html>`_
