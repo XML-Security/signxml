@@ -116,7 +116,8 @@ def iterate_pem(certs):
 
 
 class Namespace(dict):
-    __getattr__ = dict.__getitem__
+    def __getattr__(self, a):
+        return dict.__getitem__(self, a)
 
 
 class XMLProcessor:
