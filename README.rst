@@ -33,22 +33,18 @@ Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptograph
 <https://github.com/pyca/cryptography>`_, which in turn depend on `OpenSSL <https://www.openssl.org/>`_, `LibXML
 <http://xmlsoft.org/>`_, and Python tools to interface with them. You can install those as follows:
 
-+--------------+---------+---------------------------------------------------------------------------------------------+
-| OS           | Python  | Command                                                                                     |
-+==============+=========+=============================================================================================+
-| Ubuntu       | Python 2| ``apt-get install python-dev python-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev``   |
-|              |         | ``python-lxml python-cryptography python-openssl python-certifi build-essential``           |
-+--------------+---------+---------------------------------------------------------------------------------------------+
-| Ubuntu       | Python 3| ``apt-get install python3-dev python3-cffi libxml2-dev libxslt1-dev libssl-dev libffi-dev`` |
-|              |         | ``python3-lxml python3-cryptography python3-openssl python3-certifi build-essential``       |
-+--------------+---------+---------------------------------------------------------------------------------------------+
-| Red Hat      | Python 2| ``yum install python-devel python-cffi libxml2-devel libxslt1-devel openssl-devel``         |
-+--------------+---------+---------------------------------------------------------------------------------------------+
-| Red Hat      | Python 3| ``yum install python3-devel python3-cffi libxml2-devel libxslt1-devel openssl-devel``       |
-+--------------+---------+---------------------------------------------------------------------------------------------+
-| Mac OS       | Homebrew| Install `Homebrew <https://brew.sh>`_, then run ``brew install python``.                    |
-|              | Python  |                                                                                             |
-+--------------+---------+---------------------------------------------------------------------------------------------+
++--------------+---------------------------------------------------------------------------------------------+
+| OS           | Command                                                                                     |
++==============+=============================================================================================+
+| Ubuntu       | ``apt-get install --no-install-recommends python3-pip python3-wheel python3-setuptools``    |
+|              | ``python3-openssl python3-lxml python3-cffi``                                               |
++--------------+---------------------------------------------------------------------------------------------+
+| Red Hat,     | ``yum install python3-pip python3-pyOpenSSL python3-lxml``                                  |
+| Amazon Linux,|                                                                                             |
+| CentOS       |                                                                                             |
++--------------+---------------------------------------------------------------------------------------------+
+| Mac OS       | Install `Homebrew <https://brew.sh>`_, then run ``brew install python``.                    |
++--------------+---------------------------------------------------------------------------------------------+
 
 Synopsis
 --------
@@ -69,7 +65,8 @@ SignXML uses the `lxml ElementTree API <https://lxml.de/tutorial.html>`_ to work
 To make this example self-sufficient for test purposes:
 
 - Generate a test certificate and key using
-  ``openssl req -x509 -sha256 -nodes -subj "/CN=test" -days 1 -newkey rsa:2048 -keyout example.key -out example.pem``.
+  ``openssl req -x509 -sha256 -nodes -subj "/CN=test" -days 1 -newkey rsa:2048 -keyout example.key -out example.pem``
+  (run ``yum install openssl`` on Red Hat).
 - Pass the ``x509_cert=cert`` keyword argument to ``XMLVerifier.verify()``. (In production, ensure this is replaced with
   the correct configuration for the trusted CA or certificate - this determines which signatures your application trusts.)
 
