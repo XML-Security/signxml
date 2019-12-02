@@ -1,3 +1,17 @@
+Changes for v2.7.2 (2019-12-01)
+===============================
+
+-  Relax dependency version range on eight
+
+-  Update dependency installation documentation
+
+-  XMLSigner.sign(): add always_add_key_value kwarg to include both
+   X509Data and KeyValue for ill-defined signing applications
+
+-  XMLVerifier.verify(): reject signatures that contain both X509Data
+   and KeyValue by default; add ignore_ambiguous_key_info kwarg to
+   bypass
+
 Changes for v2.7.1 (2019-11-30)
 ===============================
 
