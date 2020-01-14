@@ -50,13 +50,16 @@ namespaces.update(Namespace(
     xades141="https://uri.etsi.org/01903/v1.4.1#",
 ))
 
-XADES132 = ElementMaker(namespace=namespaces.xades132)
-XADES141 = ElementMaker(namespace=namespaces.xades141)
-DS = ElementMaker(namespace=namespaces.ds)
+XADES132 = ElementMaker(namespace=namespaces.xades132, nsmap=namespaces)
+XADES141 = ElementMaker(namespace=namespaces.xades141, nsmap=namespaces)
+DS = ElementMaker(namespace=namespaces.ds, nsmap=namespaces)
 
 # helper functions
 
 def _gen_id(prefix, suffix):
+    """
+    Generates the id 
+    """
     return "{prefix}-{uid}-{suffix}".format(prefix=prefix, uid=uuid4(), suffix=suffix)
 
 
