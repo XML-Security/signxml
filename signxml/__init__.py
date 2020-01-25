@@ -280,11 +280,9 @@ class XMLSigner(XMLSignatureProcessor):
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
         """
-        List of built out elements to incorporate
-        such as XADES scheme or any other
-        :type to_append: py:class: list
+        List of built references to incorporate to the element ds:SignedInfo
         """
-        self.to_append = []
+        self.refs = []
 
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, key_info=None,
              id_attribute=None):
@@ -314,7 +312,7 @@ class XMLSigner(XMLSignatureProcessor):
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
             signed.
-        :type reference_uri: string or list
+        :type reference_uri: string or list or XML ElementTree Element
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
@@ -349,6 +347,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = reference_uri
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
+        doc_root, sig_root, reference_uris = self._pre_build_sig(doc_root, sig_root, reference_uris)
         signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs)
 
         if key is None:
@@ -473,6 +472,32 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = ["#object"]
         return sig_root, doc_root, c14n_inputs, reference_uris
 
+    def _pre_build_sig(self, doc_root, sig_root, reference_uris):
+        """
+        To overwrite
+        
+        By default, this method add self.refs to reference_uris, elements 
+        ready to incorporate into sig_root without changes
+
+        Suggested use case:
+        Set the attribute 'Id' of the element 'Signature' when the
+        in the _unpack function the attribute is deleted, this will override 
+        the digest value of built references
+        exmple:
+
+        query = self._findall(doc_root, "QualifyingProperties")
+        if len(query) > 1:
+            raise NotImplementedError("Multiple QualifyingProperties")
+        sig_id = query[0].attrib["Target"]
+        if sig_id.startswith("#"):
+            sig_id = sig_id.replace("#","")
+        sig_root.set("Id", sig_id)
+        """
+        
+        reference_uris += self.refs
+
+        return doc_root, sig_root, reference_uris
+
     def _build_sig(self, sig_root, reference_uris, c14n_inputs):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
@@ -482,17 +507,21 @@ class XMLSigner(XMLSignatureProcessor):
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
         signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
         for i, reference_uri in enumerate(reference_uris):
-            reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
-            if self.method == methods.enveloped:
-                transforms = SubElement(reference, ds_tag("Transforms"))
-                SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
-            digest_method = SubElement(reference, ds_tag("DigestMethod"),
-                                       Algorithm=self.known_digest_tags[self.digest_alg])
-            digest_value = SubElement(reference, ds_tag("DigestValue"))
-            payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
-            digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
-            digest_value.text = digest
+            if etree.iselement(reference_uri):
+                # adding built references
+                signed_info.append(reference_uri)
+            else:    
+                reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+                if self.method == methods.enveloped:
+                    transforms = SubElement(reference, ds_tag("Transforms"))
+                    SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
+                    SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+                digest_method = SubElement(reference, ds_tag("DigestMethod"),
+                                           Algorithm=self.known_digest_tags[self.digest_alg])
+                digest_value = SubElement(reference, ds_tag("DigestValue"))
+                payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
+                digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
+                digest_value.text = digest
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
 
