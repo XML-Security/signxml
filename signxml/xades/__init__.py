@@ -56,11 +56,13 @@ DS = ElementMaker(namespace=namespaces.ds, nsmap=namespaces)
 
 # helper functions
 
-def _gen_id(prefix, suffix):
+def _gen_id(prefix, suffix=None):
     """
     Generates the id 
     """
-    return "{prefix}-{uid}-{suffix}".format(prefix=prefix, uid=uuid4(), suffix=suffix)
+    suffix = "-{suffix}".format(suffix) if suffix else ""
+
+    return "{prefix}-{uid}{suffix}".format(prefix=prefix, uid=uuid4(), suffix=suffix)
 
 
 def resolve_uri(uri):
@@ -251,7 +253,6 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         Returns the qualified properties
         """
-        self.refs #TODO: include refs in the signature info
         return DS.Object(self._generate_xades(options_struct))
 
     def _add_xades_reference(self, sp):
@@ -714,9 +715,11 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         the QualifyingProperties container.
         """
         qp_attributes = {
-            "Target": '',  # required
+            "Target": "#"+_gen_id(self.dsig_prefix,"signature"),  # required
             "Id": _gen_id(self.dsig_prefix, "qualifyingprops"),  # optional
         }
+
+        self._add_xades_reference(qp_attributes)
 
         """
         A XAdES signature shall not incorporate empty QualifyingProperties elements.
