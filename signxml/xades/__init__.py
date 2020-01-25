@@ -60,7 +60,7 @@ def _gen_id(prefix, suffix=None):
     """
     Generates the id 
     """
-    suffix = "-{suffix}".format(suffix) if suffix else ""
+    suffix = "-{}".format(suffix) if suffix else ""
 
     return "{prefix}-{uid}{suffix}".format(prefix=prefix, uid=uuid4(), suffix=suffix)
 
