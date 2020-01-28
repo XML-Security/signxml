@@ -347,7 +347,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = reference_uri
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
-        doc_root, sig_root, reference_uris = self._pre_build_sig(doc_root, sig_root, reference_uris)
+        doc_root, sig_root, reference_uris, c14n_inputs = self._pre_build_sig(doc_root, sig_root, reference_uris, c14n_inputs)
         signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs)
 
         if key is None:

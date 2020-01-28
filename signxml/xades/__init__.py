@@ -46,8 +46,8 @@ levels = Enum("Levels", "B T LT LTA")
 namespaces.update(Namespace(
     # xades111="https://uri.etsi.org/01903/v1.1.1#",  # superseded
     # xades122="https://uri.etsi.org/01903/v1.2.2#",  # superseded
-    xades132="https://uri.etsi.org/01903/v1.3.2#",
-    xades141="https://uri.etsi.org/01903/v1.4.1#",
+    xades132="http://uri.etsi.org/01903/v1.3.2#",
+    xades141="http://uri.etsi.org/01903/v1.4.1#",
 ))
 
 XADES132 = ElementMaker(namespace=namespaces.xades132, nsmap=namespaces)
@@ -212,42 +212,6 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         self.refs = []
         self.dsig_prefix = "xmldsig"
         super().__init__()
-
-    def sign(self, *args, **kwargs):
-        """
-        building the SignerOptions using kwargs values
-        """
-        place = ProductionPlace(
-            kwargs.get("city"),
-            kwargs.get("address"),
-            kwargs.get("state"),
-            kwargs.get("postal_code"),
-            kwargs.get("country"),
-        )
-        policy = SignaturePolicy(
-            kwargs.get("pidentifier"),
-            kwargs.get("pdescription"),
-        )
-        cert = kwargs.get("cert")
-        if isinstance(cert, (str, bytes)):
-            cert = list(iterate_pem(cert))
-        else:
-            cert = [cert]
-        # keeping the original kwargs to be sent to the original method 'sign'
-        vnames = XMLSigner.sign.__code__.co_varnames
-        old_kws = kwargs
-        kwargs = dict()
-        kwargs["cert"] = cert
-        vnames = list(vnames)
-        vnames.remove("cert")
-        vnames = tuple(vnames)
-        for i in range(0,len(vnames)):
-            key = vnames[i]
-            if old_kws.get(key) is not None:
-                kwargs[key] = old_kws.get(key)
-        options_struct = SignerOptions(cert, place, policy)
-        qualified_properties = self._sign(options_struct)
-        return super().sign(*args, **kwargs)
 
     def _sign(self, options_struct):
         """
@@ -719,11 +683,11 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             "Id": _gen_id(self.dsig_prefix, "qualifyingprops"),  # optional
         }
 
-        self._add_xades_reference(qp_attributes)
-
         """
         A XAdES signature shall not incorporate empty QualifyingProperties elements.
         """
         if not qp_elements:
             return None
-        return XADES132.QualifyingProperties(*qp_elements, **qp_attributes)
+        qp = XADES132.QualifyingProperties(*qp_elements, **qp_attributes)
+        self._add_xades_reference(qp)
+        return qp
