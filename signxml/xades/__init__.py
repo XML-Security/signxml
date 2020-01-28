@@ -503,7 +503,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             pass
         else:
             sr_elements = self._clean_elements_from_black_list(options_struct.BlackList, sr_elements)
-            elif self.xades_legacy:
+            if self.xades_legacy:
                 elements.append(XADES132.SignerRole(*sr_elements))  # deprecated (legacy)
             else:
                 elements.append(XADES132.SignerRoleV2(*sr_elements))
