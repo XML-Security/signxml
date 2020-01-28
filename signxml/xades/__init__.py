@@ -154,9 +154,10 @@ class SignaturePolicy(namedtuple(
 class SignerOptions(namedtuple(
     "SignerOptions", "CertChain ProductionPlace SignaturePolicy ClaimedRoles CertifiedRoles SignedAssertions",
     {
-        'ClaimedRoles': [],
-        'CertifiedRoles': [],
-        'SignedAssertions': [],
+        "ClaimedRoles": [],
+        "CertifiedRoles": [],
+        "SignedAssertions": [],
+        "BlackList": [],
     }
 )):
     """
@@ -197,8 +198,11 @@ class SignerOptions(namedtuple(
     :type SignedAssertions:
         array of :py:class:`lxml.etree.Element` objects according to domain
         application definition for representation of signed assertions
+    :param BlackList:
+        The list of tag elements that SHOULD NOT be included.
+        i.e: [namespace.Element.tag]
+    :type BlackList:`list`of tag elements
     """
-
 
 class XAdESSigner(XAdESProcessor, XMLSigner):
     """
@@ -218,6 +222,25 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         Returns the qualified properties
         """
         return DS.Object(self._generate_xades(options_struct))
+
+    def _clean_elements_from_black_list(self, black_list, elements):
+        """
+        :param black_list:
+            the list of tag elements that will be removed
+        :type black_list:
+            :py:class:`list`
+        :param elemnts:
+            the list of elements to be checked in the black list
+        :type elements:
+            :py:class:`list` of etree.Element
+        :return clean elements
+        """
+        if not isinstance(elements, list):
+            elements = list(elements)
+
+        return list(filter(
+            lambda x: isinstance(x, etree._Element) and x.tag not in black_list, elements
+        ))
 
     def _add_xades_reference(self, sp):
         """
@@ -348,6 +371,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         Empty SignatureProductionPlaceV2 qualifying properties shall not be generated.
         """
+        pp_elements = self._clean_elements_from_black_list(options_struct.BlackList, pp_elements)
         if self.xades_legacy and pp_elements:
             elements.append(XADES132.SignatureProductionPlace(*pp_elements))  # deprecated (legacy)
         elif pp_elements:
@@ -467,7 +491,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         if ctr_elements and self.xades_legacy:
             raise  # already cached above, never hit
         elif ctr_elements:
-            sr_elements.append(XADES132.CertifiedRolesV2(*clr_elements))
+            sr_elements.append(XADES132.CertifiedRolesV2(*ctr_elements))
 
         if sas_elements and not self.xades_legacy:
             sr_elements.append(XADES132.SignedAssertions(*sas_elements))
@@ -477,14 +501,16 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         if not sr_elements:
             pass
-        elif self.xades_legacy:
-            elements.append(XADES132.SignerRole(*sr_elements))  # deprecated (legacy)
         else:
-            elements.append(XADES132.SignerRoleV2(*sr_elements))
+            sr_elements = self._clean_elements_from_black_list(options_struct.BlackList, sr_elements)
+            elif self.xades_legacy:
+                elements.append(XADES132.SignerRole(*sr_elements))  # deprecated (legacy)
+            else:
+                elements.append(XADES132.SignerRoleV2(*sr_elements))
 
         # any ##other
 
-        return elements
+        return self._clean_elements_from_black_list(options_struct.BlackList, elements)
 
     def _generate_xades_sdop_elements(self, options_struct):
         elements = []
@@ -499,7 +525,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
 
         # any ##other
 
-        return elements
+        return self._clean_elements_from_black_list(options_struct.BlackList, elements)
 
     def _generate_xades_usp_elements(self, options_struct):
         """
@@ -547,14 +573,14 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
 
         # any ##other
 
-        return elements
+        return self._clean_elements_from_black_list(options_struct.BlackList, elements)
 
     def _generate_xades_udop_elements(self, options_struct):
         elements = []
 
         elements.append(XADES132.UnsignedDataObjectProperty())
 
-        return elements
+        return self._clean_elements_from_black_list(options_struct.BlackList, elements)
 
     def _generate_xades(self, options_struct):
 
