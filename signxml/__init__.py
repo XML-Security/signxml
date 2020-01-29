@@ -472,31 +472,39 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = ["#object"]
         return sig_root, doc_root, c14n_inputs, reference_uris
 
-    def _pre_build_sig(self, doc_root, sig_root, reference_uris):
+    def _pre_build_sig(self, doc_root, sig_root, reference_uris, c14n_inputs):
         """
         To overwrite
         
         By default, this method add self.refs to reference_uris, elements 
         ready to incorporate into sig_root without changes
 
-        Suggested use case:
-        Set the attribute 'Id' of the element 'Signature' when the
-        in the _unpack function the attribute is deleted, this will override 
-        the digest value of built references
+        Use cases:
+        - Set the attribute 'Id' of the element 'Signature' when the
+            in the _unpack function the attribute is deleted, this will override 
+            the digest value of built references
+        - Add the refs and c14_inputs to preserve the validation
         exmple:
 
-        query = self._findall(doc_root, "QualifyingProperties")
+        query = doc_root.xpath(
+            f"//{xades_ns}:QualifyingProperties", namespaces=namespaces
+        )
         if len(query) > 1:
             raise NotImplementedError("Multiple QualifyingProperties")
         sig_id = query[0].attrib["Target"]
         if sig_id.startswith("#"):
-            sig_id = sig_id.replace("#","")
+            sig_id = sig_id.replace("#", "")
         sig_root.set("Id", sig_id)
+        for ref in self.refs:
+            reference_uris.append(ref)
+            uri = ref
+            if etree.iselement(ref):
+                uri = uri.attrib["Target"]
+            c14n_inputs.append(
+                self.get_root(self._resolve_reference(doc_root, {"URI": uri}))
+            )
         """
-        
-        reference_uris += self.refs
-
-        return doc_root, sig_root, reference_uris
+        return doc_root, sig_root, reference_uris, c14n_inputs
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
