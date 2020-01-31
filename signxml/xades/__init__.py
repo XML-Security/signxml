@@ -6,6 +6,7 @@ from uuid import uuid4
 from datetime import datetime
 import pytz
 import requests
+import re
 
 from eight import str, bytes
 from lxml import etree
@@ -239,7 +240,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             lambda x: isinstance(x, etree._Element) and x.tag not in self.black_list, elements
         ))
 
-    def _add_xades_reference(self, sp):
+    def _add_xades_reference(self, el, attrs=dict()):
         """
         The refs depends the xmldsig scheme,(https://www.w3.org/TR/xmldsig-core2/#sec-Overview)
         not the XADES scheme, therefore, those refs have to wait for the general element to be append to
@@ -250,7 +251,13 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         (https://www.w3.org/TR/xmldsig-core2/#sec-o-Reference)
         This reference is made for compatibility mode v1 anv v2
         (https://www.w3.org/TR/xmldsig-core2/#sec-Compatibility-Mode-Examples)
+        :param el: element
+        :type el: etree.Element
+        :param attrs: attributes to set in the element 'DigestValue'
+        :type attrs: py:class:dict
         """
+        attrs["URI"] = "#" + el.get("Id")
+        attrs["Type"] = re.sub("[{}]","",el.tag)
         self.refs.append(
             DS.Reference(
                 DS.Transforms(DS.Transform(Algorithm=self.default_c14n_algorithm)),
@@ -259,12 +266,11 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 ),
                 DS.DigestValue(
                     self._get_digest(
-                        self._c14n(sp, algorithm=self.c14n_alg),
+                        self._c14n(el, algorithm=self.c14n_alg),
                         self._get_digest_method_by_tag(self.digest_alg)
                     )
                 ),
-                Type="http://uri.etsi.org/01903#SignedProperties",
-                URI="#" + sp.get("Id")
+                **attrs
             )
         )
 

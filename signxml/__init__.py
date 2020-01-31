@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 from base64 import b64encode, b64decode
 from enum import Enum
+import re
 
 from eight import str, bytes
 from lxml import etree
@@ -499,7 +500,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris.append(ref)
             uri = ref
             if etree.iselement(ref):
-                uri = uri.attrib["Target"]
+                uri = uri.attrib["URI"]
             c14n_inputs.append(
                 self.get_root(self._resolve_reference(doc_root, {"URI": uri}))
             )
