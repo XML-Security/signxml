@@ -2,6 +2,7 @@ from base64 import b64decode, b64encode
 from collections import namedtuple
 from enum import Enum
 from typing import List, Tuple
+import re
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
@@ -558,7 +559,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris.append(ref)
             uri = ref
             if etree.iselement(ref):
-                uri = uri.attrib["Target"]
+                uri = uri.attrib["URI"]
             c14n_inputs.append(
                 self.get_root(self._resolve_reference(doc_root, {"URI": uri}))
             )
