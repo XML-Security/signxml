@@ -255,24 +255,28 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         :type el: etree.Element
         :param attrs: attributes to set in the element 'DigestValue'
         :type attrs: py:class:dict
+
+        Note: PLEASE!! take into account that the digest may differ in the 
+            validation process caused by the transforms and the namespaces applied
         """
-        attrs["URI"] = "#" + el.get("Id")
-        attrs["Type"] = re.sub("[{}]","",el.tag)
-        self.refs.append(
-            DS.Reference(
-                DS.Transforms(DS.Transform(Algorithm=self.default_c14n_algorithm)),
-                DS.DigestMethod(
-                    Algorithm=self.known_digest_tags[self.digest_alg]
-                ),
-                DS.DigestValue(
-                    self._get_digest(
-                        self._c14n(el, algorithm=self.c14n_alg),
-                        self._get_digest_method_by_tag(self.digest_alg)
-                    )
-                ),
-                **attrs
-            )
-        )
+        self.refs.append("#" + el.get("Id"))
+        # attrs["URI"] = "#" + el.get("Id")
+        # attrs["Type"] = re.sub("[{}]","",el.tag)
+        # self.refs.append(
+        #     DS.Reference(
+        #         DS.Transforms(DS.Transform(Algorithm=self.default_c14n_algorithm)),
+        #         DS.DigestMethod(
+        #             Algorithm=self.known_digest_tags[self.digest_alg]
+        #         ),
+        #         DS.DigestValue(
+        #             self._get_digest(
+        #                 self._c14n(el, algorithm=self.c14n_alg),
+        #                 self._get_digest_method_by_tag(self.digest_alg)
+        #             )
+        #         ),
+        #         **attrs
+        #     )
+        # )
 
 
     def _generate_xades_ssp_elements(self, options_struct):

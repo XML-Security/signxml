@@ -386,8 +386,8 @@ class XMLSigner(XMLSignatureProcessor):
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
         # XXX: Reivew such functionalities
-        #doc_root, sig_root, reference_uris = self._pre_build_sig(doc_root, sig_root, reference_uris)
-        #signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs)
+        # doc_root, sig_root, reference_uris, c14n_inputs = self._pre_build_sig(doc_root, sig_root, reference_uris, c14n_inputs)
+        # signed_info_element, signature_value_element = self._build_sig(doc_root, sig_root, reference_uris, c14n_inputs)
 
         if self.method == methods.detached and signature_properties is not None:
             reference_uris.append("#prop")
@@ -565,11 +565,24 @@ class XMLSigner(XMLSignatureProcessor):
             )
         """
 
+<<<<<<< HEAD
         reference_uris += self.refs
 
         return doc_root, sig_root, reference_uris
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
+=======
+    def _build_sig(self, doc_root, sig_root, reference_uris, c14n_inputs):
+        def _check_brothers(element1, element2):
+            """helper method to determiante if two elements have the same tag
+               :param element1: element
+               :type element1: etree._Element
+               :param element2: elemnt
+               :type element2: etree._Element
+            """
+            return doc_root.tag == doc_el.tag
+
+>>>>>>> 666bfc0 (Improvements)
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
         if sig_insp:
@@ -588,7 +601,13 @@ class XMLSigner(XMLSignatureProcessor):
                 reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
                 transforms = SubElement(reference, ds_tag("Transforms"))
                 if self.method == methods.enveloped:
+<<<<<<< HEAD
                     SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
+=======
+                    transforms = SubElement(reference, ds_tag("Transforms"))
+                    if _check_brothers(doc_root, c14n_inputs[i]):
+                        SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
+>>>>>>> 666bfc0 (Improvements)
                     SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
                 else:
                     c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
