@@ -406,6 +406,10 @@ class XMLSigner(XMLSignatureProcessor):
                             x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
             else:
                 sig_root.append(key_info)
+
+            #ensure the right order of elements
+            doc_root, sig_root, c14n_inputs = self._sort_elements(
+                doc_root, sig_root, c14n_inputs)
         else:
             raise NotImplementedError()
 
@@ -507,7 +511,19 @@ class XMLSigner(XMLSignatureProcessor):
         """
         return doc_root, sig_root, reference_uris, c14n_inputs
 
+
     def _build_sig(self, doc_root, sig_root, reference_uris, c14n_inputs):
+        """
+        :param reference_uris: the references to include o buld.
+        :cases:
+        - elements: if the reference_uri is an element, this will be added 
+          without modifications
+        - dict: if the reference_uri is a dict, the reference element will be 
+          created using the attributes in the dict
+          i.e: {"URI": URI, "Type": Type, "Id": ID}
+        - string: if refence_uri is a string, this will be interpreted as the 
+          attribute `URI` 
+        """
         def _check_brothers(element1, element2):
             """helper method to determiante if two elements have the same tag
                :param element1: element
@@ -515,7 +531,7 @@ class XMLSigner(XMLSignatureProcessor):
                :param element2: elemnt
                :type element2: etree._Element
             """
-            return doc_root.tag == doc_el.tag
+            return element1.tag == element2.tag
 
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
@@ -528,8 +544,12 @@ class XMLSigner(XMLSignatureProcessor):
             if etree.iselement(reference_uri):
                 # adding built references
                 signed_info.append(reference_uri)
-            else:    
-                reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+            else:
+                if isinstance(reference_uri, dict):
+                    reference = SubElement(signed_info, ds_tag("Reference"), **reference_uri)
+                else:
+                    reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
+
                 if self.method == methods.enveloped:
                     transforms = SubElement(reference, ds_tag("Transforms"))
                     if _check_brothers(doc_root, c14n_inputs[i]):
@@ -543,6 +563,18 @@ class XMLSigner(XMLSignatureProcessor):
                 digest_value.text = digest
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
+
+    def _sort_elements(self, doc_root, sig_root, c14n_inputs):
+        """
+        This method is implemented to preserve the order in signature structure
+        case: If one or more elements are in the element "Signature" before 
+        appending SignedInfo, SignatureValue and KeyInfo, the structure's order
+        will be corrupted once them have been added.
+        """
+        ds_object = doc_root.xpath("//ds:Object", namespaces=namespaces)[0]
+        sig_root.insert(len(sig_root), ds_object)
+
+        return doc_root, sig_root, c14n_inputs
 
     def _serialize_key_value(self, key, key_info_element):
         key_value = SubElement(key_info_element, ds_tag("KeyValue"))
