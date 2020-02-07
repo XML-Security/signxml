@@ -462,6 +462,10 @@ class XMLSigner(XMLSignatureProcessor):
                             x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
             else:
                 sig_root.append(key_info)
+
+            #ensure the right order of elements
+            doc_root, sig_root, c14n_inputs = self._sort_elements(
+                doc_root, sig_root, c14n_inputs)
         else:
             raise NotImplementedError()
 
@@ -565,14 +569,22 @@ class XMLSigner(XMLSignatureProcessor):
             )
         """
 
-<<<<<<< HEAD
         reference_uris += self.refs
 
         return doc_root, sig_root, reference_uris
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
-=======
-    def _build_sig(self, doc_root, sig_root, reference_uris, c14n_inputs):
+        """
+        :param reference_uris: the references to include o buld.
+        :cases:
+        - elements: if the reference_uri is an element, this will be added
+          without modifications
+        - dict: if the reference_uri is a dict, the reference element will be
+          created using the attributes in the dict
+          i.e: {"URI": URI, "Type": Type, "Id": ID}
+        - string: if refence_uri is a string, this will be interpreted as the
+          attribute `URI`
+        """
         def _check_brothers(element1, element2):
             """helper method to determiante if two elements have the same tag
                :param element1: element
@@ -580,9 +592,8 @@ class XMLSigner(XMLSignatureProcessor):
                :param element2: elemnt
                :type element2: etree._Element
             """
-            return doc_root.tag == doc_el.tag
+            return element1.tag == element2.tag
 
->>>>>>> 666bfc0 (Improvements)
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
         if sig_insp:
@@ -601,13 +612,7 @@ class XMLSigner(XMLSignatureProcessor):
                 reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
                 transforms = SubElement(reference, ds_tag("Transforms"))
                 if self.method == methods.enveloped:
-<<<<<<< HEAD
                     SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-=======
-                    transforms = SubElement(reference, ds_tag("Transforms"))
-                    if _check_brothers(doc_root, c14n_inputs[i]):
-                        SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
->>>>>>> 666bfc0 (Improvements)
                     SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
                 else:
                     c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
@@ -621,6 +626,7 @@ class XMLSigner(XMLSignatureProcessor):
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
 
+<<<<<<< HEAD
     def _build_signature_properties(self, signature_properties):
         obj = Element(ds_tag("Object"), attrib={"Id": "prop"}, nsmap=self.namespaces)
         signature_properties_el = Element(ds_tag("SignatureProperties"))
@@ -636,6 +642,19 @@ class XMLSigner(XMLSignatureProcessor):
             signature_properties_el.append(signature_property)
         obj.append(signature_properties_el)
         return obj
+=======
+    def _sort_elements(self, doc_root, sig_root, c14n_inputs):
+        """
+        This method is implemented to preserve the order in signature structure
+        case: If one or more elements are in the element "Signature" before
+        appending SignedInfo, SignatureValue and KeyInfo, the structure's order
+        will be corrupted once them have been added.
+        """
+        ds_object = doc_root.xpath("//ds:Object", namespaces=namespaces)[0]
+        sig_root.insert(len(sig_root), ds_object)
+
+        return doc_root, sig_root, c14n_inputs
+>>>>>>> 2a6d5f3 (Checks and improvements)
 
     def _serialize_key_value(self, key, key_info_element):
         """

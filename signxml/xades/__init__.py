@@ -240,7 +240,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             lambda x: isinstance(x, etree._Element) and x.tag not in self.black_list, elements
         ))
 
-    def _add_xades_reference(self, el, attrs=dict()):
+    def _add_xades_reference(self, el, **attrs):
         """
         The refs depends the xmldsig scheme,(https://www.w3.org/TR/xmldsig-core2/#sec-Overview)
         not the XADES scheme, therefore, those refs have to wait for the general element to be append to
@@ -259,25 +259,11 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         Note: PLEASE!! take into account that the digest may differ in the 
             validation process caused by the transforms and the namespaces applied
         """
-        self.refs.append("#" + el.get("Id"))
-        # attrs["URI"] = "#" + el.get("Id")
-        # attrs["Type"] = re.sub("[{}]","",el.tag)
-        # self.refs.append(
-        #     DS.Reference(
-        #         DS.Transforms(DS.Transform(Algorithm=self.default_c14n_algorithm)),
-        #         DS.DigestMethod(
-        #             Algorithm=self.known_digest_tags[self.digest_alg]
-        #         ),
-        #         DS.DigestValue(
-        #             self._get_digest(
-        #                 self._c14n(el, algorithm=self.c14n_alg),
-        #                 self._get_digest_method_by_tag(self.digest_alg)
-        #             )
-        #         ),
-        #         **attrs
-        #     )
-        # )
-
+        if attrs:
+            attrs["URI"] = "#" + el.get("Id")
+            self.refs.append(attrs)
+        else:
+            self.refs.append("#" + el.get("Id"))
 
     def _generate_xades_ssp_elements(self, options_struct):
         """
@@ -691,7 +677,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             This ds:Reference element shall include the Type attribute with its
             value set to:
             """
-            self._add_xades_reference(sp)
+            self._add_xades_reference(sp, {"Type": "http://uri.etsi.org/01903#SignedProperties"})
 
         """
         A XAdES signature shall not incorporate empty UnsignedProperties elements.
