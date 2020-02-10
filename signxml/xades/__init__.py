@@ -677,7 +677,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             This ds:Reference element shall include the Type attribute with its
             value set to:
             """
-            self._add_xades_reference(sp, {"Type": "http://uri.etsi.org/01903#SignedProperties"})
+            self._add_xades_reference(sp, **{"Type": "http://uri.etsi.org/01903#SignedProperties"})
 
         """
         A XAdES signature shall not incorporate empty UnsignedProperties elements.
