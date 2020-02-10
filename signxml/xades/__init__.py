@@ -240,7 +240,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             lambda x: isinstance(x, etree._Element) and x.tag not in self.black_list, elements
         ))
 
-    def _add_xades_reference(self, el, **attrs):
+    def _add_xades_reference(self, el, attrs={}):
         """
         The refs depends the xmldsig scheme,(https://www.w3.org/TR/xmldsig-core2/#sec-Overview)
         not the XADES scheme, therefore, those refs have to wait for the general element to be append to
@@ -677,7 +677,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             This ds:Reference element shall include the Type attribute with its
             value set to:
             """
-            self._add_xades_reference(sp, **{"Type": "http://uri.etsi.org/01903#SignedProperties"})
+            self._add_xades_reference(sp, {"Type": "http://uri.etsi.org/01903#SignedProperties"})
 
         """
         A XAdES signature shall not incorporate empty UnsignedProperties elements.
