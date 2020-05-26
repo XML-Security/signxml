@@ -724,13 +724,16 @@ class XMLVerifier(XMLSignatureProcessor):
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
         c14n_algorithm = c14n_method.get("Algorithm")
+        inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(c14n_method)
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = signature_method.get("Algorithm")
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
-        signed_info_c14n = self._c14n(signed_info, algorithm=c14n_algorithm)
+        signed_info_c14n = self._c14n(signed_info,
+                                      algorithm=c14n_algorithm,
+                                      inclusive_ns_prefixes=inclusive_ns_prefixes)
 
         # TODO: if both X509Data and KeyValue is present, match one against the other and raise an error on mismatch
         if x509_data is not None or self.require_x509:

@@ -412,5 +412,17 @@ class TestSignXML(unittest.TestCase):
                 with self.assertRaises((InvalidInput, etree.XMLSyntaxError)):
                     XMLVerifier().verify(fh.read())
 
+    def test_soap_request_with_inclusive_namespaces(self):
+        with open(os.path.join(interop_dir, "soap", "request.xml")) as req_fh:
+            with self.assertRaises(etree.DocumentInvalid):
+                XMLVerifier().verify(req_fh.read(),
+                                     ca_pem_file=os.path.join(interop_dir, "soap", "ca.pem"),
+                                     expect_references=False)
+            req_fh.seek(0)
+            XMLVerifier().verify(req_fh.read(),
+                                 ca_pem_file=os.path.join(interop_dir, "soap", "ca.pem"),
+                                 expect_references=False,
+                                 validate_schema=False)
+
 if __name__ == '__main__':
     unittest.main()
