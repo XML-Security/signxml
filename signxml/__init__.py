@@ -7,7 +7,7 @@ from eight import str, bytes
 from lxml import etree
 from lxml.etree import Element, SubElement
 
-from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.backends import default_backend
@@ -386,6 +386,12 @@ class XMLSigner(XMLSignatureProcessor):
                 r = decoded_signature['r']
                 s = decoded_signature['s']
                 signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
+            elif self.sign_alg.startswith("ecdsa-"):
+                # Note: The output of the ECDSA signer is a DER-encoded ASN.1 sequence of two DER integers.
+                (r, s) = utils.decode_dss_signature(signature)
+                int_len = key.key_size // 8
+                signature = long_to_bytes(r, blocksize=int_len)
+                signature += long_to_bytes(s, blocksize=int_len)
 
             signature_value_element.text = ensure_str(b64encode(signature))
 
@@ -553,9 +559,14 @@ class XMLVerifier(XMLSignatureProcessor):
             y = bytes_to_long(key_data[len(key_data)//2:])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
             key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
-            key.verify(raw_signature,
-                       data=signed_info_c14n,
-                       signature_algorithm=ec.ECDSA(self._get_signature_digest_method(signature_alg)))
+            dss_signature = self._encode_dss_signature(raw_signature, key.key_size)
+            key.verify(
+                dss_signature,
+                data=signed_info_c14n,
+                signature_algorithm=ec.ECDSA(
+                    self._get_signature_digest_method(signature_alg)
+                ),
+            )
         elif "dsa-" in signature_alg:
             dsa_key_value = self._find(key_value, "DSAKeyValue")
             p = self._get_long(dsa_key_value, "P")
@@ -580,6 +591,18 @@ class XMLVerifier(XMLSignatureProcessor):
                        algorithm=self._get_signature_digest_method(signature_alg))
         else:
             raise NotImplementedError()
+
+    def _encode_dss_signature(self, raw_signature, key_size_bits):
+        want_raw_signature_len = key_size_bits // 8 * 2
+        if len(raw_signature) != want_raw_signature_len:
+            raise InvalidSignature(
+                "Expected %d byte SignatureValue, got %d"
+                % (want_raw_signature_len, len(raw_signature))
+            )
+        int_len = len(raw_signature) // 2
+        r = bytes_to_long(raw_signature[:int_len])
+        s = bytes_to_long(raw_signature[int_len:])
+        return utils.encode_dss_signature(r, s)
 
     def _get_inclusive_ns_prefixes(self, transform_node):
         inclusive_namespaces = transform_node.find("./ec:InclusiveNamespaces[@PrefixList]", namespaces=namespaces)
@@ -755,6 +778,10 @@ class XMLVerifier(XMLSignatureProcessor):
                 raise InvalidSignature("Certificate subject common name mismatch")
 
             signature_digest_method = self._get_signature_digest_method(signature_alg).name
+            if "ecdsa-" in signature_alg:
+                raw_signature = self._encode_dss_signature(
+                    raw_signature, signing_cert.get_pubkey().bits()
+                )
             try:
                 verify(signing_cert, raw_signature, signed_info_c14n, signature_digest_method)
             except OpenSSLCryptoError as e:
