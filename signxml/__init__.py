@@ -437,14 +437,14 @@ class XMLSigner(XMLSignatureProcessor):
                 # Only sign the referenced element(s)
                 c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
 
-            signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
+            signature_placeholders = doc_root.xpath(".//*[local-name()='Signature' and @Id='placeholder']")
             if len(signature_placeholders) == 0:
                 doc_root.append(sig_root)
             elif len(signature_placeholders) == 1:
-                sig_root = signature_placeholders[0]
-                del sig_root.attrib["Id"]
+                p = signature_placeholders[0].getparent()
+                p.replace(signature_placeholders[0], sig_root)
                 for c14n_input in c14n_inputs:
-                    placeholders = self._findall(c14n_input, "Signature[@Id='placeholder']", anywhere=True)
+                    placeholders = c14n_input.xpath(".//*[local-name()='Signature' and @Id='placeholder']")
                     if placeholders:
                         assert len(placeholders) == 1
                         _remove_sig(placeholders[0])

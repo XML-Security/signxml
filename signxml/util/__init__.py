@@ -98,9 +98,9 @@ pem_regexp = re.compile("{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl
 
 def strip_pem_header(cert):
     try:
-        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r", "")
+        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r", "").replace("\n", "")
     except Exception:
-        return ensure_str(cert).replace("\r", "")
+        return ensure_str(cert).replace("\r", "").replace("\n", "")
 
 
 def add_pem_header(bare_base64_cert):
