@@ -264,9 +264,11 @@ class XMLSigner(XMLSignatureProcessor):
         listed under the `Algorithm Identifiers and Implementation Requirements
         <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
     :type digest_algorithm: string
+    :param namespaces: Namespace dictionary for the document, can be provided to override default XML signature namespaces.
+    :type namespaces: dict
     """
     def __init__(self, method=methods.enveloped, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
-                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm):
+                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm, namespaces=dict(ds=namespaces.ds)):
         if method is None or method not in methods:
             raise InvalidInput("Unknown signature method {}".format(method))
         self.method = method
@@ -276,7 +278,7 @@ class XMLSigner(XMLSignatureProcessor):
         self.digest_alg = digest_algorithm
         assert c14n_algorithm in self.known_c14n_algorithms
         self.c14n_alg = c14n_algorithm
-        self.namespaces = dict(ds=namespaces.ds)
+        self.namespaces = namespaces
         self._parser = None
 
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, key_info=None,
