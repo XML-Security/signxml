@@ -379,19 +379,11 @@ class XMLSigner(XMLSignatureProcessor):
                 signature = key.sign(signed_info_c14n, padding=PKCS1v15(), algorithm=hash_alg)
             else:
                 raise NotImplementedError()
-            if self.sign_alg.startswith("dsa-"):
-                # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
-                from asn1crypto.algos import DSASignature
-                decoded_signature = DSASignature.load(signature).native
-                r = decoded_signature['r']
-                s = decoded_signature['s']
-                signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
-            elif self.sign_alg.startswith("ecdsa-"):
-                # Note: The output of the ECDSA signer is a DER-encoded ASN.1 sequence of two DER integers.
+            if self.sign_alg.startswith("dsa-") or self.sign_alg.startswith("ecdsa-"):
+                # Note: The output of the DSA and ECDSA signers is a DER-encoded ASN.1 sequence of two DER integers.
                 (r, s) = utils.decode_dss_signature(signature)
                 int_len = key.key_size // 8
-                signature = long_to_bytes(r, blocksize=int_len)
-                signature += long_to_bytes(s, blocksize=int_len)
+                signature = long_to_bytes(r, blocksize=int_len) + long_to_bytes(s, blocksize=int_len)
 
             signature_value_element.text = ensure_str(b64encode(signature))
 
@@ -575,9 +567,9 @@ class XMLVerifier(XMLSignatureProcessor):
             y = self._get_long(dsa_key_value, "Y")
             pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
             key = pn.public_key(backend=default_backend())
-            from asn1crypto.algos import DSASignature
-            sig_as_der_seq = DSASignature.from_p1363(raw_signature).dump()
-            key.verify(sig_as_der_seq,
+            # TODO: supply meaningful key_size_bits for signature length assertion
+            dss_signature = self._encode_dss_signature(raw_signature, len(raw_signature) * 8 / 2)
+            key.verify(dss_signature,
                        data=signed_info_c14n,
                        algorithm=self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
