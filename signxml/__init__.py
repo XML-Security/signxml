@@ -10,6 +10,7 @@ from lxml.etree import Element, SubElement
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
+from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.backends import default_backend
 
 from .exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
@@ -541,16 +542,22 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             return self._find(root, "Signature", anywhere=True)
 
-    def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, signature_alg):
+    def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, der_encoded_key_value,
+                                      signature_alg):
+        if der_encoded_key_value is not None:
+            key = load_der_public_key(b64decode(der_encoded_key_value.text), backend=default_backend())
         if "ecdsa-" in signature_alg:
-            ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
-            named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
-            public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
-            key_data = b64decode(public_key.text)[1:]
-            x = bytes_to_long(key_data[:len(key_data)//2])
-            y = bytes_to_long(key_data[len(key_data)//2:])
-            curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
-            key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
+            if key_value:
+                ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
+                named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
+                public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
+                key_data = b64decode(public_key.text)[1:]
+                x = bytes_to_long(key_data[:len(key_data)//2])
+                y = bytes_to_long(key_data[len(key_data)//2:])
+                curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
+                key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
+            elif not isinstance(key, ec.EllipticCurvePublicKey):
+                raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             dss_signature = self._encode_dss_signature(raw_signature, key.key_size)
             key.verify(
                 dss_signature,
@@ -560,23 +567,29 @@ class XMLVerifier(XMLSignatureProcessor):
                 ),
             )
         elif "dsa-" in signature_alg:
-            dsa_key_value = self._find(key_value, "DSAKeyValue")
-            p = self._get_long(dsa_key_value, "P")
-            q = self._get_long(dsa_key_value, "Q")
-            g = self._get_long(dsa_key_value, "G", require=False)
-            y = self._get_long(dsa_key_value, "Y")
-            pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
-            key = pn.public_key(backend=default_backend())
+            if key_value:
+                dsa_key_value = self._find(key_value, "DSAKeyValue")
+                p = self._get_long(dsa_key_value, "P")
+                q = self._get_long(dsa_key_value, "Q")
+                g = self._get_long(dsa_key_value, "G", require=False)
+                y = self._get_long(dsa_key_value, "Y")
+                pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
+                key = pn.public_key(backend=default_backend())
+            elif not isinstance(key, dsa.DSAPublicKey):
+                raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
             dss_signature = self._encode_dss_signature(raw_signature, len(raw_signature) * 8 / 2)
             key.verify(dss_signature,
                        data=signed_info_c14n,
                        algorithm=self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
-            rsa_key_value = self._find(key_value, "RSAKeyValue")
-            modulus = self._get_long(rsa_key_value, "Modulus")
-            exponent = self._get_long(rsa_key_value, "Exponent")
-            key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
+            if key_value:
+                rsa_key_value = self._find(key_value, "RSAKeyValue")
+                modulus = self._get_long(rsa_key_value, "Modulus")
+                exponent = self._get_long(rsa_key_value, "Exponent")
+                key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
+            elif not isinstance(key, rsa.RSAPublicKey):
+                raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             key.verify(raw_signature,
                        data=signed_info_c14n,
                        padding=PKCS1v15(),
@@ -746,6 +759,7 @@ class XMLVerifier(XMLSignatureProcessor):
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
+        der_encoded_key_value = signature.find("ds:KeyInfo/dsig11:DEREncodedKeyValue", namespaces=namespaces)
         signed_info_c14n = self._c14n(signed_info,
                                       algorithm=c14n_algorithm,
                                       inclusive_ns_prefixes=inclusive_ns_prefixes)
@@ -787,7 +801,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 raise InvalidSignature("Signature verification failed: {}".format(reason))
 
             if ignore_ambiguous_key_info is False:
-                if key_value is not None:
+                if key_value is not None or der_encoded_key_value is not None:
                     raise InvalidInput("Both X509Data and KeyValue found. Use verify(ignore_ambiguous_key_info=True) "
                                        "to ignore KeyValue and validate using X509Data only.")
 
@@ -806,10 +820,14 @@ class XMLVerifier(XMLSignatureProcessor):
             if raw_signature != signer.finalize():
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
-            if key_value is None:
+            if key_value is None and der_encoded_key_value is None:
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
-            self._verify_signature_with_pubkey(signed_info_c14n, raw_signature, key_value, signature_alg)
+            self._verify_signature_with_pubkey(signed_info_c14n=signed_info_c14n,
+                                               raw_signature=raw_signature,
+                                               key_value=key_value,
+                                               der_encoded_key_value=der_encoded_key_value,
+                                               signature_alg=signature_alg)
 
         verify_results = []
         for reference in self._findall(signed_info, "Reference"):
