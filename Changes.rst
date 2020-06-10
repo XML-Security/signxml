@@ -1,3 +1,12 @@
+Changes for v2.7.3 (2020-06-10)
+===============================
+
+-  Fix ECDSA signature encoding/decoding (#150)
+
+-  Add InclusiveNamespaces PrefixList support for SignedInfo
+
+-  Test and documentation improvements
+
 Changes for v2.7.2 (2019-12-01)
 ===============================
 
