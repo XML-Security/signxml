@@ -196,18 +196,13 @@ class TestSignXML(unittest.TestCase):
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
-                    XMLVerifier().verify(sig,
-                                         require_x509=False,
-                                         hmac_key="testkey",
-                                         validate_schema=True,
-                                         #uri_resolver=resolver,
-                                         #x509_cert=get_x509_cert(signature_file),
-                                         #ca_pem_file=get_ca_pem_file(signature_file)
-                    )
+                    XMLVerifier().verify(sig, require_x509=False, hmac_key="testkey", validate_schema=True)
                     decoded_sig = sig.decode("utf-8")
                 except Exception as e:
-                    print("***", signature_file, e, str(e))
-
+                    if "keyinforeference" in signature_file or "x509digest" in signature_file:
+                        print("Unsupported test case:", type(e), e)
+                    else:
+                        raise
 
     def test_xmldsig_interop(self):
         def resolver(uri):
