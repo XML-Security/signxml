@@ -6,6 +6,7 @@ bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import math
 import os, sys, re, struct, textwrap
 from xml.etree import ElementTree as stdlibElementTree
 from base64 import b64encode, b64decode
@@ -90,6 +91,15 @@ def long_to_bytes(n, blocksize=0):
     if blocksize > 0 and len(s) % blocksize:
         s = (blocksize - len(s) % blocksize) * b'\000' + s
     return s
+
+
+def bits_to_bytes_unit(num_of_bits):
+    """bits_to_bytes_unit(num_of_bits:int) : int
+    Convert the unit of measurement for the argument from bits to bytes.
+
+    Rounds up to the nearest whole byte.
+    """
+    return int(math.ceil(num_of_bits / 8))
 
 
 pem_regexp = re.compile("{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER),

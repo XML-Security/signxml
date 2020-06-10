@@ -14,7 +14,7 @@ from cryptography.hazmat.backends import default_backend
 
 from .exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
 from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
-                   XMLProcessor, iterate_pem, verify_x509_cert_chain)
+                   XMLProcessor, iterate_pem, verify_x509_cert_chain, bits_to_bytes_unit)
 from collections import namedtuple
 
 methods = Enum("Methods", "enveloped enveloping detached")
@@ -382,7 +382,7 @@ class XMLSigner(XMLSignatureProcessor):
             if self.sign_alg.startswith("dsa-") or self.sign_alg.startswith("ecdsa-"):
                 # Note: The output of the DSA and ECDSA signers is a DER-encoded ASN.1 sequence of two DER integers.
                 (r, s) = utils.decode_dss_signature(signature)
-                int_len = key.key_size // 8
+                int_len = bits_to_bytes_unit(key.key_size)
                 signature = long_to_bytes(r, blocksize=int_len) + long_to_bytes(s, blocksize=int_len)
 
             signature_value_element.text = ensure_str(b64encode(signature))
@@ -585,7 +585,7 @@ class XMLVerifier(XMLSignatureProcessor):
             raise NotImplementedError()
 
     def _encode_dss_signature(self, raw_signature, key_size_bits):
-        want_raw_signature_len = key_size_bits // 8 * 2
+        want_raw_signature_len = bits_to_bytes_unit(key_size_bits) * 2
         if len(raw_signature) != want_raw_signature_len:
             raise InvalidSignature(
                 "Expected %d byte SignatureValue, got %d"
