@@ -36,6 +36,9 @@ def ds_tag(tag):
 def dsig11_tag(tag):
     return "{" + namespaces.dsig11 + "}" + tag
 
+def ec_tag(tag):
+    return "{" + namespaces.ec + "}" + tag
+
 def _remove_sig(signature, idempotent=False):
     """
     Remove the signature node from its parent, keeping any tail element.
@@ -281,7 +284,8 @@ class XMLSigner(XMLSignatureProcessor):
         self._parser = None
 
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, key_info=None,
-             id_attribute=None, always_add_key_value=False):
+             id_attribute=None, always_add_key_value=False, payload_inclusive_ns_prefixes=frozenset(),
+             signature_inclusive_ns_prefixes=frozenset()):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -328,6 +332,14 @@ class XMLSigner(XMLSignatureProcessor):
             KeyValue or make sure it matches what's in the certificate. This parameter is provided for compatibility
             purposes only.
         :type always_add_key_value: boolean
+        :param payload_inclusive_ns_prefixes:
+            Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
+            content referenced by the signature (**InclusiveNamespaces PrefixList**).
+        :type inclusive_ns_prefixes: string
+        :param signature_inclusive_ns_prefixes:
+            Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
+            signature itself (**InclusiveNamespaces PrefixList**).
+        :type inclusive_ns_prefixes: string
 
         :returns:
             A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
@@ -352,12 +364,14 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = reference_uri
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
-        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs)
-
+        signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs,
+                                                                       sig_insp=signature_inclusive_ns_prefixes,
+                                                                       payload_insp=payload_inclusive_ns_prefixes)
         if key is None:
             raise InvalidInput('Parameter "key" is required')
 
-        signed_info_c14n = self._c14n(signed_info_element, algorithm=self.c14n_alg)
+        signed_info_c14n = self._c14n(signed_info_element, algorithm=self.c14n_alg,
+                                      inclusive_ns_prefixes=signature_inclusive_ns_prefixes)
         if self.sign_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
             signer = HMAC(key=key,
@@ -475,9 +489,12 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = ["#object"]
         return sig_root, doc_root, c14n_inputs, reference_uris
 
-    def _build_sig(self, sig_root, reference_uris, c14n_inputs):
+    def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
-        SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        if sig_insp:
+            SubElement(sig_c14n_method, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(sig_insp))
+
         if self.sign_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.sign_alg]
         else:
@@ -490,11 +507,13 @@ class XMLSigner(XMLSignatureProcessor):
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
                 SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
             else:
-                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+                c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+                if payload_insp:
+                    SubElement(c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(payload_insp))
 
             SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg])
             digest_value = SubElement(reference, ds_tag("DigestValue"))
-            payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
+            payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg, inclusive_ns_prefixes=payload_insp)
             digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
             digest_value.text = digest
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
