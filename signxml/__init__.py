@@ -661,8 +661,8 @@ class XMLVerifier(XMLSignatureProcessor):
         return payload
 
     def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, ca_pem_file=None, ca_path=None,
-               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, id_attribute=None,
-               expect_references=1, ignore_ambiguous_key_info=False):
+               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, cert_resolver=None,
+               id_attribute=None, expect_references=1, ignore_ambiguous_key_info=False):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
         exception if the signature is not valid. By default, this requires the signature to be generated using a valid
@@ -724,8 +724,16 @@ class XMLVerifier(XMLSignatureProcessor):
             Custom XML parser instance to use when parsing **data**. The default parser arguments used by SignXML are:
             ``resolve_entities=False``. See https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint.
         :type parser: :py:class:`lxml.etree.XMLParser` compatible parser
-        :param uri_resolver: Function to use to resolve reference URIs that don't start with "#".
+        :param uri_resolver:
+            Function to use to resolve reference URIs that don't start with "#". The function is called with a single
+            string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
         :type uri_resolver: callable
+        :param cert_resolver:
+            Function to use to resolve X.509 certificates when X509IssuerSerial and X509Digest references are found in
+            the signature. The function is called with the keyword arguments ``x509_issuer_name``,
+            ``x509_serial_number`` and ``x509_digest``, and is expected to return an iterable of one or more
+            strings containing PEM-formatted certificates.
+        :type cert_resolver: callable
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
@@ -791,10 +799,18 @@ class XMLVerifier(XMLSignatureProcessor):
                 if x509_data is None:
                     raise InvalidInput("Expected a X.509 certificate based signature")
                 certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
-                if not certs:
-                    msg = "Expected to find an X509Certificate element in the signature"
-                    msg += " (X509SubjectName, X509SKI are not supported)"
-                    raise InvalidInput(msg)
+                if len(certs) == 0:
+                    x509_iss = x509_data.find("ds:X509IssuerSerial/ds:X509IssuerName", namespaces=namespaces)
+                    x509_sn = x509_data.find("ds:X509IssuerSerial/ds:X509SerialNumber", namespaces=namespaces)
+                    x509_digest = x509_data.find("dsig11:X509Digest", namespaces=namespaces)
+                    if cert_resolver is not None and (x509_iss or x509_sn or x509_digest):
+                        certs = cert_resolver(x509_issuer_name=x509_iss.text if x509_iss is not None else None,
+                                              x509_serial_number=x509_sn.text if x509_sn is not None else None,
+                                              x509_digest=x509_digest.text if x509_digest is not None else None)
+                    else:
+                        msg = "Expected to find an X509Certificate element in the signature"
+                        msg += " (X509SubjectName, X509SKI are not supported)"
+                        raise InvalidInput(msg)
                 cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 signing_cert = verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
             elif isinstance(self.x509_cert, X509):

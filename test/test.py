@@ -199,7 +199,7 @@ class TestSignXML(unittest.TestCase):
                     XMLVerifier().verify(sig, require_x509=False, hmac_key="testkey", validate_schema=True)
                     decoded_sig = sig.decode("utf-8")
                 except Exception as e:
-                    if "keyinforeference" in signature_file or "x509digest" in signature_file:
+                    if "keyinforeference" in signature_file:
                         print("Unsupported test case:", type(e), e)
                     else:
                         raise
@@ -260,7 +260,7 @@ class TestSignXML(unittest.TestCase):
                         raise BaseException("Expected an exception to occur")
                 except Exception as e:
                     unsupported_cases = ("xpath-transform", "xslt-transform", "xpointer",
-                                         "x509-data-issuer-serial", "x509-data-ski", "x509-data-subject-name",
+                                         "x509-data-ski", "x509-data-subject-name",
                                          "x509data", "signature-x509-ski", "signature-x509-is")
                     bad_interop_cases = ("signature-big", "enveloping-dsa-x509chain",
                                          "enveloping-sha512-hmac-sha512", "enveloping-sha512-rsa-sha512",
