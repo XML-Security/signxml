@@ -156,7 +156,7 @@ class XMLSignatureProcessor(XMLProcessor):
     def _get_digest(self, data, digest_algorithm):
         hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
         hasher.update(data)
-        return ensure_str(b64encode(hasher.finalize()))
+        return hasher.finalize()
 
     def _get_digest_method(self, digest_algorithm_id, methods=None):
         if methods is None:
@@ -515,7 +515,7 @@ class XMLSigner(XMLSignatureProcessor):
             digest_value = SubElement(reference, ds_tag("DigestValue"))
             payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg, inclusive_ns_prefixes=payload_insp)
             digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
-            digest_value.text = digest
+            digest_value.text = ensure_str(b64encode(digest))
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
 
@@ -869,11 +869,11 @@ class XMLVerifier(XMLSignatureProcessor):
             copied_root = self.fromstring(self.tostring(root))
             copied_signature_ref = self._get_signature(copied_root)
             transforms = self._find(reference, "Transforms", require=False)
-            digest_algorithm = self._find(reference, "DigestMethod").get("Algorithm")
+            digest_alg = self._find(reference, "DigestMethod").get("Algorithm")
             digest_value = self._find(reference, "DigestValue")
             payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
             payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
-            if digest_value.text != self._get_digest(payload_c14n, self._get_digest_method(digest_algorithm)):
+            if b64decode(digest_value.text) != self._get_digest(payload_c14n, self._get_digest_method(digest_alg)):
                 raise InvalidDigest("Digest mismatch for reference {}".format(len(verify_results)))
 
             # We return the signed XML (and only that) to ensure no access to unsigned data happens
