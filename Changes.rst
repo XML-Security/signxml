@@ -1,3 +1,13 @@
+Changes for v2.8.0 (2020-06-20)
+===============================
+
+-  Compare raw digest bytes instead of base64 encoded digests. Fixes
+   #155
+
+-  Initial X509IssuerSerial/X509Digest support
+
+-  Support custom inclusive_ns_prefixes when signing
+
 Changes for v2.7.3 (2020-06-10)
 ===============================
 
