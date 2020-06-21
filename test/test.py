@@ -14,7 +14,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
 from eight import str, open
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # noqa
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, InvalidSignature,
                      InvalidCertificate, InvalidDigest)
 
@@ -186,9 +186,11 @@ class TestSignXML(unittest.TestCase):
                     XMLVerifier().verify(fh.read(), ca_pem_file=ca_pem_file)
 
     def test_xmldsig_interop_TR2012(self):
-        def get_x509_cert(signature_file):
-            with open(os.path.join(os.path.dirname(__file__), "keys", "p256-cert.der"), "rb") as fh:
-                return fh.read()
+        def get_x509_cert(**kwargs):
+            from cryptography.x509 import load_der_x509_certificate
+            from OpenSSL.crypto import X509
+            with open(os.path.join(interop_dir, "TR2012", "rsa-cert.der"), "rb") as fh:
+                return [X509.from_cryptography(load_der_x509_certificate(fh.read(), backend=default_backend()))]
 
         signature_files = glob(os.path.join(interop_dir, "TR2012", "signature*.xml"))
         for signature_file in signature_files:
@@ -196,11 +198,14 @@ class TestSignXML(unittest.TestCase):
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
-                    XMLVerifier().verify(sig, require_x509=False, hmac_key="testkey", validate_schema=True)
+                    XMLVerifier().verify(sig, require_x509=False, hmac_key="testkey", validate_schema=True,
+                                         cert_resolver=get_x509_cert if "x509digest" in signature_file else None)
                     decoded_sig = sig.decode("utf-8")
                 except Exception as e:
                     if "keyinforeference" in signature_file:
                         print("Unsupported test case:", type(e), e)
+                    elif "x509digest" in signature_file:
+                        assert isinstance(e, InvalidCertificate)
                     else:
                         raise
 
@@ -239,6 +244,10 @@ class TestSignXML(unittest.TestCase):
                 return None
             return ca_pem_file.encode("utf-8")
 
+        def cert_resolver(x509_issuer_name, x509_serial_number, x509_digest):
+            with open(os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-cert.pem")) as fh:
+                return [fh.read()]
+
         signature_files = glob(os.path.join(interop_dir, "*", "signature*.xml"))
         signature_files += glob(os.path.join(interop_dir, "aleksey*", "*.xml"))
         signature_files += glob(os.path.join(interop_dir, "xml-crypto", "*.xml"))
@@ -254,6 +263,7 @@ class TestSignXML(unittest.TestCase):
                                          validate_schema=True,
                                          uri_resolver=resolver,
                                          x509_cert=get_x509_cert(signature_file),
+                                         cert_resolver=cert_resolver if "issuer-serial" in signature_file else None,
                                          ca_pem_file=get_ca_pem_file(signature_file))
                     decoded_sig = sig.decode("utf-8")
                     if "HMACOutputLength" in decoded_sig or "bad" in signature_file or "expired" in signature_file:

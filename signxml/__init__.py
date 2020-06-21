@@ -566,7 +566,7 @@ class XMLVerifier(XMLSignatureProcessor):
         if der_encoded_key_value is not None:
             key = load_der_public_key(b64decode(der_encoded_key_value.text), backend=default_backend())
         if "ecdsa-" in signature_alg:
-            if key_value:
+            if key_value is not None:
                 ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
                 named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
                 public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
@@ -586,7 +586,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 ),
             )
         elif "dsa-" in signature_alg:
-            if key_value:
+            if key_value is not None:
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
                 p = self._get_long(dsa_key_value, "P")
                 q = self._get_long(dsa_key_value, "Q")
@@ -602,7 +602,7 @@ class XMLVerifier(XMLSignatureProcessor):
                        data=signed_info_c14n,
                        algorithm=self._get_signature_digest_method(signature_alg))
         elif "rsa-" in signature_alg:
-            if key_value:
+            if key_value is not None:
                 rsa_key_value = self._find(key_value, "RSAKeyValue")
                 modulus = self._get_long(rsa_key_value, "Modulus")
                 exponent = self._get_long(rsa_key_value, "Exponent")
@@ -660,8 +660,8 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return payload
 
-    def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, ca_pem_file=None, ca_path=None,
-               hmac_key=None, validate_schema=True, parser=None, uri_resolver=None, cert_resolver=None,
+    def verify(self, data, require_x509=True, x509_cert=None, cert_subject_name=None, cert_resolver=None,
+               ca_pem_file=None, ca_path=None, hmac_key=None, validate_schema=True, parser=None, uri_resolver=None,
                id_attribute=None, expect_references=1, ignore_ambiguous_key_info=False):
         """
         Verify the XML signature supplied in the data and return the XML node signed by the signature, or raise an
@@ -704,6 +704,16 @@ class XMLVerifier(XMLSignatureProcessor):
             ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the
             known certificate authorities. Implies **require_x509=True**.
         :type x509_cert: string or OpenSSL.crypto.X509
+        :param cert_subject_name:
+            Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.
+        :type cert_subject_name: string
+        :param cert_resolver:
+            Function to use to resolve trusted X.509 certificates when X509IssuerSerial and X509Digest references are
+            found in the signature. The function is called with the keyword arguments ``x509_issuer_name``,
+            ``x509_serial_number`` and ``x509_digest``, and is expected to return an iterable of one or more
+            strings containing a PEM-formatted certificate and a chain of intermediate certificates, if needed.
+            Implies **require_x509=True**.
+        :type cert_resolver: callable
         :param ca_pem_file:
             Filename of a PEM file containing certificate authority information to use when verifying certificate-based
             signatures.
@@ -713,9 +723,6 @@ class XMLVerifier(XMLSignatureProcessor):
             certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle
             provided by :py:mod:`certifi` will be loaded.
         :type ca_path: string
-        :param cert_subject_name:
-            Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.
-        :type cert_subject_name: string
         :param hmac_key: If using HMAC, a string containing the shared secret.
         :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
@@ -728,12 +735,6 @@ class XMLVerifier(XMLSignatureProcessor):
             Function to use to resolve reference URIs that don't start with "#". The function is called with a single
             string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
         :type uri_resolver: callable
-        :param cert_resolver:
-            Function to use to resolve X.509 certificates when X509IssuerSerial and X509Digest references are found in
-            the signature. The function is called with the keyword arguments ``x509_issuer_name``,
-            ``x509_serial_number`` and ``x509_digest``, and is expected to return an iterable of one or more
-            strings containing PEM-formatted certificates.
-        :type cert_resolver: callable
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :type id_attribute: string
@@ -761,7 +762,7 @@ class XMLVerifier(XMLSignatureProcessor):
         self.x509_cert = x509_cert
         self._parser = parser
 
-        if x509_cert:
+        if x509_cert or cert_resolver:
             self.require_x509 = True
 
         if id_attribute is not None:
@@ -803,15 +804,20 @@ class XMLVerifier(XMLSignatureProcessor):
                     x509_iss = x509_data.find("ds:X509IssuerSerial/ds:X509IssuerName", namespaces=namespaces)
                     x509_sn = x509_data.find("ds:X509IssuerSerial/ds:X509SerialNumber", namespaces=namespaces)
                     x509_digest = x509_data.find("dsig11:X509Digest", namespaces=namespaces)
-                    if cert_resolver is not None and (x509_iss or x509_sn or x509_digest):
-                        certs = cert_resolver(x509_issuer_name=x509_iss.text if x509_iss is not None else None,
-                                              x509_serial_number=x509_sn.text if x509_sn is not None else None,
-                                              x509_digest=x509_digest.text if x509_digest is not None else None)
+                    if cert_resolver and any(i is not None for i in (x509_iss, x509_sn, x509_digest)):
+                        cert_chain = cert_resolver(x509_issuer_name=x509_iss.text if x509_iss is not None else None,
+                                                   x509_serial_number=x509_sn.text if x509_sn is not None else None,
+                                                   x509_digest=x509_digest.text if x509_digest is not None else None)
+                        if len(cert_chain) == 0:
+                            raise InvalidCertificate("No certificate found for given X509 data")
+                        if not all(isinstance(c, X509) for c in cert_chain):
+                            cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in cert_chain]
                     else:
                         msg = "Expected to find an X509Certificate element in the signature"
                         msg += " (X509SubjectName, X509SKI are not supported)"
                         raise InvalidInput(msg)
-                cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
+                else:
+                    cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
                 signing_cert = verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
             elif isinstance(self.x509_cert, X509):
                 signing_cert = self.x509_cert
