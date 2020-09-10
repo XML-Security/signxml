@@ -285,7 +285,7 @@ class XMLSigner(XMLSignatureProcessor):
 
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, key_info=None,
              id_attribute=None, always_add_key_value=False, payload_inclusive_ns_prefixes=frozenset(),
-             signature_inclusive_ns_prefixes=frozenset()):
+             signature_inclusive_ns_prefixes=frozenset(), signature_properties=None):
         """
         Sign the data and return the root element of the resulting XML tree.
 
@@ -339,7 +339,11 @@ class XMLSigner(XMLSignatureProcessor):
         :param signature_inclusive_ns_prefixes:
             Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
             signature itself (**InclusiveNamespaces PrefixList**).
-        :type inclusive_ns_prefixes: string
+        :type signature_inclusive_ns_prefixes: string
+        :param signature_properties:
+            One or more Elements that are to be included in the SignatureProperies section when using the detached
+            method.
+        :type signature_properties: :py:class:`lxml.etree.Element` or list of :py:class:`lxml.etree.Element`s
 
         :returns:
             A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
@@ -364,6 +368,14 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = reference_uri
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
+
+        if self.method == methods.detached and signature_properties is not None:
+            reference_uris.append("#prop")
+            if signature_properties is not None and not isinstance(signature_properties, list):
+                signature_properties = [signature_properties]
+            signature_properties_el = self._build_signature_properties(signature_properties)
+            c14n_inputs.append(signature_properties_el)
+
         signed_info_element, signature_value_element = self._build_sig(sig_root, reference_uris, c14n_inputs,
                                                                        sig_insp=signature_inclusive_ns_prefixes,
                                                                        payload_insp=payload_inclusive_ns_prefixes)
@@ -428,6 +440,10 @@ class XMLSigner(XMLSignatureProcessor):
         if self.method == methods.enveloping:
             for c14n_input in c14n_inputs:
                 doc_root.append(c14n_input)
+
+        if self.method == methods.detached and signature_properties is not None:
+            sig_root.append(signature_properties_el)
+
         return doc_root if self.method == methods.enveloped else sig_root
 
     def _get_c14n_inputs_from_reference_uris(self, doc_root, reference_uris):
@@ -518,6 +534,18 @@ class XMLSigner(XMLSignatureProcessor):
             digest_value.text = ensure_str(b64encode(digest))
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
+
+    def _build_signature_properties(self, signature_properties):
+        obj = Element(ds_tag("Object"), attrib={'Id': 'prop'}, nsmap={'ds': "http://www.w3.org/2000/09/xmldsig#"})
+        signature_properties_el = Element(ds_tag("SignatureProperties"))
+        for i, el in enumerate(signature_properties):
+            signature_property = Element(ds_tag("SignatureProperty"),
+                                         attrib={"Id": el.attrib.pop('Id', f"sigprop{i}"),
+                                                 "Target": el.attrib.pop('Target', f"#sigproptarget{i}")})
+            signature_property.append(el)
+            signature_properties_el.append(signature_property)
+        obj.append(signature_properties_el)
+        return obj
 
     def _serialize_key_value(self, key, key_info_element):
         """

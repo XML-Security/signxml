@@ -453,5 +453,22 @@ class TestSignXML(unittest.TestCase):
                                  expect_references=False,
                                  validate_schema=False)
 
+    def test_signature_properties_with_detached_method(self):
+        doc = etree.Element('Test', attrib={'Id': 'mytest'})
+        sigprop = etree.Element('{http://somenamespace}MyCustomProperty')
+        sigprop.text = 'Some Text'
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as file:
+            key = file.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as file:
+            cert = file.read()
+        signature = XMLSigner(method=methods.detached).sign(doc,
+                                                            cert=cert,
+                                                            key=key,
+                                                            reference_uri="#mytest",
+                                                            signature_properties=sigprop)
+        fulldoc = b'<root>' + etree.tostring(signature) + etree.tostring(doc) + b'</root>'
+        XMLVerifier().verify(etree.fromstring(fulldoc), x509_cert=cert, expect_references=2)
+
+
 if __name__ == '__main__':
     unittest.main()
