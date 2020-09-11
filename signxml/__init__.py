@@ -540,8 +540,8 @@ class XMLSigner(XMLSignatureProcessor):
         signature_properties_el = Element(ds_tag("SignatureProperties"))
         for i, el in enumerate(signature_properties):
             signature_property = Element(ds_tag("SignatureProperty"),
-                                         attrib={"Id": el.attrib.pop('Id', f"sigprop{i}"),
-                                                 "Target": el.attrib.pop('Target', f"#sigproptarget{i}")})
+                                         attrib={"Id": el.attrib.pop('Id', "sigprop{}".format(i)),
+                                                 "Target": el.attrib.pop('Target', "#sigproptarget{}".format(i))})
             signature_property.append(el)
             signature_properties_el.append(signature_property)
         obj.append(signature_properties_el)
