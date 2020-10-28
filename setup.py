@@ -14,7 +14,7 @@ setup(
     install_requires=[
         'lxml >= 4.2.1, < 5',
         'eight >= 0.4.2, < 2',
-        'cryptography >= 2.1.4, < 3',
+        'cryptography >= 2.1.4, < 4',
         'pyOpenSSL >= 17.5.0, < 20',
         'certifi >= 2018.1.18'
     ],
