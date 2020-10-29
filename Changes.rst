@@ -1,3 +1,11 @@
+Changes for v2.8.1 (2020-10-29)
+===============================
+
+-  Allow cryptography versions >3 (but <4) (#164)
+
+-  Add support for adding Signature Properties to a detached signature
+   (#160)
+
 Changes for v2.8.0 (2020-06-20)
 ===============================
 
