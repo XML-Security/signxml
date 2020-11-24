@@ -536,7 +536,7 @@ class XMLSigner(XMLSignatureProcessor):
         return signed_info, signature_value
 
     def _build_signature_properties(self, signature_properties):
-        obj = Element(ds_tag("Object"), attrib={'Id': 'prop'}, nsmap={'ds': "http://www.w3.org/2000/09/xmldsig#"})
+        obj = Element(ds_tag("Object"), attrib={'Id': 'prop'}, nsmap=self.namespaces)
         signature_properties_el = Element(ds_tag("SignatureProperties"))
         for i, el in enumerate(signature_properties):
             signature_property = Element(ds_tag("SignatureProperty"),
