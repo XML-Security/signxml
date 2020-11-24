@@ -469,6 +469,25 @@ class TestSignXML(unittest.TestCase):
         fulldoc = b'<root>' + etree.tostring(signature) + etree.tostring(doc) + b'</root>'
         XMLVerifier().verify(etree.fromstring(fulldoc), x509_cert=cert, expect_references=2)
 
+    def test_signature_properties_with_detached_method_re_enveloping(self):
+        doc = etree.Element('{http://somenamespace}Test', attrib={'Id': 'mytest'})
+        sigprop = etree.Element('{http://somenamespace}MyCustomProperty')
+        sigprop.text = 'Some Text'
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as file:
+            key = file.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as file:
+            cert = file.read()
+        signer = XMLSigner(method=methods.detached,
+                           c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315")
+        signer.namespaces['ns0'] = 'http://enveloping.namespace'
+        signature = signer.sign(doc,
+                                cert=cert,
+                                key=key,
+                                reference_uri="#mytest",
+                                signature_properties=sigprop)
+        fulldoc = b'<ns0:root xmlns:ns0="http://enveloping.namespace">' + etree.tostring(signature) + etree.tostring(doc) + b'</ns0:root>'
+        XMLVerifier().verify(etree.fromstring(fulldoc), x509_cert=cert, expect_references=2)
+
 
 if __name__ == '__main__':
     unittest.main()
