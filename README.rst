@@ -19,7 +19,7 @@ payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_ and
   `cryptography <https://github.com/pyca/cryptography>`_, `eight <https://github.com/kislyuk/eight>`_,
   `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
 * Comprehensive testing (including the XMLDSig interoperability suite) and `continuous integration
-  <https://travis-ci.org/XML-Security/signxml>`_
+  <https://github.com/XML-Security/signxml/actions>`_
 * Simple interface with useful defaults
 * Compactness, readability, and extensibility
 
