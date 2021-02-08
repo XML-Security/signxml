@@ -159,7 +159,7 @@ Links
 * `Documentation (Read the Docs) <https://signxml.readthedocs.io/en/latest/>`_
 * `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
 * `Change log <https://github.com/XML-Security/signxml/blob/master/Changes.rst>`_
-* `List of W3C XML Signature standards and drafts <http://www.w3.org/TR/#tr_XML_Signature>`_
+* `List of W3C XML Signature standards and drafts <https://www.w3.org/TR/?title=xml%20signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
 * `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
 * `W3C Working Group Note: XML Security 2.0 Requirements and Design Considerations <https://www.w3.org/TR/2013/NOTE-xmlsec-reqs2-20130411/>`_
