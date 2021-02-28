@@ -820,7 +820,6 @@ class XMLVerifier(XMLSignatureProcessor):
                                       algorithm=c14n_algorithm,
                                       inclusive_ns_prefixes=inclusive_ns_prefixes)
 
-        # TODO: if both X509Data and KeyValue is present, match one against the other and raise an error on mismatch
         if x509_data is not None or self.require_x509:
             from OpenSSL.crypto import load_certificate, X509, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
 
@@ -869,10 +868,19 @@ class XMLVerifier(XMLSignatureProcessor):
                     reason = e
                 raise InvalidSignature("Signature verification failed: {}".format(reason))
 
-            if ignore_ambiguous_key_info is False:
-                if key_value is not None or der_encoded_key_value is not None:
-                    raise InvalidInput("Both X509Data and KeyValue found. Use verify(ignore_ambiguous_key_info=True) "
-                                       "to ignore KeyValue and validate using X509Data only.")
+            # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
+            if key_value is not None:
+                if self.check_key_value_matches_cert_public_key(key_value, signing_cert.get_pubkey(), signature_alg) is False:
+                    if ignore_ambiguous_key_info is False:
+                        raise InvalidInput("Both X509Data and KeyValue found and they represent different public keys. "
+                                           "Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate using X509Data only.")
+
+            # If both X509Data and DEREncodedKeyValue are present, match one against the other and raise an error on mismatch
+            if der_encoded_key_value is not None:
+                if self.check_der_key_value_matches_cert_public_key(der_encoded_key_value, signing_cert.get_pubkey(), signature_alg) is False:
+                    if ignore_ambiguous_key_info is False:
+                        raise InvalidInput("Both X509Data and DEREncodedKeyValue found and they represent different public keys. "
+                                           "Use verify(ignore_ambiguous_key_info=True) to ignore DEREncodedKeyValue and validate using X509Data only.")
 
             # TODO: CN verification goes here
             # TODO: require one of the following to be set: either x509_cert or (ca_pem_file or ca_path) or common_name
@@ -922,6 +930,91 @@ class XMLVerifier(XMLSignatureProcessor):
             raise InvalidSignature(msg.format(expect_references, len(verify_results)))
 
         return verify_results if expect_references > 1 else verify_results[0]
+
+    def check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg):
+        if "ecdsa-" in signature_alg \
+            and isinstance(public_key.to_cryptography_key(), ec.EllipticCurvePublicKey):
+            ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
+            named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
+            public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
+            key_data = b64decode(public_key.text)[1:]
+            x = bytes_to_long(key_data[:len(key_data)//2])
+            y = bytes_to_long(key_data[len(key_data)//2:])
+            curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
+
+            pubk_curve = public_key.to_cryptography_key().public_numbers().curve
+            pubk_x = public_key.to_cryptography_key().public_numbers().x
+            pubk_y = public_key.to_cryptography_key().public_numbers().y
+
+            return curve_class == pubk_curve and x == pubk_x and y == pubk_y
+
+        elif "dsa-" in signature_alg \
+            and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey):
+            dsa_key_value = self._find(key_value, "DSAKeyValue")
+            p = self._get_long(dsa_key_value, "P")
+            q = self._get_long(dsa_key_value, "Q")
+            g = self._get_long(dsa_key_value, "G", require=False)
+
+            pubk_p = public_key.to_cryptography_key().public_numbers().p
+            pubk_q = public_key.to_cryptography_key().public_numbers().q
+            pubk_g = public_key.to_cryptography_key().public_numbers().g
+
+            return p == pubk_p and q == pubk_q and g == pubk_g
+
+        elif "rsa-" in signature_alg \
+            and isinstance(public_key.to_cryptography_key(), rsa.RSAPublicKey):
+            rsa_key_value = self._find(key_value, "RSAKeyValue")
+            n = self._get_long(rsa_key_value, "Modulus")
+            e = self._get_long(rsa_key_value, "Exponent")
+
+            pubk_n = public_key.to_cryptography_key().public_numbers().n
+            pubk_e = public_key.to_cryptography_key().public_numbers().e
+
+            return n == pubk_n and e == pubk_e
+
+        raise NotImplementedError()
+
+    def check_der_key_value_matches_cert_public_key(self, der_encoded_key_value, public_key, signature_alg):
+        der_public_key = load_der_public_key(b64decode(der_encoded_key_value.text), backend=default_backend())
+
+        if "ecdsa-" in signature_alg \
+            and isinstance(der_public_key, ec.EllipticCurvePublicKey) \
+            and isinstance(public_key.to_cryptography_key(), ec.EllipticCurvePublicKey):
+            curve_class = der_public_key.public_numbers().curve
+            x = der_public_key.public_numbers().x
+            y = der_public_key.public_numbers().y
+
+            pubk_curve = public_key.to_cryptography_key().public_numbers().curve
+            pubk_x = public_key.to_cryptography_key().public_numbers().x
+            pubk_y = public_key.to_cryptography_key().public_numbers().y
+
+            return curve_class == pubk_curve and x == pubk_x and y == pubk_y
+
+        elif "dsa-" in signature_alg \
+            and isinstance(der_public_key, dsa.DSAPublicKey) \
+            and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey):
+            p = der_public_key.public_numbers().parameter_numbers().p
+            q = der_public_key.public_numbers().parameter_numbers().q
+            g = der_public_key.public_numbers().parameter_numbers().g
+
+            pubk_p = public_key.to_cryptography_key().public_numbers().p
+            pubk_q = public_key.to_cryptography_key().public_numbers().q
+            pubk_g = public_key.to_cryptography_key().public_numbers().g
+
+            return p == pubk_p and q == pubk_q and g == pubk_g
+
+        elif "rsa-" in signature_alg \
+            and isinstance(der_public_key, rsa.RSAPublicKey) \
+            and isinstance(public_key.to_cryptography_key(), rsa.RSAPublicKey):
+            n = der_public_key.public_numbers().n
+            e = der_public_key.public_numbers().e
+
+            pubk_n = public_key.to_cryptography_key().public_numbers().n
+            pubk_e = public_key.to_cryptography_key().public_numbers().e
+
+            return n == pubk_n and e == pubk_e
+
+        raise NotImplementedError()
 
     def _get_long(self, element, query, require=True):
         result = self._find(element, query, require=require)
