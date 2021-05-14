@@ -1,3 +1,11 @@
+Changes for v2.8.2 (2021-05-14)
+===============================
+
+-  Allow the combination of X509Data and KeyValue when they represent
+   the same public key (#169)
+
+-  Use self.namespaces signature properties “Object” element (#167)
+
 Changes for v2.8.1 (2020-10-29)
 ===============================
 
