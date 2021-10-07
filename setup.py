@@ -16,7 +16,7 @@ setup(
         # By default, version minimums are set to be compatible with the oldest supported Ubuntu LTS (currently 18.04).
         'lxml >= 4.2.1, < 5',
         'eight >= 0.4.2, < 2',
-        'cryptography >= 2.1.4, < 4',
+        'cryptography >= 2.1.4',
         'pyOpenSSL >= 17.5.0, < 21',
         'certifi >= 2018.1.18'
     ],
