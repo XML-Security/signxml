@@ -1,3 +1,10 @@
+Changes for v2.9.0 (2021-10-08)
+===============================
+
+-  Unlimit cryptography version constraint. Fixes #177
+
+-  Bump pyOpenSSL compat range; add dep version strategy note
+
 Changes for v2.8.2 (2021-05-14)
 ===============================
 
