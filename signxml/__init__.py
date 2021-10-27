@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 from base64 import b64encode, b64decode
 from enum import Enum
 
-from eight import str, bytes
 from lxml import etree
 from lxml.etree import Element, SubElement
 

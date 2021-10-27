@@ -11,7 +11,6 @@ import os, sys, re, struct, textwrap
 from xml.etree import ElementTree as stdlibElementTree
 from base64 import b64encode, b64decode
 
-from eight import str, bytes
 from lxml import etree
 
 from ..exceptions import RedundantCert, InvalidCertificate, InvalidInput

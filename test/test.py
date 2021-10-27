@@ -12,11 +12,10 @@ from lxml import etree
 import cryptography.exceptions
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
-from eight import str, open
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, InvalidSignature,
-                     InvalidCertificate, InvalidDigest)
+from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, # noqa
+                     InvalidSignature, InvalidCertificate, InvalidDigest)
 
 def reset_tree(t, method):
     if not isinstance(t, str):
@@ -475,7 +474,10 @@ class TestSignXML(unittest.TestCase):
                                 key=key,
                                 reference_uri="#mytest",
                                 signature_properties=sigprop)
-        fulldoc = b'<ns0:root xmlns:ns0="http://enveloping.namespace">' + etree.tostring(signature) + etree.tostring(doc) + b'</ns0:root>'
+        fulldoc = b'<ns0:root xmlns:ns0="http://enveloping.namespace">' \
+            + etree.tostring(signature) \
+            + etree.tostring(doc) \
+            + b'</ns0:root>'
         XMLVerifier().verify(etree.fromstring(fulldoc), x509_cert=cert, expect_references=2)
 
 
