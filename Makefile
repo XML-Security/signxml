@@ -1,9 +1,9 @@
 test_deps:
-	pip install coverage flake8 wheel mypy
+	pip install coverage flake8 wheel mypy types-certifi types-pyOpenSSL lxml-stubs
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test
-	mypy $$(python setup.py --name) --install-types
+	mypy $$(python setup.py --name)
 
 test: test_deps lint
 	coverage run --source=$$(python setup.py --name) ./test/test.py
