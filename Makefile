@@ -3,7 +3,7 @@ test_deps:
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test
-	mypy $$(python setup.py --name)
+	mypy $$(python setup.py --name) --check-untyped-defs
 
 test: test_deps lint
 	coverage run --source=$$(python setup.py --name) ./test/test.py
