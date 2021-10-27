@@ -3,6 +3,8 @@ test_deps:
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test
+	mypy --install-types
+	mypy $$(python setup.py --name)
 
 test: test_deps lint
 	coverage run --source=$$(python setup.py --name) ./test/test.py
