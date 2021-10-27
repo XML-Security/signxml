@@ -1,5 +1,5 @@
 test_deps:
-	pip install coverage flake8 wheel
+	pip install coverage flake8 wheel mypy
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test
