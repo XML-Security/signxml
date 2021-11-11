@@ -4,8 +4,6 @@ SignXML utility functions
 bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
 import math
 import os, sys, re, struct, textwrap
 from xml.etree import ElementTree as stdlibElementTree
