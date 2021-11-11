@@ -1,31 +1,20 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-from base64 import b64encode, b64decode
+import collections
+import pytz
+import requests
+from base64 import b64encode
 from enum import Enum
 from uuid import uuid4
 from datetime import datetime
-import pytz
-import requests
-import re
 
-from eight import str, bytes
 from lxml import etree
-from lxml.etree import Element, SubElement
 from lxml.builder import ElementMaker
-from defusedxml.lxml import fromstring
 
-from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
 from cryptography.hazmat.primitives.serialization import Encoding
-from cryptography.hazmat.backends import default_backend
 
-from .. import XMLSignatureProcessor, XMLSigner, XMLVerifier, VerifyResult, namespaces
+from .. import XMLSignatureProcessor, XMLSigner, namespaces
 
-from ..exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
-from ..util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
-                   XMLProcessor, iterate_pem, verify_x509_cert_chain)
-import collections
+from ..exceptions import InvalidInput
+from ..util import ensure_str, Namespace
 
 
 def namedtuple_with_defaults(typename, field_names, default_values=()):
@@ -59,7 +48,7 @@ DS = ElementMaker(namespace=namespaces.ds, nsmap=namespaces)
 
 def _gen_id(prefix, suffix=None):
     """
-    Generates the id 
+    Generates the id
     """
     suffix = "-{}".format(suffix) if suffix else ""
 
@@ -72,7 +61,7 @@ def resolve_uri(uri):
     """
     try:
         return requests.get(uri).content
-    except:
+    except Exception:
         raise InvalidInput(f"Unable to resolve reference URI: {uri}")
 
 
@@ -95,7 +84,7 @@ class XAdESProcessor(XMLSignatureProcessor):
                 results = doc_root.xpath(xpath_query, uri=uri.lstrip("#"))
                 if len(results) > 1:
                     raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
-                elif len(results) == 1: 
+                elif len(results) == 1:
                     return results[0]
         raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
 
@@ -142,18 +131,18 @@ class CertifiedRoleV2(namedtuple(
 
 class SignaturePolicy(namedtuple(
     "SignaturePolicy", "Identifier Description"
-    )):
+)):
     """
     A container to hold the XADES SignaturePolicy values
 
     :param Identifier: the identifier of the policy (URI)
     :param Description: the description of the policy
-    i.e: for colombia 
+    i.e: for colombia
     'Política de firma para facturas electrónicas de la República de Colombia'
     """
 
 class SignerOptions(namedtuple(
-    "SignerOptions", 
+    "SignerOptions",
     "CertChain ProductionPlace SignaturePolicy ClaimedRoles CertifiedRoles SignedAssertions",
     {
         "ClaimedRoles": [],
@@ -256,7 +245,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         :param attrs: attributes to set in the element 'DigestValue'
         :type attrs: py:class:dict
 
-        Note: PLEASE!! take into account that the digest may differ in the 
+        Note: PLEASE!! take into account that the digest may differ in the
             validation process caused by the transforms and the namespaces applied
         """
         if attrs:
@@ -387,7 +376,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         pdm = self.known_digest_tags.get(self.digest_alg)
         # digest value
         pv = resolve_uri(sp.Identifier)
-        
+
         spid_elements.append(
             XADES.SigPolicyId(
                 XADES.Identifier(sp.Identifier),
@@ -398,7 +387,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             XADES.SigPolicyHash(
                 DS.DigestMethod(Algorithm=pdm),
                 DS.DigestValue(
-                    self._get_digest(pv,self._get_digest_method_by_tag(self.digest_alg))
+                    self._get_digest(pv, self._get_digest_method_by_tag(self.digest_alg))
                 )
             )
         )
@@ -661,8 +650,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             The Id attribute shall be used to reference the SignedProperties element.
             """
             sp_elements = self._clean_elements_from_black_list(sp_elements)
-            sp = XADES.SignedProperties(*sp_elements,
-                    Id=_gen_id(self.dsig_prefix, "signedprops")  # optional
+            sp = XADES.SignedProperties(
+                *sp_elements,
+                Id=_gen_id(self.dsig_prefix, "signedprops")  # optional
             )
             qp_elements.append(sp)
             """
@@ -688,7 +678,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             """
             up_elements = self._clean_elements_from_black_list(up_elements)
             qp_elements.append(
-                XADES.UnsignedProperties(*up_elements,
+                XADES.UnsignedProperties(
+                    *up_elements,
                     Id=_gen_id(self.dsig_prefix, "unsignedprops")  # optional
                 )
             )
@@ -699,7 +690,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         the QualifyingProperties container.
         """
         qp_attributes = {
-            "Target": "#"+_gen_id(self.dsig_prefix,"signature"),  # required
+            "Target": "#"+_gen_id(self.dsig_prefix, "signature"),  # required
             "Id": _gen_id(self.dsig_prefix, "qualifyingprops"),  # optional
         }
 
