@@ -28,6 +28,10 @@ from signxml import (  # noqa
     namespaces,
 )
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, # noqa
+                     InvalidSignature, InvalidCertificate, InvalidDigest)
+from signxml.xades import XAdESSigner, SignerOptions, ProductionPlace, namespaces as xades_namespaces  # noqa
 
 def reset_tree(t, method):
     if not isinstance(t, str):
@@ -547,6 +551,21 @@ class TestSignXML(unittest.TestCase):
         self.assertEqual(
             XMLVerifier()._c14n(doc, algorithm=""), b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>'
         )
+
+    def test_xades(self):
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as file:
+            key = file.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as file:
+            cert = file.read()
+        place = ProductionPlace("City", "Address", "State", "PostalCode", "Name")
+        for f in self.example_xml_files:
+            data = etree.parse(f).getroot()
+
+            signer = XAdESSigner(legacy=True)
+            signature = signer.sign(data, cert=cert, key=key)
+
+            ds_object, = signature.xpath('//ds:Object', namespaces=xades_namespaces)
+            self.assertTrue(ds_object)
 
 
 if __name__ == "__main__":

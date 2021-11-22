@@ -283,10 +283,6 @@ class XMLSigner(XMLSignatureProcessor):
         self.c14n_alg = c14n_algorithm
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
-        """
-        List of built references to incorporate to the element ds:SignedInfo
-        """
-        self.refs = []
 
     def sign(
         self,
@@ -375,9 +371,9 @@ class XMLSigner(XMLSignatureProcessor):
             self.id_attributes = (id_attribute,)
 
         if isinstance(cert, (str, bytes)):
-            cert_chain = list(iterate_pem(cert))
+            self.cert_chain = list(iterate_pem(cert))
         else:
-            cert_chain = cert
+            self.cert_chain = cert
 
         if isinstance(reference_uri, (str, bytes)):
             reference_uris = [reference_uri]
@@ -385,11 +381,6 @@ class XMLSigner(XMLSignatureProcessor):
             reference_uris = reference_uri
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
-        # XXX: Reivew such functionalities
-        # doc_root, sig_root, reference_uris, c14n_inputs = self._pre_build_sig(
-        # doc_root, sig_root, reference_uris, c14n_inputs)
-        # signed_info_element, signature_value_element = self._build_sig(
-        #    doc_root, sig_root, reference_uris, c14n_inputs)
 
         if self.method == methods.detached and signature_properties is not None:
             reference_uris.append("#prop")
@@ -449,12 +440,12 @@ class XMLSigner(XMLSignatureProcessor):
                     keyname = SubElement(key_info, ds_tag("KeyName"))
                     keyname.text = key_name
 
-                if cert_chain is None or always_add_key_value:
+                if self.cert_chain is None or always_add_key_value:
                     self._serialize_key_value(key, key_info)
 
-                if cert_chain is not None:
+                if self.cert_chain is not None:
                     x509_data = SubElement(key_info, ds_tag("X509Data"))
-                    for cert in cert_chain:
+                    for cert in self.cert_chain:
                         x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
                         if isinstance(cert, (str, bytes)):
                             x509_certificate.text = strip_pem_header(cert)
@@ -538,42 +529,6 @@ class XMLSigner(XMLSignatureProcessor):
                 c14n_inputs[0].append(self.get_root(data))
             reference_uris = ["#object"]
         return sig_root, doc_root, c14n_inputs, reference_uris
-
-    def _pre_build_sig(self, doc_root, sig_root, reference_uris, c14n_inputs):
-        """
-        To overwrite
-
-        By default, this method add self.refs to reference_uris, elements
-        ready to incorporate into sig_root without changes
-        Use cases:
-        - Set the attribute 'Id' of the element 'Signature' when the
-            in the _unpack function the attribute is deleted, this will override
-            the digest value of built references
-        - Add the refs and c14_inputs to preserve the validation
-        exmple:
-
-        query = doc_root.xpath(
-            f"//{xades_ns}:QualifyingProperties", namespaces=namespaces
-        )
-        if len(query) > 1:
-            raise NotImplementedError("Multiple QualifyingProperties")
-        sig_id = query[0].attrib["Target"]
-        if sig_id.startswith("#"):
-            sig_id = sig_id.replace("#", "")
-        sig_root.set("Id", sig_id)
-        for ref in self.refs:
-            reference_uris.append(ref)
-            uri = ref
-            if etree.iselement(ref):
-                uri = uri.attrib["URI"]
-            c14n_inputs.append(
-                self.get_root(self._resolve_reference(doc_root, {"URI": uri}))
-            )
-        """
-
-        reference_uris += self.refs
-
-        return doc_root, sig_root, reference_uris
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
         """
