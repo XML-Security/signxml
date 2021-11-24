@@ -2,9 +2,9 @@ import collections
 import pytz
 import requests
 from base64 import b64encode
+from datetime import datetime
 from enum import Enum
 from uuid import uuid4
-from datetime import datetime
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -131,15 +131,16 @@ class CertifiedRoleV2(namedtuple(
     """
 
 class SignaturePolicy(namedtuple(
-    "SignaturePolicy", "Identifier Description"
+    "SignaturePolicy", "Identifier Description URI"
 )):
     """
     A container to hold the XADES SignaturePolicy values
 
-    :param Identifier: the identifier of the policy (URI)
+    :param Identifier: the identifier of the policy
     :param Description: the description of the policy
     i.e: for colombia
     'Política de firma para facturas electrónicas de la República de Colombia'
+    :param URI: the URI of the policy (if empty the identifier will be used)
     """
 
 class SignerOptions(namedtuple(
@@ -388,10 +389,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         spid_elements = []
         sp = self.options_struct.SignaturePolicy
         if sp:
-            # digest method
-            pdm = self.known_digest_tags.get(self.digest_alg)
             # digest value
-            pv = resolve_uri(sp.Identifier)
+            pv = resolve_uri(sp.URI or sp.Identifier)
 
             spid_elements.append(
                 XADES.SigPolicyId(
@@ -399,14 +398,23 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                     XADES.Description(sp.Description)
                 )
             )
+            digest = self._get_digest(
+                pv,
+                self._get_digest_method_by_tag(self.digest_alg))
             spid_elements.append(
                 XADES.SigPolicyHash(
-                    DS.DigestMethod(Algorithm=pdm),
-                    DS.DigestValue(
-                        self._get_digest(pv, self._get_digest_method_by_tag(self.digest_alg))
-                    )
+                    DS.DigestMethod(
+                        Algorithm=self.known_digest_tags[self.digest_alg]
+                    ),
+                    DS.DigestValue(ensure_str(b64encode(digest)))
                 )
             )
+            if sp.URI:
+                spid_elements.append(
+                    XADES.SigPolicyQualifiers(
+                        XADES.SigPolicyQualifier(XADES.SPURI(sp.URI))
+                    )
+                )
             spid = XADES.SignaturePolicyId(*spid_elements)
             spi_elements = []
             spi_elements.append(spid)
@@ -512,6 +520,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
 
     def _generate_xades_sdop_elements(self):
         elements = []
+        return elements
+
+        # TODO: Find a way to complete such values
         elements.append(XADES.DataObjectFormat())
         elements.append(XADES.CommitmentTypeIndication())
         elements.append(XADES.AllDataObjectsTimeStamp())
@@ -526,6 +537,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         Deprecation as listed in ETSI EN 319 132-1 V1.1.1 (2016-04), Annex D
         """
         elements = []
+        return elements
+        # TODO: Find a way to complete such values
 
         elements.append(XADES.CounterSignature())
         elements.append(XADES.SignatureTimeStamp())
