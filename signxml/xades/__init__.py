@@ -1,7 +1,8 @@
-import collections
 import pytz
 import requests
 from base64 import b64encode
+from collections import namedtuple as python_namedtuple
+from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum
 from uuid import uuid4
@@ -19,9 +20,9 @@ from ..util import add_pem_header, ensure_str, Namespace
 
 
 def namedtuple_with_defaults(typename, field_names, default_values=()):
-    T = collections.namedtuple(typename, field_names)
+    T = python_namedtuple(typename, field_names)
     T.__new__.__defaults__ = (None,) * len(T._fields)
-    if isinstance(default_values, collections.Mapping):
+    if isinstance(default_values, Mapping):
         prototype = T(**default_values)
     else:
         prototype = T(*default_values)
