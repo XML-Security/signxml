@@ -132,7 +132,7 @@ For detached signatures, the code above will use the ``Id`` or ``ID`` attribute 
 ``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``XMLVerifier().verify(data, uri_resolver=...)``.
 
-See the `API documentation <https://signxml.readthedocs.io/en/latest/#id4>`_ for more.
+See the `API documentation <https://xml-security.github.io/signxml/#id5>`_ for more.
 
 XML parsing security and compatibility with ``xml.etree.ElementTree``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -155,7 +155,7 @@ Authors
 Links
 -----
 * `Project home page (GitHub) <https://github.com/XML-Security/signxml>`_
-* `Documentation (Read the Docs) <https://signxml.readthedocs.io/en/latest/>`_
+* `Documentation <https://xml-security.github.io/signxml/>`_
 * `Package distribution (PyPI) <https://pypi.python.org/pypi/signxml>`_
 * `Change log <https://github.com/XML-Security/signxml/blob/master/Changes.rst>`_
 * `List of W3C XML Signature standards and drafts <https://www.w3.org/TR/?title=xml%20signature>`_
@@ -185,5 +185,3 @@ Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.
         :target: https://pypi.python.org/pypi/signxml
 .. image:: https://img.shields.io/pypi/l/signxml.svg
         :target: https://pypi.python.org/pypi/signxml
-.. image:: https://readthedocs.org/projects/signxml/badge/?version=latest
-        :target: https://signxml.readthedocs.io/
