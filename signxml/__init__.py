@@ -923,7 +923,7 @@ class XMLVerifier(XMLSignatureProcessor):
             digest_alg = self._find(reference, "DigestMethod").get("Algorithm")
             digest_value = self._find(reference, "DigestValue")
             payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
-            payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, signed_info_c14n_algorithmc)
+            payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, signed_info_c14n_algorithm)
             if b64decode(digest_value.text) != self._get_digest(payload_c14n, self._get_digest_method(digest_alg)):
                 raise InvalidDigest("Digest mismatch for reference {}".format(len(verify_results)))
 
