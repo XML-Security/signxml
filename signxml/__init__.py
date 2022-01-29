@@ -267,7 +267,8 @@ class XMLSigner(XMLSignatureProcessor):
     :type digest_algorithm: string
     """
     def __init__(self, method=methods.enveloped, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
-                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm):
+                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm,
+                 signed_info_c14n_algorithm=None):
         if method is None or method not in methods:
             raise InvalidInput("Unknown signature method {}".format(method))
         self.method = method
@@ -277,6 +278,9 @@ class XMLSigner(XMLSignatureProcessor):
         self.digest_alg = digest_algorithm
         assert c14n_algorithm in self.known_c14n_algorithms
         self.c14n_alg = c14n_algorithm
+        if signed_info_c14n_algorithm:
+            assert signed_info_c14n_algorithm in self.known_c14n_algorithms
+        self.signed_info_c14n_alg = signed_info_c14n_algorithm or c14n_algorithm
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
 
@@ -379,7 +383,7 @@ class XMLSigner(XMLSignatureProcessor):
         if key is None:
             raise InvalidInput('Parameter "key" is required')
 
-        signed_info_c14n = self._c14n(signed_info_element, algorithm=self.c14n_alg,
+        signed_info_c14n = self._c14n(signed_info_element, algorithm=self.signed_info_c14n_alg,
                                       inclusive_ns_prefixes=signature_inclusive_ns_prefixes)
         if self.sign_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
@@ -504,7 +508,7 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
-        sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.signed_info_c14n_alg)
         if sig_insp:
             SubElement(sig_c14n_method, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(sig_insp))
 
@@ -660,7 +664,7 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             return inclusive_namespaces.get("PrefixList").split(" ")
 
-    def _apply_transforms(self, payload, transforms_node, signature, c14n_algorithm):
+    def _apply_transforms(self, payload, transforms_node, signature, signed_info_c14n_algorithm):
         transforms, c14n_applied = [], False
         if transforms_node is not None:
             transforms = self._findall(transforms_node, "Transform")
@@ -681,7 +685,10 @@ class XMLVerifier(XMLSignatureProcessor):
                 c14n_applied = True
 
         if not c14n_applied and not isinstance(payload, (str, bytes)):
-            payload = self._c14n(payload, algorithm=c14n_algorithm)
+            # XXX Here we're applying the SignedInfo's c14n algorithm to the whole payload,
+            # which doesn't appear to match the XML-DSIG spec. Fortunately, this code only
+            # takes effect when no Transform applied c14n, which may be an edge case.
+            payload = self._c14n(payload, algorithm=signed_info_c14n_algorithm)
 
         return payload
 
@@ -804,7 +811,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
-        c14n_algorithm = c14n_method.get("Algorithm")
+        signed_info_c14n_algorithm = c14n_method.get("Algorithm")
         inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(c14n_method)
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
@@ -814,7 +821,7 @@ class XMLVerifier(XMLSignatureProcessor):
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
         der_encoded_key_value = signature.find("ds:KeyInfo/dsig11:DEREncodedKeyValue", namespaces=namespaces)
         signed_info_c14n = self._c14n(signed_info,
-                                      algorithm=c14n_algorithm,
+                                      algorithm=signed_info_c14n_algorithm,
                                       inclusive_ns_prefixes=inclusive_ns_prefixes)
 
         if x509_data is not None or self.require_x509:
@@ -916,7 +923,7 @@ class XMLVerifier(XMLSignatureProcessor):
             digest_alg = self._find(reference, "DigestMethod").get("Algorithm")
             digest_value = self._find(reference, "DigestValue")
             payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
-            payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
+            payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, signed_info_c14n_algorithmc)
             if b64decode(digest_value.text) != self._get_digest(payload_c14n, self._get_digest_method(digest_alg)):
                 raise InvalidDigest("Digest mismatch for reference {}".format(len(verify_results)))
 
