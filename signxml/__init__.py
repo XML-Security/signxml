@@ -24,7 +24,8 @@ namespaces = Namespace(
     ec="http://www.w3.org/2001/10/xml-exc-c14n#",
     dsig_more="http://www.w3.org/2001/04/xmldsig-more#",
     xenc="http://www.w3.org/2001/04/xmlenc#",
-    xenc11="http://www.w3.org/2009/xmlenc11#"
+    xenc11="http://www.w3.org/2009/xmlenc11#",
+    xades="http://uri.etsi.org/01903/v1.3.2#"
 )
 
 def ds_tag(tag):
@@ -586,6 +587,13 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             return self._find(root, "Signature", anywhere=True)
 
+    def _get_certificates(self, signature, x509_data):
+        certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+        encapsulated_path = "ds:Object/xades:QualifyingProperties//xades:EncapsulatedX509Certificate"
+        for encapsulated in signature.findall(encapsulated_path, namespaces=namespaces):
+            certs.append(encapsulated.text)
+        return certs
+
     def _verify_signature_with_pubkey(self, signed_info_c14n, raw_signature, key_value, der_encoded_key_value,
                                       signature_alg):
         if der_encoded_key_value is not None:
@@ -823,7 +831,7 @@ class XMLVerifier(XMLSignatureProcessor):
             if self.x509_cert is None:
                 if x509_data is None:
                     raise InvalidInput("Expected a X.509 certificate based signature")
-                certs = [cert.text for cert in self._findall(x509_data, "X509Certificate")]
+                certs = self._get_certificates(signature, x509_data)
                 if len(certs) == 0:
                     x509_iss = x509_data.find("ds:X509IssuerSerial/ds:X509IssuerName", namespaces=namespaces)
                     x509_sn = x509_data.find("ds:X509IssuerSerial/ds:X509SerialNumber", namespaces=namespaces)
