@@ -1,0 +1,23 @@
+[req]
+
+req_extensions = root
+distinguished_name = req_distinguished_name
+
+[req_distinguished_name]
+
+[root]
+keyUsage = keyCertSign,cRLSign
+subjectKeyIdentifier = hash
+basicConstraints = critical, CA:true
+
+[intermediate]
+basicConstraints = critical, CA:true, pathlen:0
+extendedKeyUsage = clientAuth,emailProtection
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid
+
+[leaf]
+keyUsage = critical,digitalSignature,keyEncipherment
+basicConstraints = critical,CA:FALSE
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid
