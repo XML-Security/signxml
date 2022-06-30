@@ -1,3 +1,8 @@
+Changes for v2.9.1 (2022-06-30)
+===============================
+
+-  Added hooks for pyinstaller and fixed relative file import. Fixes #16
+
 Changes for v2.9.0 (2021-10-08)
 ===============================
 
