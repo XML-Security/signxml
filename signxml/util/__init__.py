@@ -133,7 +133,7 @@ class XMLProcessor:
     @classmethod
     def schema(cls):
         if cls._schema is None:
-            schema_path = os.path.join(os.path.dirname(__file__), "..", "schemas", cls.schema_file)
+            schema_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "schemas", cls.schema_file))
             cls._schema = etree.XMLSchema(etree.parse(schema_path))
         return cls._schema
 
