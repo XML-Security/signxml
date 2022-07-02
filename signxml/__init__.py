@@ -332,11 +332,11 @@ class XMLSigner(XMLSignatureProcessor):
         :param payload_inclusive_ns_prefixes:
             Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
             content referenced by the signature (**InclusiveNamespaces PrefixList**).
-        :type inclusive_ns_prefixes: string
+        :type inclusive_ns_prefixes: list
         :param signature_inclusive_ns_prefixes:
             Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
             signature itself (**InclusiveNamespaces PrefixList**).
-        :type signature_inclusive_ns_prefixes: string
+        :type signature_inclusive_ns_prefixes: list
         :param signature_properties:
             One or more Elements that are to be included in the SignatureProperies section when using the detached
             method.
