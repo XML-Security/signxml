@@ -22,6 +22,24 @@ def reset_tree(t, method):
                 continue
             s.getparent().remove(s)
 
+def extract_pem(pem):
+    r = re.sub(r"-+BEGIN CERTIFICATE-+(.*?)-+END CERTIFICATE-+", r"\1", pem, flags=re.DOTALL)
+    r = re.sub(r"[ \t\r\n]", "", r, count=0, flags=re.DOTALL)
+    return r
+
+# See https://www.w3.org/TR/XAdES/#Syntax_forXAdES-X-L_form
+def add_certificate_path(signature_elem, certs):
+    object_elem = etree.SubElement(signature_elem, "{http://www.w3.org/2000/09/xmldsig#}Object")
+    qprop_elem = etree.SubElement(object_elem, "{http://uri.etsi.org/01903/v1.3.2#}QualifyingProperties")
+    usprop_elem = etree.SubElement(qprop_elem, "{http://uri.etsi.org/01903/v1.3.2#}UnsignedProperties")
+    ussigprop_elem = etree.SubElement(usprop_elem, "{http://uri.etsi.org/01903/v1.3.2#}UnsignedSignatureProperties")
+    certvalues_elem = etree.SubElement(ussigprop_elem, "{http://uri.etsi.org/01903/v1.3.2#}CertificateValues")
+
+    for cert in certs:
+        cert_elem = etree.SubElement(certvalues_elem, "{http://uri.etsi.org/01903/v1.3.2#}EncapsulatedX509Certificate")
+        cert_elem.text = cert
+
+
 class URIResolver(etree.Resolver):
     def resolve(self, url, id, context):
         print("Resolving URL '%s'" % url)
@@ -173,6 +191,35 @@ class TestSignXML(unittest.TestCase):
                 with self.assertRaisesRegex(InvalidCertificate, "unable to get local issuer certificate"):
                     XMLVerifier().verify(signed_data)
                 # TODO: negative: verify with wrong cert, wrong CA
+
+    def test_x509_cert_chain(self):
+        from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
+
+        tree = etree.parse(self.example_xml_files[0])
+        root_filename = os.path.join(os.path.dirname(__file__), "cert-chain", "root.crt")
+        with open(root_filename, "r") as fh:
+            root_cert = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "cert-chain", "intermediate.crt"), "r") as fh:
+            intermediate_cert = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "cert-chain", "leaf.crt"), "r") as fh:
+            leaf_cert = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "cert-chain", "leaf.key"), "r") as fh:
+            leaf_key = fh.read()
+
+        certs = [root_cert, intermediate_cert, leaf_cert]
+        method = methods.enveloped
+        hash_alg = "sha256"
+        data = tree.getroot()
+        signer = XMLSigner(method=method, signature_algorithm="rsa-" + hash_alg)
+        signed = signer.sign(data, key=leaf_key, cert=leaf_cert)
+
+        signature_elem = signed.find("{http://www.w3.org/2000/09/xmldsig#}Signature")
+        add_certificate_path(signature_elem, certs)
+        signed_data = etree.tostring(signed)
+
+        with self.assertRaisesRegex(InvalidCertificate, "unable to get local issuer certificate"):
+            XMLVerifier().verify(signed_data)
+        XMLVerifier().verify(signed_data, ca_pem_file=root_filename)
 
     def test_xmldsig_interop_examples(self):
         ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
