@@ -468,6 +468,7 @@ class XMLSigner(XMLSignatureProcessor):
                 doc_root.append(sig_root)
             elif len(signature_placeholders) == 1:
                 sig_root = signature_placeholders[0]
+                self.namespaces = sig_root.nsmap
                 del sig_root.attrib["Id"]
                 for c14n_input in c14n_inputs:
                     placeholders = self._findall(c14n_input, "Signature[@Id='placeholder']", anywhere=True)
