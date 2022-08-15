@@ -265,9 +265,13 @@ class XMLSigner(XMLSignatureProcessor):
         listed under the `Algorithm Identifiers and Implementation Requirements
         <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
     :type digest_algorithm: string
+    :param hmac_output_length: The HMAC output length in bits, if shorter than the underlying hashing digest size, then
+        the output will be truncated. Requirements
+        <https://www.w3.org/TR/xmldsig-core/#sec-SignatureMethod>`_ section of the XML Signature standard are supported.
+    :type hmac_output_length: int
     """
     def __init__(self, method=methods.enveloped, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
-                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm):
+                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm, hmac_output_length=None):
         if method is None or method not in methods:
             raise InvalidInput("Unknown signature method {}".format(method))
         self.method = method
@@ -279,6 +283,9 @@ class XMLSigner(XMLSignatureProcessor):
         self.c14n_alg = c14n_algorithm
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
+        assert hmac_output_length is None or hmac_output_length > 80
+        self.hmac_output_length = hmac_output_length
+
 
     def sign(self, data, key=None, passphrase=None, cert=None, reference_uri=None, key_name=None, key_info=None,
              id_attribute=None, always_add_key_value=False, payload_inclusive_ns_prefixes=frozenset(),
@@ -387,8 +394,17 @@ class XMLSigner(XMLSignatureProcessor):
                           algorithm=self._get_hmac_digest_method_by_tag(self.sign_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)
-            signature_value_element.text = ensure_str(b64encode(signer.finalize()))
+            signature_value = signer.finalize()
+            if self.hmac_output_length is not None:
+                signature_value = signature_value[:self.hmac_output_length // 8]
+            signature_value_element.text = ensure_str(b64encode(signature_value))
             sig_root.append(signature_value_element)
+
+            if key_info is None:
+                key_info = SubElement(sig_root, ds_tag("KeyInfo"))
+                if key_name is not None:
+                    keyname = SubElement(key_info, ds_tag("KeyName"))
+                    keyname.text = key_name
         elif any(self.sign_alg.startswith(i) for i in ["dsa-", "rsa-", "ecdsa-"]):
             if isinstance(key, (str, bytes)):
                 from cryptography.hazmat.primitives.serialization import load_pem_private_key
@@ -512,7 +528,10 @@ class XMLSigner(XMLSignatureProcessor):
             algorithm_id = self.known_hmac_digest_tags[self.sign_alg]
         else:
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
-        SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
+        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
+        if self.sign_alg.startswith("hmac-") and self.hmac_output_length is not None:
+            hmac_output_length = SubElement(signature_method, ds_tag("HMACOutputLength"))
+            hmac_output_length.text = str(self.hmac_output_length)
         for i, reference_uri in enumerate(reference_uris):
             reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
             transforms = SubElement(reference, ds_tag("Transforms"))
@@ -807,6 +826,7 @@ class XMLVerifier(XMLSignatureProcessor):
         c14n_algorithm = c14n_method.get("Algorithm")
         inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(c14n_method)
         signature_method = self._find(signed_info, "SignatureMethod")
+        hmac_output_length = self._find(signature_method, "HMACOutputLength", require=False)
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = signature_method.get("Algorithm")
         raw_signature = b64decode(signature_value.text)
@@ -896,7 +916,15 @@ class XMLVerifier(XMLSignatureProcessor):
                           algorithm=self._get_hmac_digest_method(signature_alg),
                           backend=default_backend())
             signer.update(signed_info_c14n)
-            if raw_signature != signer.finalize():
+            verify_signature = signer.finalize()
+            if hmac_output_length is not None:
+                # Truncating the HMAC result, see https://www.w3.org/TR/xmldsig-core/#sec-SignatureMethod
+                result_length = int(hmac_output_length.text) // 8
+                if(result_length < max(10, signer.algorithm.digest_size // 2)):
+                    raise InvalidInput('HMAC output length is too small')
+                verify_signature = verify_signature[:result_length]
+
+            if raw_signature != verify_signature:
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
             if key_value is None and der_encoded_key_value is None:
