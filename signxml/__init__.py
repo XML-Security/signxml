@@ -1,19 +1,30 @@
-from base64 import b64encode, b64decode
+from base64 import b64decode, b64encode
+from collections import namedtuple
 from enum import Enum
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
+from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
+from cryptography.hazmat.primitives.hashes import SHA1, SHA224, SHA256, SHA384, SHA512, Hash
+from cryptography.hazmat.primitives.serialization import load_der_public_key
 from lxml import etree
 from lxml.etree import Element, SubElement
 
-from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-from cryptography.hazmat.primitives.hashes import Hash, SHA1, SHA224, SHA256, SHA384, SHA512
-from cryptography.hazmat.primitives.serialization import load_der_public_key
-from cryptography.hazmat.backends import default_backend
-
-from .exceptions import InvalidSignature, InvalidDigest, InvalidInput, InvalidCertificate  # noqa
-from .util import (bytes_to_long, long_to_bytes, strip_pem_header, add_pem_header, ensure_bytes, ensure_str, Namespace,
-                   XMLProcessor, iterate_pem, verify_x509_cert_chain, bits_to_bytes_unit)
-from collections import namedtuple
+from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature  # noqa
+from .util import (
+    Namespace,
+    XMLProcessor,
+    _remove_sig,
+    add_pem_header,
+    bits_to_bytes_unit,
+    bytes_to_long,
+    ensure_bytes,
+    ensure_str,
+    iterate_pem,
+    long_to_bytes,
+    strip_pem_header,
+    verify_x509_cert_chain,
+)
 
 methods = Enum("Methods", "enveloped enveloping detached")
 
@@ -27,46 +38,18 @@ namespaces = Namespace(
     xenc11="http://www.w3.org/2009/xmlenc11#"
 )
 
+
 def ds_tag(tag):
     return "{" + namespaces.ds + "}" + tag
+
 
 def dsig11_tag(tag):
     return "{" + namespaces.dsig11 + "}" + tag
 
+
 def ec_tag(tag):
     return "{" + namespaces.ec + "}" + tag
 
-def _remove_sig(signature, idempotent=False):
-    """
-    Remove the signature node from its parent, keeping any tail element.
-    This is needed for eneveloped signatures.
-
-    :param signature: Signature to remove from payload
-    :type signature: XML ElementTree Element
-    :param idempotent:
-        If True, don't raise an error if signature is already detached from parent.
-    :type idempotent: boolean
-    """
-    try:
-        signaturep = next(signature.iterancestors())
-    except StopIteration:
-        if idempotent:
-            return
-        raise ValueError("Can't remove the root signature node")
-    if signature.tail is not None:
-        try:
-            signatures = next(signature.itersiblings(preceding=True))
-        except StopIteration:
-            if signaturep.text is not None:
-                signaturep.text = signaturep.text + signature.tail
-            else:
-                signaturep.text = signature.tail
-        else:
-            if signatures.tail is not None:
-                signatures.tail = signatures.tail + signature.tail
-            else:
-                signatures.tail = signature.tail
-    signaturep.remove(signature)
 
 class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_xml")):
     """
@@ -83,6 +66,7 @@ class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_
     namedtuple, elements of the return value can be accessed as attributes. For example::
         verified_data = signxml.XMLVerifier().verify(input_data).signed_xml
     """
+
 
 class XMLSignatureProcessor(XMLProcessor):
     schema_file = "xmldsig1-schema.xsd"
@@ -244,6 +228,7 @@ class XMLSignatureProcessor(XMLProcessor):
             if result is None:
                 raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
             return result
+
 
 class XMLSigner(XMLSignatureProcessor):
     """
@@ -427,7 +412,7 @@ class XMLSigner(XMLSignatureProcessor):
                         if isinstance(cert, (str, bytes)):
                             x509_certificate.text = strip_pem_header(cert)
                         else:
-                            from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
+                            from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
                             x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
             else:
                 sig_root.append(key_info)
@@ -568,12 +553,13 @@ class XMLSigner(XMLSignatureProcessor):
                 e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
         elif self.sign_alg.startswith("ecdsa-"):
             ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
-            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),
+            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),  # noqa:F841
                                      URI=self.known_ecdsa_curve_oids[key.curve.name])
             public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
             public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
+
 
 class XMLVerifier(XMLSignatureProcessor):
     """
@@ -596,8 +582,8 @@ class XMLVerifier(XMLSignatureProcessor):
                 named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
                 public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
                 key_data = b64decode(public_key.text)[1:]
-                x = bytes_to_long(key_data[:len(key_data)//2])
-                y = bytes_to_long(key_data[len(key_data)//2:])
+                x = bytes_to_long(key_data[:len(key_data) // 2])
+                y = bytes_to_long(key_data[len(key_data) // 2:])
                 curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
                 key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
             elif not isinstance(key, ec.EllipticCurvePublicKey):
@@ -818,7 +804,9 @@ class XMLVerifier(XMLSignatureProcessor):
                                       inclusive_ns_prefixes=inclusive_ns_prefixes)
 
         if x509_data is not None or self.require_x509:
-            from OpenSSL.crypto import load_certificate, X509, FILETYPE_PEM, verify, Error as OpenSSLCryptoError
+            from OpenSSL.crypto import FILETYPE_PEM, X509
+            from OpenSSL.crypto import Error as OpenSSLCryptoError
+            from OpenSSL.crypto import load_certificate, verify
 
             if self.x509_cert is None:
                 if x509_data is None:
@@ -939,8 +927,8 @@ class XMLVerifier(XMLSignatureProcessor):
             named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
             public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
             key_data = b64decode(public_key.text)[1:]
-            x = bytes_to_long(key_data[:len(key_data)//2])
-            y = bytes_to_long(key_data[len(key_data)//2:])
+            x = bytes_to_long(key_data[:len(key_data) // 2])
+            y = bytes_to_long(key_data[len(key_data) // 2:])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
 
             pubk_curve = public_key.to_cryptography_key().public_numbers().curve

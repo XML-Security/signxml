@@ -5,13 +5,17 @@ bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/
 """
 
 import math
-import os, sys, re, struct, textwrap
+import os
+import re
+import struct
+import sys
+import textwrap
+from base64 import b64decode, b64encode
 from xml.etree import ElementTree as stdlibElementTree
-from base64 import b64encode, b64decode
 
 from lxml import etree
 
-from ..exceptions import RedundantCert, InvalidCertificate, InvalidInput
+from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert
 
 USING_PYTHON2 = True if sys.version_info < (3, 0) else False
 
@@ -168,8 +172,8 @@ class XMLProcessor:
 
 
 def hmac_sha1(key, message):
-    from cryptography.hazmat.primitives import hashes, hmac
     from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives import hashes, hmac
     hasher = hmac.HMAC(key, hashes.SHA1(), backend=default_backend())
     hasher.update(message)
     return hasher.finalize()
@@ -208,7 +212,8 @@ def p_sha1(client_b64_bytes, server_b64_bytes):
 
 
 def _add_cert_to_store(store, cert):
-    from OpenSSL.crypto import X509StoreContext, X509StoreContextError, Error as OpenSSLCryptoError
+    from OpenSSL.crypto import Error as OpenSSLCryptoError
+    from OpenSSL.crypto import X509StoreContext, X509StoreContextError
     try:
         X509StoreContext(store, cert).verify_certificate()
     except X509StoreContextError as e:
@@ -257,3 +262,36 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
         else:
             raise last_error
     return end_of_chain
+
+
+def _remove_sig(signature, idempotent=False):
+    """
+    Remove the signature node from its parent, keeping any tail element.
+    This is needed for eneveloped signatures.
+
+    :param signature: Signature to remove from payload
+    :type signature: XML ElementTree Element
+    :param idempotent:
+        If True, don't raise an error if signature is already detached from parent.
+    :type idempotent: boolean
+    """
+    try:
+        signaturep = next(signature.iterancestors())
+    except StopIteration:
+        if idempotent:
+            return
+        raise ValueError("Can't remove the root signature node")
+    if signature.tail is not None:
+        try:
+            signatures = next(signature.itersiblings(preceding=True))
+        except StopIteration:
+            if signaturep.text is not None:
+                signaturep.text = signaturep.text + signature.tail
+            else:
+                signaturep.text = signature.tail
+        else:
+            if signatures.tail is not None:
+                signatures.tail = signatures.tail + signature.tail
+            else:
+                signatures.tail = signature.tail
+    signaturep.remove(signature)
