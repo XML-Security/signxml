@@ -134,6 +134,20 @@ For detached signatures, the code above will use the ``Id`` or ``ID`` attribute 
 
 See the `API documentation <https://xml-security.github.io/signxml/#id5>`_ for more.
 
+
+Configuring namespace prefixes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Some applications require a particular namespace prefix configuration - for example, a number of applications assume
+that the ``http://www.w3.org/2000/09/xmldsig#`` namespace is set as the default, unprefixed namespace instead of using
+the customary ``ds:`` prefix. To configure the namespace prefix map when generating a signature, set the
+``XMLSigner.namespaces`` attribute:
+
+.. code-block:: python
+
+    signer = signxml.XMLSigner(...)
+    signer.namespaces = {None: signxml.namespaces.ds}
+
+
 XML parsing security and compatibility with ``xml.etree.ElementTree``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SignXML uses the `lxml <https://github.com/lxml/lxml>`_ ElementTree library, not the
