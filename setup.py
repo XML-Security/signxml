@@ -21,7 +21,7 @@ setup(
     ],
     packages=find_packages(exclude=['test']),
     platforms=['MacOS X', 'Posix'],
-    package_data={'signxml': ['schemas/*.xsd']},
+    package_data={'signxml': ['schemas/*.xsd', 'py.typed']},
     include_package_data=True,
     test_suite='test',
     classifiers=[
