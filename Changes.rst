@@ -1,3 +1,13 @@
+Changes for v2.10.0 (2022-08-20)
+================================
+
+-  Excise empty xmlns declarations only in signature, not in payload
+
+-  Add pyinstaller support to signxml (#188)
+
+-  Documentation, test infrastructure, and code organization
+   improvements
+
 Changes for v2.9.0 (2021-10-08)
 ===============================
 
