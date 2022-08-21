@@ -326,7 +326,7 @@ class XMLSigner(XMLSignatureProcessor):
         :param signature_properties:
             One or more Elements that are to be included in the SignatureProperies section when using the detached
             method.
-        :type signature_properties: :py:class:`lxml.etree.Element` or list of :py:class:`lxml.etree.Element`s
+        :type signature_properties: :py:class:`lxml.etree.Element` or list of :py:class:`lxml.etree.Element` s
 
         :returns:
             A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
