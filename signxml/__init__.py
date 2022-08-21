@@ -183,7 +183,7 @@ class XMLSignatureProcessor(XMLProcessor):
         else:
             return element.findall(namespace + ":" + query, namespaces=namespaces)
 
-    def _c14n(self, nodes, algorithm, inclusive_ns_prefixes=None):
+    def _c14n(self, nodes, algorithm, inclusive_ns_prefixes=None, excise_empty_xmlns_declarations=False):
         exclusive, with_comments = False, False
 
         if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
@@ -198,7 +198,7 @@ class XMLSignatureProcessor(XMLProcessor):
         for node in nodes:
             c14n += etree.tostring(node, method="c14n", exclusive=exclusive, with_comments=with_comments,
                                    inclusive_ns_prefixes=inclusive_ns_prefixes)
-        if exclusive is False:
+        if exclusive is False and excise_empty_xmlns_declarations is True:
             # TODO: there must be a nicer way to do this. See also:
             # http://www.w3.org/TR/xml-c14n, "namespace axis"
             # http://www.w3.org/TR/xml-c14n2/#sec-Namespace-Processing
@@ -801,7 +801,8 @@ class XMLVerifier(XMLSignatureProcessor):
         der_encoded_key_value = signature.find("ds:KeyInfo/dsig11:DEREncodedKeyValue", namespaces=namespaces)
         signed_info_c14n = self._c14n(signed_info,
                                       algorithm=c14n_algorithm,
-                                      inclusive_ns_prefixes=inclusive_ns_prefixes)
+                                      inclusive_ns_prefixes=inclusive_ns_prefixes,
+                                      excise_empty_xmlns_declarations=True)
 
         if x509_data is not None or self.require_x509:
             from OpenSSL.crypto import FILETYPE_PEM, X509

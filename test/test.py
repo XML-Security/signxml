@@ -498,6 +498,12 @@ class TestSignXML(unittest.TestCase):
             + b'</ns0:root>'
         XMLVerifier().verify(etree.fromstring(fulldoc), x509_cert=cert, expect_references=2)
 
+    def test_payload_c14n(self):
+        doc = etree.fromstring('<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>')
+        print(XMLVerifier._c14n(None, doc, algorithm=""))
+        self.assertEqual(XMLVerifier._c14n(None, doc, algorithm=""),
+                         b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>')
+
 
 if __name__ == '__main__':
     unittest.main()
