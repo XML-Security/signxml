@@ -8,16 +8,13 @@ import math
 import os
 import re
 import struct
-import sys
 import textwrap
 from base64 import b64decode, b64encode
 from xml.etree import ElementTree as stdlibElementTree
 
 from lxml import etree
 
-from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert
-
-USING_PYTHON2 = True if sys.version_info < (3, 0) else False
+from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert, SignXMLException
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
@@ -49,8 +46,6 @@ def bytes_to_long(s):
         # On Python 2, indexing into a bytearray returns a byte string; on Python 3, an int.
         return s
     acc = 0
-    if USING_PYTHON2:
-        acc = long(acc)  # noqa
     unpack = struct.unpack
     length = len(s)
     if length % 4:
@@ -72,8 +67,6 @@ def long_to_bytes(n, blocksize=0):
     """
     # after much testing, this algorithm was deemed to be the fastest
     s = b''
-    if USING_PYTHON2:
-        n = long(n)  # noqa
     pack = struct.pack
     while n > 0:
         s = pack(b'>I', n & 0xffffffff) + s
@@ -109,7 +102,7 @@ pem_regexp = re.compile("{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl
 
 def strip_pem_header(cert):
     try:
-        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r", "")
+        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r", "")  # type: ignore
     except Exception:
         return ensure_str(cert).replace("\r", "")
 
@@ -132,7 +125,7 @@ class Namespace(dict):
 
 
 class XMLProcessor:
-    _schema, _default_parser = None, None
+    _schema, _default_parser, _parser, schema_file = None, None, None, ""
 
     @classmethod
     def schema(cls):
@@ -245,7 +238,8 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
     store = context.get_cert_store()
     certs = list(reversed(cert_chain))
-    end_of_chain, last_error = None, None
+    end_of_chain = None
+    last_error: Exception = SignXMLException("Invalid certificate chain")
     while len(certs) > 0:
         for cert in certs:
             try:
