@@ -64,6 +64,7 @@ class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_
 
     This class is a namedtuple representing structured data returned by ``signxml.XMLVerifier.verify()``. As with any
     namedtuple, elements of the return value can be accessed as attributes. For example::
+
         verified_data = signxml.XMLVerifier().verify(input_data).signed_xml
     """
 
