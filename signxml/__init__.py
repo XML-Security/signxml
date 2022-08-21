@@ -1,6 +1,7 @@
 from base64 import b64decode, b64encode
 from collections import namedtuple
 from enum import Enum
+from typing import List, Tuple
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
@@ -133,7 +134,7 @@ class XMLSignatureProcessor(XMLProcessor):
     }
     default_c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
 
-    id_attributes = ("Id", "ID", "id", "xml:id")
+    id_attributes: Tuple[str, ...] = ("Id", "ID", "id", "xml:id")
 
     def _get_digest(self, data, digest_algorithm):
         hasher = Hash(algorithm=digest_algorithm, backend=default_backend())
@@ -586,7 +587,8 @@ class XMLVerifier(XMLSignatureProcessor):
                 x = bytes_to_long(key_data[:len(key_data) // 2])
                 y = bytes_to_long(key_data[len(key_data) // 2:])
                 curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
-                key = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class()).public_key(backend=default_backend())
+                ecpn = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class())  # type: ignore
+                key = ecpn.public_key(backend=default_backend())
             elif not isinstance(key, ec.EllipticCurvePublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             dss_signature = self._encode_dss_signature(raw_signature, key.key_size)
@@ -604,8 +606,8 @@ class XMLVerifier(XMLSignatureProcessor):
                 q = self._get_long(dsa_key_value, "Q")
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
-                pn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
-                key = pn.public_key(backend=default_backend())
+                dsapn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
+                key = dsapn.public_key(backend=default_backend())  # type: ignore
             elif not isinstance(key, dsa.DSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
@@ -898,7 +900,7 @@ class XMLVerifier(XMLSignatureProcessor):
                                                der_encoded_key_value=der_encoded_key_value,
                                                signature_alg=signature_alg)
 
-        verify_results = []
+        verify_results: List[VerifyResult] = []
         for reference in self._findall(signed_info, "Reference"):
             copied_root = self.fromstring(self.tostring(root))
             copied_signature_ref = self._get_signature(copied_root)
@@ -982,9 +984,9 @@ class XMLVerifier(XMLSignatureProcessor):
         elif "dsa-" in signature_alg \
              and isinstance(der_public_key, dsa.DSAPublicKey) \
              and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey):
-            p = der_public_key.public_numbers().parameter_numbers().p
-            q = der_public_key.public_numbers().parameter_numbers().q
-            g = der_public_key.public_numbers().parameter_numbers().g
+            p = der_public_key.public_numbers().parameter_numbers().p  # type: ignore
+            q = der_public_key.public_numbers().parameter_numbers().q  # type: ignore
+            g = der_public_key.public_numbers().parameter_numbers().g  # type: ignore
 
             pubk_p = public_key.to_cryptography_key().public_numbers().p
             pubk_q = public_key.to_cryptography_key().public_numbers().q
