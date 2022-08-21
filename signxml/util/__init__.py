@@ -4,18 +4,17 @@ SignXML utility functions
 bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py
 """
 
+import math
 import os
 import re
-import math
 import struct
 import textwrap
 from base64 import b64decode, b64encode
-
 from xml.etree import ElementTree as stdlibElementTree
 
 from lxml import etree
 
-from ..exceptions import RedundantCert, InvalidCertificate, InvalidInput, SignXMLException
+from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert, SignXMLException
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
