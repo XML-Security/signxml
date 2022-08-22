@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from lxml import etree
 from lxml.etree import Element, SubElement
+
 from signxml import (
     InvalidInput,
     XMLSignatureProcessor,
@@ -104,9 +105,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
             sig_root.append(signature_value_element)
         elif any(self.sign_alg.startswith(i) for i in ["dsa-", "rsa-", "ecdsa-"]):
             if isinstance(key, (str, bytes)):
-                from cryptography.hazmat.primitives.serialization import (
-                    load_pem_private_key,
-                )
+                from cryptography.hazmat.primitives.serialization import load_pem_private_key
                 key = load_pem_private_key(key, password=passphrase, backend=default_backend())
 
             hash_alg = self._get_signature_digest_method_by_tag(self.sign_alg)
