@@ -27,6 +27,9 @@ jobs:
     - name: Test
       run: |
         make test
+    - uses: isort/isort-action@v1.0.0
+      with:
+        configuration: --check-only --diff --profile black --line-length 120
     - name: Upload coverage data
       run: |
         bash <(curl -s https://codecov.io/bash)
