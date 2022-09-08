@@ -8,8 +8,11 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        os: [ubuntu-20.04, macos-10.15]
-        python-version: ["3.5", "3.6", "3.7", "3.8", "3.9", "3.10"]
+        os: [ubuntu-20.04, ubuntu-22.04, macos-10.15]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        exclude:
+          - os: ubuntu-22.04
+            python-version: 3.6
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -24,6 +27,9 @@ jobs:
     - name: Test
       run: |
         make test
+    - uses: isort/isort-action@v1.0.0
+      with:
+        configuration: --check-only --diff --profile black --line-length 120
     - name: Upload coverage data
       run: |
         bash <(curl -s https://codecov.io/bash)

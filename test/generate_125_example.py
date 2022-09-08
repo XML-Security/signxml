@@ -1,15 +1,24 @@
 import os.path
 from base64 import b64encode
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from lxml import etree
 from lxml.etree import Element, SubElement
 
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-from cryptography.hazmat.backends import default_backend
-
-from signxml import XMLSignatureProcessor, InvalidInput, namespaces, iterate_pem, ds_tag, _remove_sig, \
-    ensure_str, long_to_bytes, strip_pem_header, dsig11_tag
+from signxml import (
+    InvalidInput,
+    XMLSignatureProcessor,
+    _remove_sig,
+    ds_tag,
+    dsig11_tag,
+    ensure_str,
+    iterate_pem,
+    long_to_bytes,
+    namespaces,
+    strip_pem_header,
+)
 
 
 class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
@@ -133,7 +142,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                         if isinstance(cert, (str, bytes)):
                             x509_certificate.text = strip_pem_header(cert)
                         else:
-                            from OpenSSL.crypto import dump_certificate, FILETYPE_PEM
+                            from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
                             x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
             else:
                 sig_root.append(key_info)
@@ -191,19 +200,19 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
-        c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)  # noqa:F841
         if self.sign_alg.startswith("hmac-"):
             algorithm_id = self.known_hmac_digest_tags[self.sign_alg]
         else:
             algorithm_id = self.known_signature_digest_tags[self.sign_alg]
-        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)
+        signature_method = SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=algorithm_id)  # noqa:F841
         for i, reference_uri in enumerate(reference_uris):
             reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
             if i == 0:
                 transforms = SubElement(reference, ds_tag("Transforms"))
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
                 SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
-            digest_method = SubElement(reference, ds_tag("DigestMethod"),
+            digest_method = SubElement(reference, ds_tag("DigestMethod"),  # noqa:F841
                                        Algorithm=self.known_digest_tags[self.digest_alg])
             digest_value = SubElement(reference, ds_tag("DigestValue"))
             payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
@@ -233,7 +242,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                 e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
         elif self.sign_alg.startswith("ecdsa-"):
             ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
-            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),
+            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),  # noqa:F841
                                      URI=self.known_ecdsa_curve_oids[key.curve.name])
             public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
             x = key.public_key().public_numbers().x

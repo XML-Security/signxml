@@ -1,19 +1,33 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os, sys, unittest, itertools, re
+import itertools
+import os
+import re
+import sys
+import unittest
+from base64 import b64decode, b64encode
 from glob import glob
 from xml.etree import ElementTree as stdlibElementTree
-from base64 import b64encode, b64decode
 
-from lxml import etree
 import cryptography.exceptions
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
+from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, # noqa
-                     InvalidSignature, InvalidCertificate, InvalidDigest)
+from signxml import (  # noqa
+    InvalidCertificate,
+    InvalidDigest,
+    InvalidInput,
+    InvalidSignature,
+    XMLSignatureProcessor,
+    XMLSigner,
+    XMLVerifier,
+    methods,
+    namespaces,
+)
+
 
 def reset_tree(t, method):
     if not isinstance(t, str):
@@ -22,26 +36,30 @@ def reset_tree(t, method):
                 continue
             s.getparent().remove(s)
 
+
 class URIResolver(etree.Resolver):
     def resolve(self, url, id, context):
         print("Resolving URL '%s'" % url)
         return None
+
 
 parser = etree.XMLParser(load_dtd=True)
 parser.resolvers.add(URIResolver())
 
 interop_dir = os.path.join(os.path.dirname(__file__), "interop")
 
+
 class TestVerifyXML(unittest.TestCase):
     def test_example_multi(self):
         with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
             cert = fh.read()
         example_file = os.path.join(os.path.dirname(__file__), "example-125.xml")
-        verify_results = XMLVerifier().verify(
+        XMLVerifier().verify(
             data=etree.parse(example_file),
             x509_cert=cert,
             expect_references=2,
         )
+
 
 class TestSignXML(unittest.TestCase):
     def setUp(self):
@@ -143,7 +161,9 @@ class TestSignXML(unittest.TestCase):
                         XMLVerifier().verify(signed_data, **verify_kwargs)
 
     def test_x509_certs(self):
-        from OpenSSL.crypto import load_certificate, FILETYPE_PEM, Error as OpenSSLCryptoError
+        from OpenSSL.crypto import FILETYPE_PEM
+        from OpenSSL.crypto import Error as OpenSSLCryptoError
+        from OpenSSL.crypto import load_certificate
 
         tree = etree.parse(self.example_xml_files[0])
         ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
@@ -197,7 +217,7 @@ class TestSignXML(unittest.TestCase):
                     sig = fh.read()
                     XMLVerifier().verify(sig, require_x509=False, hmac_key="testkey", validate_schema=True,
                                          cert_resolver=get_x509_cert if "x509digest" in signature_file else None)
-                    decoded_sig = sig.decode("utf-8")
+                    sig.decode("utf-8")
                 except Exception as e:
                     if "keyinforeference" in signature_file:
                         print("Unsupported test case:", type(e), e)
@@ -339,7 +359,7 @@ class TestSignXML(unittest.TestCase):
     def test_elementtree_compat(self):
         data = stdlibElementTree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
-        signed = signer.sign(data, key=self.keys["rsa"])
+        signer.sign(data, key=self.keys["rsa"])
 
     def test_reference_uris_and_custom_key_info(self):
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
@@ -477,6 +497,12 @@ class TestSignXML(unittest.TestCase):
             + etree.tostring(doc) \
             + b'</ns0:root>'
         XMLVerifier().verify(etree.fromstring(fulldoc), x509_cert=cert, expect_references=2)
+
+    def test_payload_c14n(self):
+        doc = etree.fromstring('<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>')
+        print(XMLVerifier._c14n(None, doc, algorithm=""))
+        self.assertEqual(XMLVerifier._c14n(None, doc, algorithm=""),
+                         b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>')
 
 
 if __name__ == '__main__':
