@@ -371,7 +371,8 @@ class XMLSigner(XMLSignatureProcessor):
             raise InvalidInput('Parameter "key" is required')
 
         signed_info_c14n = self._c14n(signed_info_element, algorithm=self.signed_info_c14n_alg,
-                                      inclusive_ns_prefixes=signature_inclusive_ns_prefixes)
+                                      inclusive_ns_prefixes=signature_inclusive_ns_prefixes,
+                                      excise_empty_xmlns_declarations=True)
         if self.sign_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
             signer = HMAC(key=key,
