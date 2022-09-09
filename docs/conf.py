@@ -18,6 +18,7 @@ if "readthedocs.org" in os.getcwd().split("/"):
         fh.write("Documentation for this project has moved to https://xml-security.github.io/" + project)
 else:
     import guzzle_sphinx_theme
+
     html_theme_path = guzzle_sphinx_theme.html_theme_path()
     html_theme = "guzzle_sphinx_theme"
     html_theme_options = {
@@ -29,6 +30,6 @@ else:
             "logo-text.html",
             # "globaltoc.html",
             "localtoc.html",
-            "searchbox.html"
+            "searchbox.html",
         ]
     }

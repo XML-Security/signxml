@@ -49,11 +49,11 @@ def bytes_to_long(s):
     unpack = struct.unpack
     length = len(s)
     if length % 4:
-        extra = (4 - length % 4)
-        s = b'\000' * extra + s
+        extra = 4 - length % 4
+        s = b"\000" * extra + s
         length = length + extra
     for i in range(0, length, 4):
-        acc = (acc << 32) + unpack(b'>I', s[i:i + 4])[0]
+        acc = (acc << 32) + unpack(b">I", s[i : i + 4])[0]
     return acc
 
 
@@ -66,24 +66,24 @@ def long_to_bytes(n, blocksize=0):
     blocksize.
     """
     # after much testing, this algorithm was deemed to be the fastest
-    s = b''
+    s = b""
     pack = struct.pack
     while n > 0:
-        s = pack(b'>I', n & 0xffffffff) + s
+        s = pack(b">I", n & 0xFFFFFFFF) + s
         n = n >> 32
     # strip off leading zeros
     for i in range(len(s)):
-        if s[i] != b'\000'[0]:
+        if s[i] != b"\000"[0]:
             break
     else:
         # only happens when n == 0
-        s = b'\000'
+        s = b"\000"
         i = 0
     s = s[i:]
     # add back some pad bytes.  this could be done more efficiently w.r.t. the
     # de-padding being done above, but sigh...
     if blocksize > 0 and len(s) % blocksize:
-        s = (blocksize - len(s) % blocksize) * b'\000' + s
+        s = (blocksize - len(s) % blocksize) * b"\000" + s
     return s
 
 
@@ -96,8 +96,9 @@ def bits_to_bytes_unit(num_of_bits):
     return int(math.ceil(num_of_bits / 8))
 
 
-pem_regexp = re.compile("{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER),
-                        flags=re.S)
+pem_regexp = re.compile(
+    "{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER), flags=re.S
+)
 
 
 def strip_pem_header(cert):
@@ -167,6 +168,7 @@ class XMLProcessor:
 def hmac_sha1(key, message):
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import hashes, hmac
+
     hasher = hmac.HMAC(key, hashes.SHA1(), backend=default_backend())
     hasher.update(message)
     return hasher.finalize()
@@ -186,7 +188,7 @@ def raw_p_sha1(secret, seed, sizes=()):
     for size in sizes:
         full_size += size
 
-    result = b''
+    result = b""
     accum = seed
     while len(result) < full_size:
         accum = hmac_sha1(secret, accum)
@@ -207,6 +209,7 @@ def p_sha1(client_b64_bytes, server_b64_bytes):
 def _add_cert_to_store(store, cert):
     from OpenSSL.crypto import Error as OpenSSLCryptoError
     from OpenSSL.crypto import X509StoreContext, X509StoreContextError
+
     try:
         X509StoreContext(store, cert).verify_certificate()
     except X509StoreContextError as e:
@@ -215,7 +218,7 @@ def _add_cert_to_store(store, cert):
         store.add_cert(cert)
         return cert
     except OpenSSLCryptoError as e:
-        if e.args == ([('x509 certificate routines', 'X509_STORE_add_cert', 'cert already in hash table')],):
+        if e.args == ([("x509 certificate routines", "X509_STORE_add_cert", "cert already in hash table")],):
             raise RedundantCert(e)
         raise
 
@@ -231,9 +234,11 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     """
     # TODO: migrate to Cryptography (pending cert validation support) or https://github.com/wbond/certvalidator
     from OpenSSL import SSL
+
     context = SSL.Context(SSL.TLSv1_METHOD)
     if ca_pem_file is None and ca_path is None:
         import certifi
+
         ca_pem_file = certifi.where()
     context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
     store = context.get_cert_store()

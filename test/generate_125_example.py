@@ -26,8 +26,13 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
     A class that signs multiple data by putting the signature enveloped in the
     first data item, and enveloping the others.
     """
-    def __init__(self, signature_algorithm="rsa-sha256", digest_algorithm="sha256",
-                 c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm):
+
+    def __init__(
+        self,
+        signature_algorithm="rsa-sha256",
+        digest_algorithm="sha256",
+        c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm,
+    ):
         self.sign_alg = signature_algorithm
         assert self.sign_alg in self.known_signature_digest_tags or self.sign_alg in self.known_hmac_digest_tags
         assert digest_algorithm in self.known_digest_tags
@@ -81,7 +86,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
         be replaced by the generated signature, and excised when generating the digest.
         """
         if id_attribute is not None:
-            self.id_attributes = (id_attribute, )
+            self.id_attributes = (id_attribute,)
 
         if isinstance(cert, (str, bytes)):
             cert_chain = list(iterate_pem(cert))
@@ -97,15 +102,17 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
         signed_info_c14n = self._c14n(signed_info_element, algorithm=self.c14n_alg)
         if self.sign_alg.startswith("hmac-"):
             from cryptography.hazmat.primitives.hmac import HMAC
-            signer = HMAC(key=key,
-                          algorithm=self._get_hmac_digest_method_by_tag(self.sign_alg),
-                          backend=default_backend())
+
+            signer = HMAC(
+                key=key, algorithm=self._get_hmac_digest_method_by_tag(self.sign_alg), backend=default_backend()
+            )
             signer.update(signed_info_c14n)
             signature_value_element.text = ensure_str(b64encode(signer.finalize()))
             sig_root.append(signature_value_element)
         elif any(self.sign_alg.startswith(i) for i in ["dsa-", "rsa-", "ecdsa-"]):
             if isinstance(key, (str, bytes)):
                 from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
                 key = load_pem_private_key(key, password=passphrase, backend=default_backend())
 
             hash_alg = self._get_signature_digest_method_by_tag(self.sign_alg)
@@ -120,9 +127,10 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
             if self.sign_alg.startswith("dsa-"):
                 # Note: The output of the DSA signer is a DER-encoded ASN.1 sequence of two DER integers.
                 from asn1crypto.algos import DSASignature
+
                 decoded_signature = DSASignature.load(signature).native
-                r = decoded_signature['r']
-                s = decoded_signature['s']
+                r = decoded_signature["r"]
+                s = decoded_signature["s"]
                 signature = long_to_bytes(r).rjust(32, b"\0") + long_to_bytes(s).rjust(32, b"\0")
 
             signature_value_element.text = ensure_str(b64encode(signature))
@@ -143,6 +151,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                             x509_certificate.text = strip_pem_header(cert)
                         else:
                             from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
+
                             x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
             else:
                 sig_root.append(key_info)
@@ -184,7 +193,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                 payload_id = c14n_input.get(id_attribute)
                 if payload_id:
                     break
-            reference_uris.append('#{}'.format(payload_id) if payload_id else '')
+            reference_uris.append("#{}".format(payload_id) if payload_id else "")
 
         index = 1
         for enveloped_data in data[1:]:
@@ -193,7 +202,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                 c14n_inputs[index].text = enveloped_data
             else:
                 c14n_inputs[index].append(self.get_root(enveloped_data))
-            reference_uris.append('#object-{}'.format(index))
+            reference_uris.append("#object-{}".format(index))
             index += 1
 
         return sig_root, doc_root, c14n_inputs, reference_uris
@@ -212,8 +221,9 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                 transforms = SubElement(reference, ds_tag("Transforms"))
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
                 SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
-            digest_method = SubElement(reference, ds_tag("DigestMethod"),  # noqa:F841
-                                       Algorithm=self.known_digest_tags[self.digest_alg])
+            digest_method = SubElement(  # noqa:F841
+                reference, ds_tag("DigestMethod"), Algorithm=self.known_digest_tags[self.digest_alg]
+            )
             digest_value = SubElement(reference, ds_tag("DigestValue"))
             payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg)
             digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
@@ -242,15 +252,16 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                 e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
         elif self.sign_alg.startswith("ecdsa-"):
             ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
-            named_curve = SubElement(ec_key_value, dsig11_tag("NamedCurve"),  # noqa:F841
-                                     URI=self.known_ecdsa_curve_oids[key.curve.name])
+            named_curve = SubElement(  # noqa:F841
+                ec_key_value, dsig11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name]
+            )
             public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
             public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     signer = XMLEnvelopedEnvelopingSigner()
 
     with open(os.path.join(os.path.dirname(__file__), "test", "example.pem"), "rb") as fh:
