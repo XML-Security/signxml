@@ -1,3 +1,23 @@
+Changes for v2.10.1 (2022-09-09)
+================================
+
+-  Do not excise any empty ``xmlns=""`` declarations by default. This
+   behavior is now configurable as follows
+
+   ::
+
+      signer = XMLSigner()
+      signer.excise_empty_xmlns_declarations = True
+      signer.sign(...)
+
+   ::
+
+      verifier = XMLVerifier()
+      verifier.excise_empty_xmlns_declarations = True
+      verifier.verify(...)
+
+-  Documentation and autoformatting improvements
+
 Changes for v2.10.0 (2022-08-20)
 ================================
 
