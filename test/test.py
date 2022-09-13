@@ -33,6 +33,7 @@ from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, nam
                      InvalidSignature, InvalidCertificate, InvalidDigest)
 from signxml.xades import XAdESSigner, ProductionPlace, namespaces as xades_namespaces  # noqa
 
+
 def reset_tree(t, method):
     if not isinstance(t, str):
         for s in t.findall(".//ds:Signature", namespaces=namespaces):
@@ -557,15 +558,14 @@ class TestSignXML(unittest.TestCase):
             key = file.read()
         with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as file:
             cert = file.read()
-        place = ProductionPlace("City", "Address", "State", "PostalCode", "Name")
         for f in self.example_xml_files:
             data = etree.parse(f).getroot()
 
-            signer = XAdESSigner(legacy=True)
-            signature = signer.sign(data, cert=cert, key=key)
-
-            ds_object, = signature.xpath('//ds:Object', namespaces=xades_namespaces)
-            self.assertTrue(ds_object)
+            signer = XAdESSigner()
+            signed = signer.sign(data, cert=cert, key=key)
+            ds_object, = signed.xpath('//ds:Object', namespaces=xades_namespaces)
+            self.assertEqual(ds_object[0][0][0][0].tag, '{http://uri.etsi.org/01903/v1.3.2#}SigningTime')
+            XMLVerifier().verify(signed, x509_cert=cert, expect_references=False)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from lxml.builder import ElementMaker
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import Encoding
 
-from .. import XMLSignatureProcessor, XMLSigner, namespaces
+from .. import XMLSignatureProcessor, XMLSigner, XMLVerifier, namespaces
 
 from ..exceptions import InvalidInput
 from ..util import add_pem_header, ensure_str, Namespace
@@ -201,7 +201,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
     ...
     """
 
-    def __init__(self, level=levels.B, legacy=False, tz=pytz.utc, black_list=list(), options=None):
+    def __init__(self, level=levels.B, legacy=True, tz=pytz.utc, black_list=list(), options=None):
         self.xades_legacy = legacy
         self.xades_level = level
         self.xades_tz = tz
