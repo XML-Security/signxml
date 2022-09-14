@@ -13,7 +13,7 @@ from lxml.builder import ElementMaker
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import Encoding
 
-from .. import XMLSignatureProcessor, XMLSigner, XMLVerifier, namespaces
+from .. import XMLSignatureProcessor, XMLSigner, namespaces
 
 from ..exceptions import InvalidInput
 from ..util import add_pem_header, ensure_str, Namespace
@@ -28,6 +28,7 @@ def namedtuple_with_defaults(typename, field_names, default_values=()):
         prototype = T(*default_values)
     T.__new__.__defaults__ = tuple(prototype)
     return T
+
 
 namedtuple = namedtuple_with_defaults
 
@@ -47,6 +48,7 @@ XADES141 = ElementMaker(namespace=namespaces.xades141, nsmap=namespaces)
 DS = ElementMaker(namespace=namespaces.ds, nsmap=namespaces)
 
 # helper functions
+
 
 def _gen_id(prefix, suffix=None):
     """
@@ -90,6 +92,7 @@ class XAdESProcessor(XMLSignatureProcessor):
                     return results[0]
         raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
 
+
 class ProductionPlace(namedtuple(
     "ProductionPlace",
     "City StreetAddress StateOrProvince PostalCode CountryName"
@@ -108,6 +111,7 @@ class ProductionPlace(namedtuple(
     :param CountryName: the country name
     :type CountryName: str
     """
+
 
 class CertifiedRoleV2(namedtuple(
     "CertifiedRole",
@@ -131,6 +135,7 @@ class CertifiedRoleV2(namedtuple(
         Either specify X509AttributeCertificate OR OtherAttributeCertificate.
     """
 
+
 class SignaturePolicy(namedtuple(
     "SignaturePolicy", "Identifier Description URI"
 )):
@@ -143,6 +148,7 @@ class SignaturePolicy(namedtuple(
     'Política de firma para facturas electrónicas de la República de Colombia'
     :param URI: the URI of the policy (if empty the identifier will be used)
     """
+
 
 class SignerOptions(namedtuple(
     "SignerOptions",
@@ -195,6 +201,7 @@ class SignerOptions(namedtuple(
         array of :py:class:`lxml.etree.Element` objects according to domain
         application definition for representation of signed assertions
     """
+
 
 class XAdESSigner(XAdESProcessor, XMLSigner):
     """
