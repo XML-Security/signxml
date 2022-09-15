@@ -11,6 +11,7 @@ setup(
     author_email="kislyuk@gmail.com",
     description="Python XML Signature library",
     long_description=open("README.rst").read(),
+    python_requires='>=3.7',
     install_requires=[
         # Dependencies are restricted by major version range according to semver.
         # By default, version minimums are set to be compatible with the oldest supported Ubuntu LTS (currently 18.04).
@@ -30,8 +31,6 @@ setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
