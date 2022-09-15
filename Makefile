@@ -3,6 +3,7 @@ test_deps:
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test
+	mypy --install-types
 	mypy $$(python setup.py --name) --check-untyped-defs
 
 test: test_deps lint

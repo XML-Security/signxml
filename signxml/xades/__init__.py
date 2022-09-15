@@ -1,14 +1,14 @@
 import pytz
 import requests
 from base64 import b64encode
-from collections import namedtuple as python_namedtuple
-from collections.abc import Mapping
+from collections import namedtuple
 from datetime import datetime
 from enum import Enum
+from typing import List
 from uuid import uuid4
 
 from lxml import etree
-from lxml.builder import ElementMaker
+from lxml.builder import ElementMaker  # type: ignore
 
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -17,20 +17,6 @@ from .. import XMLSignatureProcessor, XMLSigner, namespaces
 
 from ..exceptions import InvalidInput
 from ..util import add_pem_header, ensure_str, Namespace
-
-
-def namedtuple_with_defaults(typename, field_names, default_values=()):
-    T = python_namedtuple(typename, field_names)
-    T.__new__.__defaults__ = (None,) * len(T._fields)
-    if isinstance(default_values, Mapping):
-        prototype = T(**default_values)
-    else:
-        prototype = T(*default_values)
-    T.__new__.__defaults__ = tuple(prototype)
-    return T
-
-
-namedtuple = namedtuple_with_defaults
 
 levels = Enum("Levels", "B T LT LTA")
 
@@ -153,14 +139,7 @@ class SignaturePolicy(namedtuple(
 class SignerOptions(namedtuple(
     "SignerOptions",
     "CertChain ProductionPlace SignaturePolicy ClaimedRoles CertifiedRoles SignedAssertions",
-    {
-        "CertChain": [],
-        "ProductionPlace": None,
-        "SignaturePolicy": None,
-        "ClaimedRoles": [],
-        "CertifiedRoles": [],
-        "SignedAssertions": [],
-    }
+    defaults=[[], None, None, [], [], []],
 )):
     """
     A containter to hold the XAdES Signer runtime options. It can be provided by
@@ -363,7 +342,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             address associated with the signer at a particular geographical
             (e.g. city) location.
         """
-        pp_elements = []
+        pp_elements: List[ElementMaker] = []
         PP = self.options_struct.ProductionPlace
         if PP:
             pa = pp_elements.append
@@ -527,7 +506,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         return self._clean_elements_from_black_list(elements)
 
     def _generate_xades_sdop_elements(self):
-        elements = []
+        elements: List[ElementMaker] = []
         return elements
 
         # TODO: Find a way to complete such values
@@ -544,7 +523,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         Deprecation as listed in ETSI EN 319 132-1 V1.1.1 (2016-04), Annex D
         """
-        elements = []
+        elements: List[ElementMaker] = []
         return elements
         # TODO: Find a way to complete such values
 
