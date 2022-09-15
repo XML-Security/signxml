@@ -27,10 +27,6 @@ from signxml import (  # noqa
     methods,
     namespaces,
 )
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from signxml import (XMLSigner, XMLVerifier, XMLSignatureProcessor, methods, namespaces, InvalidInput, # noqa
-                     InvalidSignature, InvalidCertificate, InvalidDigest)
 from signxml.xades import XAdESSigner, ProductionPlace, namespaces as xades_namespaces  # noqa
 
 
@@ -563,8 +559,8 @@ class TestSignXML(unittest.TestCase):
 
             signer = XAdESSigner()
             signed = signer.sign(data, cert=cert, key=key)
-            ds_object, = signed.xpath('//ds:Object', namespaces=xades_namespaces)
-            self.assertEqual(ds_object[0][0][0][0].tag, '{http://uri.etsi.org/01903/v1.3.2#}SigningTime')
+            (ds_object,) = signed.xpath("//ds:Object", namespaces=xades_namespaces)
+            self.assertEqual(ds_object[0][0][0][0].tag, "{http://uri.etsi.org/01903/v1.3.2#}SigningTime")
             XMLVerifier().verify(signed, x509_cert=cert, expect_references=False)
 
 

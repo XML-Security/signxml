@@ -456,8 +456,7 @@ class XMLSigner(XMLSignatureProcessor):
                 sig_root.append(key_info)
 
             # ensure the right order of elements
-            doc_root, sig_root, c14n_inputs = self._sort_elements(
-                doc_root, sig_root, c14n_inputs)
+            doc_root, sig_root, c14n_inputs = self._sort_elements(doc_root, sig_root, c14n_inputs)
         else:
             raise NotImplementedError()
 
@@ -541,12 +540,13 @@ class XMLSigner(XMLSignatureProcessor):
         - string: if refence_uri is a string, this will be interpreted as the
           attribute `URI`
         """
+
         def _check_brothers(element1, element2):
             """helper method to determiante if two elements have the same tag
-               :param element1: element
-               :type element1: etree._Element
-               :param element2: elemnt
-               :type element2: etree._Element
+            :param element1: element
+            :type element1: etree._Element
+            :param element2: elemnt
+            :type element2: etree._Element
             """
             return element1.tag == element2.tag
 

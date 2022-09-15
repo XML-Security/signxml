@@ -22,12 +22,14 @@ levels = Enum("Levels", "B T LT LTA")
 
 
 # Retrieved on 17. Oct. 2019: https://portal.etsi.org/pnns/uri-list
-namespaces.update(Namespace(
-    # xades111="https://uri.etsi.org/01903/v1.1.1#",  # superseded
-    # xades122="https://uri.etsi.org/01903/v1.2.2#",  # superseded
-    xades="http://uri.etsi.org/01903/v1.3.2#",
-    xades141="http://uri.etsi.org/01903/v1.4.1#",
-))
+namespaces.update(
+    Namespace(
+        # xades111="https://uri.etsi.org/01903/v1.1.1#",  # superseded
+        # xades122="https://uri.etsi.org/01903/v1.2.2#",  # superseded
+        xades="http://uri.etsi.org/01903/v1.3.2#",
+        xades141="http://uri.etsi.org/01903/v1.4.1#",
+    )
+)
 
 XADES = ElementMaker(namespace=namespaces.xades, nsmap=namespaces)
 XADES141 = ElementMaker(namespace=namespaces.xades141, nsmap=namespaces)
@@ -79,10 +81,7 @@ class XAdESProcessor(XMLSignatureProcessor):
         raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
 
 
-class ProductionPlace(namedtuple(
-    "ProductionPlace",
-    "City StreetAddress StateOrProvince PostalCode CountryName"
-)):
+class ProductionPlace(namedtuple("ProductionPlace", "City StreetAddress StateOrProvince PostalCode CountryName")):
     """
     A containter to hold the XAdES ProductionPlace values.
 
@@ -99,10 +98,7 @@ class ProductionPlace(namedtuple(
     """
 
 
-class CertifiedRoleV2(namedtuple(
-    "CertifiedRole",
-    "X509AttributeCertificate OtherAttributeCertificate"
-)):
+class CertifiedRoleV2(namedtuple("CertifiedRole", "X509AttributeCertificate OtherAttributeCertificate")):
     """
     A containter to hold a XAdES CertifiedRoleV2 object.
 
@@ -122,9 +118,7 @@ class CertifiedRoleV2(namedtuple(
     """
 
 
-class SignaturePolicy(namedtuple(
-    "SignaturePolicy", "Identifier Description URI"
-)):
+class SignaturePolicy(namedtuple("SignaturePolicy", "Identifier Description URI")):
     """
     A container to hold the XADES SignaturePolicy values
 
@@ -136,11 +130,13 @@ class SignaturePolicy(namedtuple(
     """
 
 
-class SignerOptions(namedtuple(
-    "SignerOptions",
-    "CertChain ProductionPlace SignaturePolicy ClaimedRoles CertifiedRoles SignedAssertions",
-    defaults=[[], None, None, [], [], []],
-)):
+class SignerOptions(
+    namedtuple(
+        "SignerOptions",
+        "CertChain ProductionPlace SignaturePolicy ClaimedRoles CertifiedRoles SignedAssertions",
+        defaults=[[], None, None, [], [], []],
+    )
+):
     """
     A containter to hold the XAdES Signer runtime options. It can be provided by
     directly calling ``signxml.XAdESSigner._sign()``.
@@ -198,8 +194,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         super().__init__()
 
     def _unpack(self, data, reference_uris):
-        sig_root, doc_root, c14n_inputs, reference_uris = super()._unpack(
-            data, reference_uris)
+        sig_root, doc_root, c14n_inputs, reference_uris = super()._unpack(data, reference_uris)
         self._set_default_options()
         reference_uris.append(DS.Object(self._generate_xades()))
         # reference_uris.extend(self.refs)
@@ -214,7 +209,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             for cert_value in self.cert_chain:
                 cert_value = add_pem_header(cert_value)
                 if isinstance(cert_value, str):
-                    cert_value = cert_value.encode('utf-8')
+                    cert_value = cert_value.encode("utf-8")
                 cert = load_pem_x509_certificate(cert_value)
                 self.options_struct.CertChain.append(cert)
 
@@ -233,9 +228,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         if not isinstance(elements, list):
             elements = list(elements)
 
-        return list(filter(
-            lambda x: isinstance(x, etree._Element) and x.tag not in self.black_list, elements
-        ))
+        return list(filter(lambda x: isinstance(x, etree._Element) and x.tag not in self.black_list, elements))
 
     def _add_xades_reference(self, el, attrs={}):
         """
@@ -306,7 +299,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 raise NotImplementedError(
                     "Please make a PR if you know how to obtain in python a "
                     "'DER-encoded instance of type IssuerSerial type defined in "
-                    "IETF RFC 5035'")
+                    "IETF RFC 5035'"
+                )
                 serial_element = XADES.IssuerSerialV2(
                     # TODO implement, wtf?
                 )
@@ -318,14 +312,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             2) ds:DigestValue element shall contain the base-64 encoded value
                of the digest computed on the DERencoded certificate.
             """
-            digest = self._get_digest(
-                cert.public_bytes(Encoding.PEM),
-                self._get_digest_method_by_tag(self.digest_alg))
+            digest = self._get_digest(cert.public_bytes(Encoding.PEM), self._get_digest_method_by_tag(self.digest_alg))
             cert_digest = XADES.CertDigest(
-                DS.DigestMethod(
-                    Algorithm=self.known_digest_tags[self.digest_alg]
-                ),
-                DS.DigestValue(ensure_str(b64encode(digest)))
+                DS.DigestMethod(Algorithm=self.known_digest_tags[self.digest_alg]),
+                DS.DigestValue(ensure_str(b64encode(digest))),
             )
             cert_elements.append(XADES.Cert(cert_digest, serial_element))
 
@@ -379,29 +369,16 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             # digest value
             pv = resolve_uri(sp.URI or sp.Identifier)
 
-            spid_elements.append(
-                XADES.SigPolicyId(
-                    XADES.Identifier(sp.Identifier),
-                    XADES.Description(sp.Description)
-                )
-            )
-            digest = self._get_digest(
-                pv,
-                self._get_digest_method_by_tag(self.digest_alg))
+            spid_elements.append(XADES.SigPolicyId(XADES.Identifier(sp.Identifier), XADES.Description(sp.Description)))
+            digest = self._get_digest(pv, self._get_digest_method_by_tag(self.digest_alg))
             spid_elements.append(
                 XADES.SigPolicyHash(
-                    DS.DigestMethod(
-                        Algorithm=self.known_digest_tags[self.digest_alg]
-                    ),
-                    DS.DigestValue(ensure_str(b64encode(digest)))
+                    DS.DigestMethod(Algorithm=self.known_digest_tags[self.digest_alg]),
+                    DS.DigestValue(ensure_str(b64encode(digest))),
                 )
             )
             if sp.URI:
-                spid_elements.append(
-                    XADES.SigPolicyQualifiers(
-                        XADES.SigPolicyQualifier(XADES.SPURI(sp.URI))
-                    )
-                )
+                spid_elements.append(XADES.SigPolicyQualifiers(XADES.SigPolicyQualifier(XADES.SPURI(sp.URI))))
             spid = XADES.SignaturePolicyId(*spid_elements)
             spi_elements = []
             spi_elements.append(spid)
@@ -433,7 +410,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 NotImplementedError(
                     "Role types different than strings, although permitted by "
                     "the schema, are not implemented. Use a placeholder and "
-                    "post process the resulting element tree, instead!")
+                    "post process the resulting element tree, instead!"
+                )
             clr_elements.append(XADES.ClaimedRole(role))
 
         ctr_elements = []
@@ -452,18 +430,17 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         if self.options_struct.CertifiedRoles and self.xades_legacy:
             NotImplementedError(
-                "Legay certified roles wired as objects encoded in "
-                "EncapsulatedPKIDataType are not implemented.")
+                "Legay certified roles wired as objects encoded in " "EncapsulatedPKIDataType are not implemented."
+            )
 
         for role in self.options_struct.CertifiedRoles:
-            ctr_elements.append(XADES.CertifiedRolesV2(
-                XADES.X509AttributeCertificate(
-                    self._get_cert_encoded(role.X509AttributeCertificate)
-                ) if role.X509AttributeCertificate else
-                XADES.OtherAttributeCertificate(
-                    self._get_cert_encoded(role.OtherAttributeCertificate)
+            ctr_elements.append(
+                XADES.CertifiedRolesV2(
+                    XADES.X509AttributeCertificate(self._get_cert_encoded(role.X509AttributeCertificate))
+                    if role.X509AttributeCertificate
+                    else XADES.OtherAttributeCertificate(self._get_cert_encoded(role.OtherAttributeCertificate))
                 )
-            ))
+            )
 
         """
         The SignedAssertions element shall contain a non-empty sequence of
@@ -472,10 +449,11 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             of the scope of the present document.
         """
         sas_elements = self.options_struct.SignedAssertions
-        if not all(['SignedAssertions' in e.tag for e in sas_elements]):
+        if not all(["SignedAssertions" in e.tag for e in sas_elements]):
             raise InvalidInput(
                 "Input for signed assertions shall be all elements of type "
-                "'{https://uri.etsi.org/01903/v1.3.2#}SignedAssertions'")
+                "'{https://uri.etsi.org/01903/v1.3.2#}SignedAssertions'"
+            )
 
         sr_elements = []
         if clr_elements:
@@ -654,10 +632,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             The Id attribute shall be used to reference the SignedProperties element.
             """
             sp_elements = self._clean_elements_from_black_list(sp_elements)
-            sp = XADES.SignedProperties(
-                *sp_elements,
-                Id=_gen_id(self.dsig_prefix, "signedprops")  # optional
-            )
+            sp = XADES.SignedProperties(*sp_elements, Id=_gen_id(self.dsig_prefix, "signedprops"))  # optional
             qp_elements.append(sp)
             """
             In order to protect the qualifying properties with the signature,
@@ -682,10 +657,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             """
             up_elements = self._clean_elements_from_black_list(up_elements)
             qp_elements.append(
-                XADES.UnsignedProperties(
-                    *up_elements,
-                    Id=_gen_id(self.dsig_prefix, "unsignedprops")  # optional
-                )
+                XADES.UnsignedProperties(*up_elements, Id=_gen_id(self.dsig_prefix, "unsignedprops"))  # optional
             )
 
         """
@@ -694,7 +666,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         the QualifyingProperties container.
         """
         qp_attributes = {
-            "Target": "#"+_gen_id(self.dsig_prefix, "signature"),  # required
+            "Target": "#" + _gen_id(self.dsig_prefix, "signature"),  # required
             "Id": _gen_id(self.dsig_prefix, "qualifyingprops"),  # optional
         }
 
