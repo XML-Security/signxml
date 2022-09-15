@@ -19,6 +19,7 @@ setup(
         "pyOpenSSL >= 17.5.0",
         "certifi >= 2018.1.18",
         "pytz >= 2018.3",
+        "requests >= 2.18.4",
     ],
     packages=find_packages(exclude=["test"]),
     platforms=["MacOS X", "Posix"],
