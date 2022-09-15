@@ -1,9 +1,8 @@
 test_deps:
-	pip install coverage flake8 wheel mypy types-certifi types-pyOpenSSL lxml-stubs
+	pip install coverage flake8 wheel mypy types-certifi types-pyOpenSSL types-pytz types-requests lxml-stubs
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test
-	mypy --install-types
 	mypy $$(python setup.py --name) --check-untyped-defs
 
 test: test_deps lint
