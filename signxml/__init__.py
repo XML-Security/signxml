@@ -370,16 +370,16 @@ class XMLSigner(XMLSignatureProcessor):
             self.id_attributes = (id_attribute,)
 
         if isinstance(cert, (str, bytes)):
-            self.cert_chain = list(iterate_pem(cert))
+            cert_chain = list(iterate_pem(cert))
         else:
-            self.cert_chain = cert
+            cert_chain = cert
 
         if isinstance(reference_uri, (str, bytes)):
             reference_uris = [reference_uri]
         else:
             reference_uris = reference_uri
 
-        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
+        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris, cert_chain)
 
         if self.method == methods.detached and signature_properties is not None:
             reference_uris.append("#prop")
@@ -439,12 +439,12 @@ class XMLSigner(XMLSignatureProcessor):
                     keyname = SubElement(key_info, ds_tag("KeyName"))
                     keyname.text = key_name
 
-                if self.cert_chain is None or always_add_key_value:
+                if cert_chain is None or always_add_key_value:
                     self._serialize_key_value(key, key_info)
 
-                if self.cert_chain is not None:
+                if cert_chain is not None:
                     x509_data = SubElement(key_info, ds_tag("X509Data"))
-                    for cert in self.cert_chain:
+                    for cert in cert_chain:
                         x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
                         if isinstance(cert, (str, bytes)):
                             x509_certificate.text = strip_pem_header(cert)
@@ -478,7 +478,7 @@ class XMLSigner(XMLSignatureProcessor):
             new_reference_uris.append(reference_uri)
         return c14n_inputs, new_reference_uris
 
-    def _unpack(self, data, reference_uris):
+    def _unpack(self, data, reference_uris, cert_chaing):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         if self.method == methods.enveloped:
             if isinstance(data, (str, bytes)):
@@ -530,7 +530,7 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
         """
-        :param reference_uris: the references to include o buld.
+        :param reference_uris: the references to include o build.
         :cases:
         - elements: if the reference_uri is an element, this will be added
           without modifications
@@ -540,16 +540,6 @@ class XMLSigner(XMLSignatureProcessor):
         - string: if refence_uri is a string, this will be interpreted as the
           attribute `URI`
         """
-
-        def _check_brothers(element1, element2):
-            """helper method to determiante if two elements have the same tag
-            :param element1: element
-            :type element1: etree._Element
-            :param element2: elemnt
-            :type element2: etree._Element
-            """
-            return element1.tag == element2.tag
-
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
         if sig_insp:

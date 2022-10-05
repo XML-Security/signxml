@@ -2,7 +2,7 @@
 XAdES by ETSI
 #############
 
-`W3C Note: XML Advanced Electronic Signatures (XAdES) <https://www.w3.org/TR/XAdES>`_ is outdated and has aparently been superseeded by standard development by `ETSI <https://www.etsi.org/>`_.
+`W3C Note: XML Advanced Electronic Signatures (XAdES) <https://www.w3.org/TR/XAdES>`_ is outdated and has apparently been superseded by standard development by `ETSI <https://www.etsi.org/>`_.
 
 This implementation is guided by the corresponding ETSI documents wich norm and inform that matter.
 

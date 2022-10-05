@@ -190,23 +190,21 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         self.dsig_prefix = "xmldsig"
         self.black_list = black_list
         self.options_struct = options
-        self.refs = []
         super().__init__()
 
-    def _unpack(self, data, reference_uris):
-        sig_root, doc_root, c14n_inputs, reference_uris = super()._unpack(data, reference_uris)
-        self._set_default_options()
+    def _unpack(self, data, reference_uris, cert_chain):
+        sig_root, doc_root, c14n_inputs, reference_uris = super()._unpack(data, reference_uris, cert_chain)
+        self._set_default_options(cert_chain)
         reference_uris.append(DS.Object(self._generate_xades()))
-        # reference_uris.extend(self.refs)
         return sig_root, doc_root, c14n_inputs, reference_uris
 
-    def _set_default_options(self):
+    def _set_default_options(self, cert_chain):
         "Creates empty values for option struct to ensure the sign process works"
         if not self.options_struct:
             self.options_struct = SignerOptions()
 
-        if self.cert_chain and not self.options_struct.CertChain:
-            for cert_value in self.cert_chain:
+        if cert_chain and not self.options_struct.CertChain:
+            for cert_value in cert_chain:
                 cert_value = add_pem_header(cert_value)
                 if isinstance(cert_value, str):
                     cert_value = cert_value.encode("utf-8")
@@ -245,15 +243,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         :type el: etree.Element
         :param attrs: attributes to set in the element 'DigestValue'
         :type attrs: py:class:dict
-
-        Note: PLEASE!! take into account that the digest may differ in the
-            validation process caused by the transforms and the namespaces applied
         """
         if attrs:
             attrs["URI"] = "#" + el.get("Id")
-            self.refs.append(attrs)
-        else:
-            self.refs.append("#" + el.get("Id"))
 
     def _generate_xades_ssp_elements(self):
         """
@@ -302,7 +294,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                     "IETF RFC 5035'"
                 )
                 serial_element = XADES.IssuerSerialV2(
-                    # TODO implement, wtf?
+                    # TODO: implement
                 )
             """
             The element CertDigest shall contain the digest of the referenced
@@ -430,7 +422,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         if self.options_struct.CertifiedRoles and self.xades_legacy:
             NotImplementedError(
-                "Legay certified roles wired as objects encoded in " "EncapsulatedPKIDataType are not implemented."
+                "Legacy certified roles wired as objects encoded in " "EncapsulatedPKIDataType are not implemented."
             )
 
         for role in self.options_struct.CertifiedRoles:
@@ -459,9 +451,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         if clr_elements:
             sr_elements.append(XADES.ClaimedRoles(*clr_elements))
 
-        if ctr_elements and self.xades_legacy:
-            raise  # already cached above, never hit
-        elif ctr_elements:
+        if ctr_elements:
             sr_elements.append(XADES.CertifiedRolesV2(*ctr_elements))
 
         if sas_elements and not self.xades_legacy:
@@ -470,17 +460,12 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         """
         Empty SignerRoleV2 qualifying properties shall not be generated.
         """
-        if not sr_elements:
-            pass
-        else:
+        if sr_elements:
             sr_elements = self._clean_elements_from_black_list(sr_elements)
             if self.xades_legacy:
                 elements.append(XADES.SignerRole(*sr_elements))  # deprecated (legacy)
             else:
                 elements.append(XADES.SignerRoleV2(*sr_elements))
-
-        # any ##other
-
         return self._clean_elements_from_black_list(elements)
 
     def _generate_xades_sdop_elements(self):
@@ -492,9 +477,6 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         elements.append(XADES.CommitmentTypeIndication())
         elements.append(XADES.AllDataObjectsTimeStamp())
         elements.append(XADES.IndividualDataObjectsTimeStamp())
-
-        # any ##other
-
         return self._clean_elements_from_black_list(elements)
 
     def _generate_xades_usp_elements(self):
@@ -537,9 +519,6 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         elements.append(XADES.AttrAuthoritiesCertValues())
         elements.append(XADES.AttributeRevocationValues())
         elements.append(XADES.ArchiveTimeStamp())
-
-        # any ##other
-
         return self._clean_elements_from_black_list(elements)
 
     def _generate_xades_udop_elements(self):
