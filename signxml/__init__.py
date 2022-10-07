@@ -292,7 +292,7 @@ class XMLSigner(XMLSignatureProcessor):
         reference_uri=None,
         key_name=None,
         key_info=None,
-        id_attribute=None,
+        id_attributes=None,
         always_add_key_value=False,
         payload_inclusive_ns_prefixes=frozenset(),
         signature_inclusive_ns_prefixes=frozenset(),
@@ -334,9 +334,9 @@ class XMLSigner(XMLSignatureProcessor):
             or other custom key references. An example value can be found here:
             https://github.com/XML-Security/signxml/blob/master/test/wsse_keyinfo.xml
         :type key_info: :py:class:`lxml.etree.Element`
-        :param id_attribute:
+        :param id_attributes:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
-        :type id_attribute: string
+        :type id_attributes: tuple
         :param always_add_key_value:
             Write the key value to the KeyInfo element even if a X509 certificate is present. Use of this parameter
             is discouraged, as it introduces an ambiguity and a security hazard. The public key used to sign the
@@ -366,8 +366,8 @@ class XMLSigner(XMLSignatureProcessor):
         "ds" is the "http://www.w3.org/2000/09/xmldsig#" namespace). This element will
         be replaced by the generated signature, and excised when generating the digest.
         """
-        if id_attribute is not None:
-            self.id_attributes = (id_attribute,)
+        if id_attributes is not None:
+            self.id_attributes = id_attributes
 
         if isinstance(cert, (str, bytes)):
             cert_chain = list(iterate_pem(cert))
@@ -727,7 +727,7 @@ class XMLVerifier(XMLSignatureProcessor):
         validate_schema=True,
         parser=None,
         uri_resolver=None,
-        id_attribute=None,
+        id_attributes=None,
         expect_references=1,
         ignore_ambiguous_key_info=False,
     ):
@@ -803,9 +803,9 @@ class XMLVerifier(XMLSignatureProcessor):
             Function to use to resolve reference URIs that don't start with "#". The function is called with a single
             string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
         :type uri_resolver: callable
-        :param id_attribute:
+        :param id_attributes:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
-        :type id_attribute: string
+        :type id_attributes: tuple
         :param expect_references:
             Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
             If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
@@ -833,8 +833,8 @@ class XMLVerifier(XMLSignatureProcessor):
         if x509_cert or cert_resolver:
             self.require_x509 = True
 
-        if id_attribute is not None:
-            self.id_attributes = (id_attribute,)
+        if id_attributes is not None:
+            self.id_attributes = id_attributes
 
         root = self.get_root(data)
         signature_ref = self._get_signature(root)
