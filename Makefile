@@ -1,5 +1,5 @@
 test_deps:
-	pip install coverage flake8 wheel mypy types-certifi types-pyOpenSSL types-pytz types-requests lxml-stubs
+	pip install coverage flake8 wheel mypy types-certifi types-pyOpenSSL lxml-stubs
 
 lint: test_deps
 	flake8 $$(python setup.py --name) test

@@ -324,7 +324,7 @@ class XMLSigner(XMLSignatureProcessor):
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
             signed.
-        :type reference_uri: string or list or XML ElementTree Element
+        :type reference_uri: string, list, or XML ElementTree Element
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
@@ -369,17 +369,10 @@ class XMLSigner(XMLSignatureProcessor):
         if id_attribute is not None:
             self.id_attributes = (id_attribute,)
 
-        if isinstance(cert, (str, bytes)):
-            cert_chain = list(iterate_pem(cert))
-        else:
-            cert_chain = cert
+        cert_chain = self._get_cert_chain(cert)
+        reference_uris = self._get_reference_uris(reference_uri)
 
-        if isinstance(reference_uri, (str, bytes)):
-            reference_uris = [reference_uri]
-        else:
-            reference_uris = reference_uri
-
-        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris, cert_chain)
+        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
 
         if self.method == methods.detached and signature_properties is not None:
             reference_uris.append("#prop")
@@ -469,6 +462,16 @@ class XMLSigner(XMLSignatureProcessor):
 
         return doc_root if self.method == methods.enveloped else sig_root
 
+    def _get_cert_chain(self, cert):
+        if isinstance(cert, (str, bytes)):
+            return list(iterate_pem(cert))
+        return cert
+
+    def _get_reference_uris(self, reference_uri):
+        if isinstance(reference_uri, (str, bytes)):
+            return [reference_uri]
+        return reference_uri
+
     def _get_c14n_inputs_from_reference_uris(self, doc_root, reference_uris):
         c14n_inputs, new_reference_uris = [], []
         for reference_uri in reference_uris:
@@ -478,7 +481,7 @@ class XMLSigner(XMLSignatureProcessor):
             new_reference_uris.append(reference_uri)
         return c14n_inputs, new_reference_uris
 
-    def _unpack(self, data, reference_uris, cert_chaing):
+    def _unpack(self, data, reference_uris):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         if self.method == methods.enveloped:
             if isinstance(data, (str, bytes)):

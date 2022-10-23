@@ -1,22 +1,19 @@
-import pytz
-import requests
 from base64 import b64encode
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List
 from uuid import uuid4
 
+import requests
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509 import load_pem_x509_certificate
 from lxml import etree
 from lxml.builder import ElementMaker  # type: ignore
 
-from cryptography.x509 import load_pem_x509_certificate
-from cryptography.hazmat.primitives.serialization import Encoding
-
 from .. import XMLSignatureProcessor, XMLSigner, namespaces
-
 from ..exceptions import InvalidInput
-from ..util import add_pem_header, ensure_str, Namespace
+from ..util import Namespace, add_pem_header, ensure_str
 
 levels = Enum("Levels", "B T LT LTA")
 
@@ -183,7 +180,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
     ...
     """
 
-    def __init__(self, level=levels.B, legacy=True, tz=pytz.utc, black_list=list(), options=None):
+    def __init__(self, level=levels.B, legacy=True, tz=timezone.utc, black_list=list(), options=None):
         self.xades_legacy = legacy
         self.xades_level = level
         self.xades_tz = tz
@@ -192,11 +189,15 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         self.options_struct = options
         super().__init__()
 
-    def _unpack(self, data, reference_uris, cert_chain):
-        sig_root, doc_root, c14n_inputs, reference_uris = super()._unpack(data, reference_uris, cert_chain)
-        self._set_default_options(cert_chain)
+    def _unpack(self, data, reference_uris):
+        sig_root, doc_root, c14n_inputs, reference_uris = super()._unpack(data, reference_uris)
         reference_uris.append(DS.Object(self._generate_xades()))
         return sig_root, doc_root, c14n_inputs, reference_uris
+
+    def _get_cert_chain(self, cert):
+        cert_chain = super()._get_cert_chain(cert)
+        self._set_default_options(cert_chain)
+        return cert_chain
 
     def _set_default_options(self, cert_chain):
         "Creates empty values for option struct to ensure the sign process works"
