@@ -530,7 +530,7 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
         """
-        :param reference_uris: the references to include o build.
+        :param reference_uris: the references to include or build.
         :cases:
         - elements: if the reference_uri is an element, this will be added
           without modifications
