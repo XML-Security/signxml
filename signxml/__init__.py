@@ -71,7 +71,7 @@ class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_
 
 
 class XMLSignatureProcessor(XMLProcessor):
-    schema_file = "xmldsig1-schema.xsd"
+    schema_files = ["xmldsig1-schema.xsd"]
 
     known_digest_methods = {
         namespaces.ds + "sha1": SHA1,
@@ -843,7 +843,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature = self.fromstring(self.tostring(signature_ref))
 
         if validate_schema:
-            self.schema().assertValid(signature)
+            self.validate_schema(signature)
 
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
@@ -992,6 +992,16 @@ class XMLVerifier(XMLSignatureProcessor):
             raise InvalidSignature(msg.format(expect_references, len(verify_results)))
 
         return verify_results if expect_references > 1 else verify_results[0]
+
+    def validate_schema(self, signature):
+        last_exception = None
+        for schema in self.schemas():
+            try:
+                schema.assertValid(signature)
+                return
+            except Exception as e:
+                last_exception = e
+        raise last_exception
 
     def check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg):
         if "ecdsa-" in signature_alg and isinstance(public_key.to_cryptography_key(), ec.EllipticCurvePublicKey):

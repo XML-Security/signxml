@@ -126,14 +126,17 @@ class Namespace(dict):
 
 
 class XMLProcessor:
-    _schema, _default_parser, _parser, schema_file = None, None, None, ""
+    _schemas, schema_files = [], []
+    _default_parser, _parser = None, None
+    _schema_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "schemas"))
 
     @classmethod
-    def schema(cls):
-        if cls._schema is None:
-            schema_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "schemas", cls.schema_file))
-            cls._schema = etree.XMLSchema(etree.parse(schema_path))
-        return cls._schema
+    def schemas(cls):
+        if len(cls._schemas) == 0:
+            for schema_file in cls.schema_files:
+                schema_path = os.path.join(cls._schema_dir, schema_file)
+                cls._schemas.append(etree.XMLSchema(etree.parse(schema_path)))
+        return cls._schemas
 
     @property
     def parser(self):

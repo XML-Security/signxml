@@ -27,6 +27,7 @@ from signxml import (  # noqa
     methods,
     namespaces,
 )
+from signxml.xades import XAdESSigner, XAdESVerifier
 
 
 def reset_tree(t, method):
@@ -547,6 +548,45 @@ class TestSignXML(unittest.TestCase):
         self.assertEqual(
             XMLVerifier()._c14n(doc, algorithm=""), b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>'
         )
+
+
+class TestXAdES(unittest.TestCase):
+    expect_references = {
+        "factura_ejemplo2_32v1.xml": 3,
+        "dss1770.xml": 3,
+        "xades-fake-counter-signature.xml": 3,
+        "Signature-X-SK_DIT-1.xml": 5,
+        "Signature-X-HR_FIN-1.xml": 5,
+        "TEST_S1a_C1a_InTL_VALID.xml": 3,
+        "Signature-X-CZ_SEF-4.xml": 4,
+        "Signature-X-FR_NOT-3.xml": 3,
+        "Signature-X-CZ_SEF-5.xml": 4,
+        "xades-counter-signature-injected.xml": 3,
+        "11068_signed.xml": 3,
+        "signature_property_signed.xml": 3,
+        "Signature-X-ES-100.xml": 3,
+        "Signature-X-ES-103.xml": 3,
+    }
+
+    def test_xades_interop_examples(self):
+        for sig_file in glob(os.path.join(os.path.dirname(__file__), "xades", "*.xml")):
+            print("Verifying", sig_file)
+            with open(sig_file, "rb") as fh:
+                doc = etree.parse(fh)
+            cert = doc.find("//{http://www.w3.org/2000/09/xmldsig#}X509Certificate").text
+            try:
+                XAdESVerifier().verify(
+                    doc, x509_cert=cert, expect_references=self.expect_references.get(os.path.basename(sig_file), 2)
+                )
+            except Exception as e:
+                if "altered" in sig_file or "newlines" in sig_file:
+                    self.assertIsInstance(e, InvalidSignature)
+                elif "unsupported-signature-algorithm" in sig_file:
+                    self.assertIsInstance(e, InvalidInput)
+                elif "corrupted-cert" in sig_file:
+                    self.assertIsInstance(e, etree.DocumentInvalid)
+                else:
+                    raise
 
 
 if __name__ == "__main__":
