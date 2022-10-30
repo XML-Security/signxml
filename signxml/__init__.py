@@ -7,49 +7,35 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import SHA1, SHA224, SHA256, SHA384, SHA512, Hash
-from cryptography.hazmat.primitives.serialization import load_der_public_key
+from cryptography.hazmat.primitives.hmac import HMAC
+from cryptography.hazmat.primitives.serialization import load_der_public_key, load_pem_private_key
 from lxml import etree
 from lxml.etree import Element, SubElement
+from OpenSSL.crypto import FILETYPE_PEM, X509
+from OpenSSL.crypto import Error as OpenSSLCryptoError
+from OpenSSL.crypto import dump_certificate, load_certificate
+from OpenSSL.crypto import verify as openssl_verify
 
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature  # noqa
 from .util import (
-    Namespace,
+    SigningSettings,
     XMLProcessor,
     _remove_sig,
     add_pem_header,
     bits_to_bytes_unit,
     bytes_to_long,
+    ds_tag,
+    dsig11_tag,
+    ec_tag,
     ensure_bytes,
-    ensure_str,
     iterate_pem,
     long_to_bytes,
+    namespaces,
     strip_pem_header,
     verify_x509_cert_chain,
 )
 
 methods = Enum("Methods", "enveloped enveloping detached")
-
-namespaces = Namespace(
-    ds="http://www.w3.org/2000/09/xmldsig#",
-    dsig11="http://www.w3.org/2009/xmldsig11#",
-    dsig2="http://www.w3.org/2010/xmldsig2#",
-    ec="http://www.w3.org/2001/10/xml-exc-c14n#",
-    dsig_more="http://www.w3.org/2001/04/xmldsig-more#",
-    xenc="http://www.w3.org/2001/04/xmlenc#",
-    xenc11="http://www.w3.org/2009/xmlenc11#",
-)
-
-
-def ds_tag(tag):
-    return "{" + namespaces.ds + "}" + tag
-
-
-def dsig11_tag(tag):
-    return "{" + namespaces.dsig11 + "}" + tag
-
-
-def ec_tag(tag):
-    return "{" + namespaces.ec + "}" + tag
 
 
 class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_xml")):
@@ -174,7 +160,10 @@ class XMLSignatureProcessor(XMLProcessor):
             known_tags=self.known_signature_digest_tags,
         )
 
-    def _find(self, element, query, require=True, namespace="ds", anywhere=False):
+    def _find(self, element, query, require=True, anywhere=False):
+        namespace = "ds"
+        if ":" in query:
+            namespace, _, query = query.partition(":")
         if anywhere:
             result = element.find(".//" + namespace + ":" + query, namespaces=namespaces)
         else:
@@ -184,7 +173,10 @@ class XMLSignatureProcessor(XMLProcessor):
             raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
         return result
 
-    def _findall(self, element, query, namespace="ds", anywhere=False):
+    def _findall(self, element, query, anywhere=False):
+        namespace = "ds"
+        if ":" in query:
+            namespace, _, query = query.partition(":")
         if anywhere:
             return element.findall(".//" + namespace + ":" + query, namespaces=namespaces)
         else:
@@ -282,6 +274,7 @@ class XMLSigner(XMLSignatureProcessor):
         self.c14n_alg = c14n_algorithm
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
+        self.signature_annotators = [self._add_key_info]
 
     def sign(
         self,
@@ -379,6 +372,24 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             reference_uris = reference_uri
 
+        signing_settings = SigningSettings(
+            key=None,
+            key_name=key_name,
+            key_info=key_info,
+            always_add_key_value=always_add_key_value,
+            cert_chain=cert_chain,
+        )
+
+        if key is None:
+            raise InvalidInput('Parameter "key" is required')
+        elif not self.sign_alg.startswith("hmac-"):
+            if isinstance(key, (str, bytes)):
+                signing_settings.key = load_pem_private_key(
+                    ensure_bytes(key), password=passphrase, backend=default_backend()
+                )
+            else:
+                signing_settings.key = key
+
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
 
         if self.method == methods.detached and signature_properties is not None:
@@ -395,65 +406,39 @@ class XMLSigner(XMLSignatureProcessor):
             sig_insp=signature_inclusive_ns_prefixes,
             payload_insp=payload_inclusive_ns_prefixes,
         )
-        if key is None:
-            raise InvalidInput('Parameter "key" is required')
+
+        for signature_annotator in self.signature_annotators:
+            signature_annotator(sig_root, signing_settings=signing_settings)
 
         signed_info_c14n = self._c14n(
             signed_info_element, algorithm=self.c14n_alg, inclusive_ns_prefixes=signature_inclusive_ns_prefixes
         )
         if self.sign_alg.startswith("hmac-"):
-            from cryptography.hazmat.primitives.hmac import HMAC
-
             signer = HMAC(
                 key=key, algorithm=self._get_hmac_digest_method_by_tag(self.sign_alg), backend=default_backend()
             )
             signer.update(signed_info_c14n)
-            signature_value_element.text = ensure_str(b64encode(signer.finalize()))
+            signature_value_element.text = b64encode(signer.finalize()).decode()
             sig_root.append(signature_value_element)
         elif any(self.sign_alg.startswith(i) for i in ["dsa-", "rsa-", "ecdsa-"]):
-            if isinstance(key, (str, bytes)):
-                from cryptography.hazmat.primitives.serialization import load_pem_private_key
-
-                key = load_pem_private_key(ensure_bytes(key), password=passphrase, backend=default_backend())
-
             hash_alg = self._get_signature_digest_method_by_tag(self.sign_alg)
             if self.sign_alg.startswith("dsa-"):
-                signature = key.sign(signed_info_c14n, algorithm=hash_alg)
+                signature = signing_settings.key.sign(signed_info_c14n, algorithm=hash_alg)
             elif self.sign_alg.startswith("ecdsa-"):
-                signature = key.sign(signed_info_c14n, signature_algorithm=ec.ECDSA(algorithm=hash_alg))
+                signature = signing_settings.key.sign(
+                    signed_info_c14n, signature_algorithm=ec.ECDSA(algorithm=hash_alg)
+                )
             elif self.sign_alg.startswith("rsa-"):
-                signature = key.sign(signed_info_c14n, padding=PKCS1v15(), algorithm=hash_alg)
+                signature = signing_settings.key.sign(signed_info_c14n, padding=PKCS1v15(), algorithm=hash_alg)
             else:
                 raise NotImplementedError()
             if self.sign_alg.startswith("dsa-") or self.sign_alg.startswith("ecdsa-"):
                 # Note: The output of the DSA and ECDSA signers is a DER-encoded ASN.1 sequence of two DER integers.
                 (r, s) = utils.decode_dss_signature(signature)
-                int_len = bits_to_bytes_unit(key.key_size)
+                int_len = bits_to_bytes_unit(signing_settings.key.key_size)
                 signature = long_to_bytes(r, blocksize=int_len) + long_to_bytes(s, blocksize=int_len)
 
-            signature_value_element.text = ensure_str(b64encode(signature))
-
-            if key_info is None:
-                key_info = SubElement(sig_root, ds_tag("KeyInfo"))
-                if key_name is not None:
-                    keyname = SubElement(key_info, ds_tag("KeyName"))
-                    keyname.text = key_name
-
-                if cert_chain is None or always_add_key_value:
-                    self._serialize_key_value(key, key_info)
-
-                if cert_chain is not None:
-                    x509_data = SubElement(key_info, ds_tag("X509Data"))
-                    for cert in cert_chain:
-                        x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
-                        if isinstance(cert, (str, bytes)):
-                            x509_certificate.text = strip_pem_header(cert)
-                        else:
-                            from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
-
-                            x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
-            else:
-                sig_root.append(key_info)
+            signature_value_element.text = b64encode(signature).decode()
         else:
             raise NotImplementedError()
 
@@ -465,6 +450,29 @@ class XMLSigner(XMLSignatureProcessor):
             sig_root.append(signature_properties_el)
 
         return doc_root if self.method == methods.enveloped else sig_root
+
+    def _add_key_info(self, sig_root, signing_settings: SigningSettings):
+        if self.sign_alg.startswith("hmac-"):
+            return
+        if signing_settings.key_info is None:
+            key_info = SubElement(sig_root, ds_tag("KeyInfo"))
+            if signing_settings.key_name is not None:
+                keyname = SubElement(key_info, ds_tag("KeyName"))
+                keyname.text = signing_settings.key_name
+
+            if signing_settings.cert_chain is None or signing_settings.always_add_key_value:
+                self._serialize_key_value(signing_settings.key, key_info)
+
+            if signing_settings.cert_chain is not None:
+                x509_data = SubElement(key_info, ds_tag("X509Data"))
+                for cert in signing_settings.cert_chain:
+                    x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
+                    if isinstance(cert, (str, bytes)):
+                        x509_certificate.text = strip_pem_header(cert)
+                    else:
+                        x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
+        else:
+            sig_root.append(signing_settings.key_info)
 
     def _get_c14n_inputs_from_reference_uris(self, doc_root, reference_uris):
         c14n_inputs, new_reference_uris = [], []
@@ -551,11 +559,12 @@ class XMLSigner(XMLSignatureProcessor):
             digest_value = SubElement(reference, ds_tag("DigestValue"))
             payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg, inclusive_ns_prefixes=payload_insp)
             digest = self._get_digest(payload_c14n, self._get_digest_method_by_tag(self.digest_alg))
-            digest_value.text = ensure_str(b64encode(digest))
+            digest_value.text = b64encode(digest).decode()
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
 
     def _build_signature_properties(self, signature_properties):
+        # FIXME: make this use the annotator API
         obj = Element(ds_tag("Object"), attrib={"Id": "prop"}, nsmap=self.namespaces)
         signature_properties_el = Element(ds_tag("SignatureProperties"))
         for i, el in enumerate(signature_properties):
@@ -579,9 +588,9 @@ class XMLSigner(XMLSignatureProcessor):
         if self.sign_alg.startswith("rsa-"):
             rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
             modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
-            modulus.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().n)))
+            modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n)).decode()
             exponent = SubElement(rsa_key_value, ds_tag("Exponent"))
-            exponent.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().e)))
+            exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e)).decode()
         elif self.sign_alg.startswith("dsa-"):
             dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
             for field in "p", "q", "g", "y":
@@ -592,7 +601,7 @@ class XMLSigner(XMLSignatureProcessor):
                 else:
                     key_params = key.parameters().parameter_numbers()
 
-                e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
+                e.text = b64encode(long_to_bytes(getattr(key_params, field))).decode()
         elif self.sign_alg.startswith("ecdsa-"):
             ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
             named_curve = SubElement(  # noqa:F841
@@ -601,7 +610,7 @@ class XMLSigner(XMLSignatureProcessor):
             public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
             x = key.public_key().public_numbers().x
             y = key.public_key().public_numbers().y
-            public_key.text = ensure_str(b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)))
+            public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)).decode()
 
 
 class XMLVerifier(XMLSignatureProcessor):
@@ -623,9 +632,9 @@ class XMLVerifier(XMLSignatureProcessor):
             key = load_der_public_key(b64decode(der_encoded_key_value.text), backend=default_backend())
         if "ecdsa-" in signature_alg:
             if key_value is not None:
-                ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
-                named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
-                public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
+                ec_key_value = self._find(key_value, "dsig11:ECKeyValue")
+                named_curve = self._find(ec_key_value, "dsig11:NamedCurve")
+                public_key = self._find(ec_key_value, "dsig11:PublicKey")
                 key_data = b64decode(public_key.text)[1:]
                 x = bytes_to_long(key_data[: len(key_data) // 2])
                 y = bytes_to_long(key_data[len(key_data) // 2 :])
@@ -861,10 +870,6 @@ class XMLVerifier(XMLSignatureProcessor):
         )
 
         if x509_data is not None or self.require_x509:
-            from OpenSSL.crypto import FILETYPE_PEM, X509
-            from OpenSSL.crypto import Error as OpenSSLCryptoError
-            from OpenSSL.crypto import load_certificate, verify
-
             if self.x509_cert is None:
                 if x509_data is None:
                     raise InvalidInput("Expected a X.509 certificate based signature")
@@ -902,7 +907,7 @@ class XMLVerifier(XMLSignatureProcessor):
             if "ecdsa-" in signature_alg:
                 raw_signature = self._encode_dss_signature(raw_signature, signing_cert.get_pubkey().bits())
             try:
-                verify(signing_cert, raw_signature, signed_info_c14n, signature_digest_method)
+                openssl_verify(signing_cert, raw_signature, signed_info_c14n, signature_digest_method)
             except OpenSSLCryptoError as e:
                 try:
                     lib, func, reason = e.args[0][0]
@@ -946,8 +951,6 @@ class XMLVerifier(XMLSignatureProcessor):
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
-            from cryptography.hazmat.primitives.hmac import HMAC
-
             signer = HMAC(
                 key=ensure_bytes(self.hmac_key),
                 algorithm=self._get_hmac_digest_method(signature_alg),
@@ -978,7 +981,7 @@ class XMLVerifier(XMLSignatureProcessor):
             payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
             payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
             if b64decode(digest_value.text) != self._get_digest(payload_c14n, self._get_digest_method(digest_alg)):
-                raise InvalidDigest("Digest mismatch for reference {}".format(len(verify_results)))
+                raise InvalidDigest(f"Digest mismatch for reference {len(verify_results)} ({reference.get('URI')})")
 
             # We return the signed XML (and only that) to ensure no access to unsigned data happens
             try:
@@ -1001,13 +1004,13 @@ class XMLVerifier(XMLSignatureProcessor):
                 return
             except Exception as e:
                 last_exception = e
-        raise last_exception
+        raise last_exception  # type: ignore
 
     def check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg):
         if "ecdsa-" in signature_alg and isinstance(public_key.to_cryptography_key(), ec.EllipticCurvePublicKey):
-            ec_key_value = self._find(key_value, "ECKeyValue", namespace="dsig11")
-            named_curve = self._find(ec_key_value, "NamedCurve", namespace="dsig11")
-            public_key = self._find(ec_key_value, "PublicKey", namespace="dsig11")
+            ec_key_value = self._find(key_value, "dsig11:ECKeyValue")
+            named_curve = self._find(ec_key_value, "dsig11:NamedCurve")
+            public_key = self._find(ec_key_value, "dsig11:PublicKey")
             key_data = b64decode(public_key.text)[1:]
             x = bytes_to_long(key_data[: len(key_data) // 2])
             y = bytes_to_long(key_data[len(key_data) // 2 :])

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 import itertools
 import os
@@ -27,7 +26,7 @@ from signxml import (  # noqa
     methods,
     namespaces,
 )
-from signxml.xades import XAdESSigner, XAdESVerifier
+from signxml.xades import XAdESSigner, XAdESVerifier  # noqa
 
 
 def reset_tree(t, method):
@@ -50,8 +49,18 @@ parser.resolvers.add(URIResolver())
 interop_dir = os.path.join(os.path.dirname(__file__), "interop")
 
 
-class TestVerifyXML(unittest.TestCase):
+class LoadExampleKeys:
+    def load_example_keys(self):
+        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
+            crt = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
+            key = fh.read()
+        return crt, key
+
+
+class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
     def test_example_multi(self):
+        cert, _ = self.load_example_keys()
         with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
             cert = fh.read()
         example_file = os.path.join(os.path.dirname(__file__), "example-125.xml")
@@ -62,7 +71,7 @@ class TestVerifyXML(unittest.TestCase):
         )
 
 
-class TestSignXML(unittest.TestCase):
+class TestSignXML(unittest.TestCase, LoadExampleKeys):
     def setUp(self):
         self.example_xml_files = (
             os.path.join(os.path.dirname(__file__), "example.xml"),
@@ -80,7 +89,7 @@ class TestSignXML(unittest.TestCase):
             signer = XMLSigner(method=None)
 
         with self.assertRaisesRegex(InvalidInput, "must be an XML element"):
-            XMLSigner().sign("x")
+            XMLSigner(signature_algorithm="hmac-sha256").sign("x", key=b"abc")
 
         digest_algs = {"sha1", "sha224", "sha256", "sha384", "sha512"}
         sig_algs = {"hmac", "dsa", "rsa", "ecdsa"}
@@ -178,10 +187,7 @@ class TestSignXML(unittest.TestCase):
 
         tree = etree.parse(self.example_xml_files[0])
         ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
-        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
-            crt = fh.read()
-        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
-            key = fh.read()
+        crt, key = self.load_example_keys()
         for hash_alg in "sha1", "sha256":
             for method in methods.enveloped, methods.enveloping:
                 print(hash_alg, method)
@@ -399,10 +405,7 @@ class TestSignXML(unittest.TestCase):
         signer.sign(data, key=self.keys["rsa"])
 
     def test_reference_uris_and_custom_key_info(self):
-        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as fh:
-            crt = fh.read()
-        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as fh:
-            key = fh.read()
+        crt, key = self.load_example_keys()
 
         # Both ID and Id formats. XPath 1 doesn't have case insensitive attribute search
         for d in [
@@ -514,10 +517,7 @@ class TestSignXML(unittest.TestCase):
         doc = etree.Element("Test", attrib={"Id": "mytest"})
         sigprop = etree.Element("{http://somenamespace}MyCustomProperty")
         sigprop.text = "Some Text"
-        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as file:
-            key = file.read()
-        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as file:
-            cert = file.read()
+        cert, key = self.load_example_keys()
         signature = XMLSigner(method=methods.detached).sign(
             doc, cert=cert, key=key, reference_uri="#mytest", signature_properties=sigprop
         )
@@ -528,10 +528,7 @@ class TestSignXML(unittest.TestCase):
         doc = etree.Element("{http://somenamespace}Test", attrib={"Id": "mytest"})
         sigprop = etree.Element("{http://somenamespace}MyCustomProperty")
         sigprop.text = "Some Text"
-        with open(os.path.join(os.path.dirname(__file__), "example.key"), "rb") as file:
-            key = file.read()
-        with open(os.path.join(os.path.dirname(__file__), "example.pem"), "rb") as file:
-            cert = file.read()
+        cert, key = self.load_example_keys()
         signer = XMLSigner(method=methods.detached, c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315")
         signer.namespaces["ns0"] = "http://enveloping.namespace"
         signature = signer.sign(doc, cert=cert, key=key, reference_uri="#mytest", signature_properties=sigprop)
@@ -550,7 +547,7 @@ class TestSignXML(unittest.TestCase):
         )
 
 
-class TestXAdES(unittest.TestCase):
+class TestXAdES(unittest.TestCase, LoadExampleKeys):
     expect_references = {
         "factura_ejemplo2_32v1.xml": 3,
         "dss1770.xml": 3,
@@ -564,29 +561,57 @@ class TestXAdES(unittest.TestCase):
         "xades-counter-signature-injected.xml": 3,
         "11068_signed.xml": 3,
         "signature_property_signed.xml": 3,
-        "Signature-X-ES-100.xml": 3,
-        "Signature-X-ES-103.xml": 3,
+        "nonconformant-Signature-X-ES-100.xml": 3,
+        "nonconformant-Signature-X-ES-103.xml": 3,
+        "nonconformant-dss1770.xml": 3,
     }
+    signature_policy = {
+        "Identifier": "Hello",
+        "Description": "XAdES",
+    }
+    claimed_roles = ["signer"]
+    data_object_format = {"Description": "Important Document", "MimeType": "text/xml"}
+
+    def test_xades_roundtrip(self):
+        cert, key = self.load_example_keys()
+        with open(os.path.join(os.path.dirname(__file__), "example.xml"), "rb") as fh:
+            doc = etree.parse(fh)
+        signer = XAdESSigner(
+            signature_policy=self.signature_policy,
+            claimed_roles=self.claimed_roles,
+            data_object_format=self.data_object_format,
+        )
+        signed_doc = signer.sign(doc, key=key, cert=cert)
+        verifier = XAdESVerifier()
+        verifier.verify(signed_doc, x509_cert=cert, expect_references=3)
+        # FIXME: assert on verify results
 
     def test_xades_interop_examples(self):
+        error_conditions = {
+            "altered": InvalidSignature,
+            "newlines": InvalidSignature,
+            "unsupported-signature-algorithm": InvalidInput,
+            "corrupted-cert": etree.DocumentInvalid,  # FIXME - flaky validation
+            "cert-v2-wrong-digest": InvalidDigest,
+            "wrong-sign-cert-digest": InvalidDigest,
+            "nonconformant-X_BE_CONN_10": InvalidDigest,
+            "sigPolStore-noDigest": InvalidInput,
+        }
         for sig_file in glob(os.path.join(os.path.dirname(__file__), "xades", "*.xml")):
             print("Verifying", sig_file)
             with open(sig_file, "rb") as fh:
                 doc = etree.parse(fh)
             cert = doc.find("//{http://www.w3.org/2000/09/xmldsig#}X509Certificate").text
-            try:
-                XAdESVerifier().verify(
-                    doc, x509_cert=cert, expect_references=self.expect_references.get(os.path.basename(sig_file), 2)
-                )
-            except Exception as e:
-                if "altered" in sig_file or "newlines" in sig_file:
-                    self.assertIsInstance(e, InvalidSignature)
-                elif "unsupported-signature-algorithm" in sig_file:
-                    self.assertIsInstance(e, InvalidInput)
-                elif "corrupted-cert" in sig_file:
-                    self.assertIsInstance(e, etree.DocumentInvalid)
-                else:
-                    raise
+            kwargs = dict(x509_cert=cert, expect_references=self.expect_references.get(os.path.basename(sig_file), 2))
+            if "nonconformant" in sig_file:
+                kwargs.update(validate_schema=False)
+            for condition, error in error_conditions.items():
+                if condition in sig_file:
+                    with self.assertRaises(error):
+                        XAdESVerifier().verify(doc, **kwargs)
+                    break
+            else:
+                XAdESVerifier().verify(doc, **kwargs)
 
 
 if __name__ == "__main__":

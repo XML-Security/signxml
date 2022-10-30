@@ -10,6 +10,8 @@ import re
 import struct
 import textwrap
 from base64 import b64decode, b64encode
+from dataclasses import dataclass
+from typing import Any, List, Optional
 from xml.etree import ElementTree as stdlibElementTree
 
 from lxml import etree
@@ -18,6 +20,53 @@ from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert, SignXM
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
+
+
+class Namespace(dict):
+    def __getattr__(self, a):
+        return dict.__getitem__(self, a)
+
+
+namespaces = Namespace(
+    ds="http://www.w3.org/2000/09/xmldsig#",
+    dsig11="http://www.w3.org/2009/xmldsig11#",
+    dsig2="http://www.w3.org/2010/xmldsig2#",
+    ec="http://www.w3.org/2001/10/xml-exc-c14n#",
+    dsig_more="http://www.w3.org/2001/04/xmldsig-more#",
+    xenc="http://www.w3.org/2001/04/xmlenc#",
+    xenc11="http://www.w3.org/2009/xmlenc11#",
+    xades="http://uri.etsi.org/01903/v1.3.2#",
+    xades141="http://uri.etsi.org/01903/v1.4.1#",
+)
+
+
+def ds_tag(tag):
+    return "{" + namespaces.ds + "}" + tag
+
+
+def dsig11_tag(tag):
+    return "{" + namespaces.dsig11 + "}" + tag
+
+
+def ec_tag(tag):
+    return "{" + namespaces.ec + "}" + tag
+
+
+def xades_tag(tag):
+    return "{" + namespaces.xades + "}" + tag
+
+
+def xades141_tag(tag):
+    return "{" + namespaces.xades141 + "}" + tag
+
+
+@dataclass
+class SigningSettings:
+    key: Any
+    key_name: str
+    key_info: Any
+    always_add_key_value: bool
+    cert_chain: Optional[List]
 
 
 def ensure_bytes(x, encoding="utf-8", none_ok=False):
@@ -120,13 +169,9 @@ def iterate_pem(certs):
         yield match
 
 
-class Namespace(dict):
-    def __getattr__(self, a):
-        return dict.__getitem__(self, a)
-
-
 class XMLProcessor:
-    _schemas, schema_files = [], []
+    _schemas: List[Any] = []
+    schema_files: List[Any] = []
     _default_parser, _parser = None, None
     _schema_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "schemas"))
 
