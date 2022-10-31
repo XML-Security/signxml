@@ -583,8 +583,8 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         )
         signed_doc = signer.sign(doc, key=key, cert=cert)
         verifier = XAdESVerifier()
-        verifier.verify(signed_doc, x509_cert=cert, expect_references=3)
-        # FIXME: assert on verify results
+        verify_results = verifier.verify(signed_doc, x509_cert=cert, expect_references=3)
+        self.assertTrue(hasattr(verify_results[1], "signed_properties"))
 
     def test_xades_interop_examples(self):
         error_conditions = {

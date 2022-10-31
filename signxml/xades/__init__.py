@@ -276,6 +276,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _verify_signed_properties(self, verify_result):
         self._verify_cert_digests(verify_result)
         self._verify_signature_policy(verify_result)
+        return self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
 
     def verify(self, data, **kwargs):
         verify_results = super().verify(data, **kwargs)
@@ -283,8 +284,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             if verify_result.signed_xml is None:
                 continue
             if verify_result.signed_xml.tag == xades_tag("SignedProperties"):
-                self._verify_signed_properties(verify_result)
-                # verify_result.signed_properties = ...
+                verify_result.signed_properties = self._verify_signed_properties(verify_result)
                 break
         else:
             raise InvalidInput("Expected to find a xades:SignedProperties element")
