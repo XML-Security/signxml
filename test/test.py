@@ -20,13 +20,14 @@ from signxml import (  # noqa
     InvalidDigest,
     InvalidInput,
     InvalidSignature,
+    VerifyResult,
     XMLSignatureProcessor,
     XMLSigner,
     XMLVerifier,
     methods,
     namespaces,
 )
-from signxml.xades import XAdESSigner, XAdESVerifier  # noqa
+from signxml.xades import XAdESSigner, XAdESVerifier, XAdESVerifyResult  # noqa
 
 
 def reset_tree(t, method):
@@ -137,15 +138,18 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 signed_data = etree.tostring(signed)
                 XMLVerifier().verify(signed_data, **verify_kwargs)
                 XMLVerifier().verify(signed_data, parser=parser, **verify_kwargs)
-                (_d, _x, _s) = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
+                res = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
+                self.assertIsInstance(res, VerifyResult)
+                for attr in "signed_data", "signed_xml", "signature_xml":
+                    self.assertTrue(hasattr(res, attr))
 
-                if _x is not None:
+                if res.signed_xml is not None:
                     # Ensure the signature is not part of the signed data
-                    self.assertIsNone(_x.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
-                    self.assertNotEqual(_x.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                    self.assertIsNone(res.signed_xml.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
+                    self.assertNotEqual(res.signed_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 # Ensure the signature was returned
-                self.assertEqual(_s.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                self.assertEqual(res.signature_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 if method == methods.enveloping:
                     with self.assertRaisesRegex(InvalidInput, "Unable to resolve reference URI"):
@@ -430,9 +434,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             data = etree.fromstring(d)
             reference_uri = ["assertionId", "assertion2"] if "assertion2" in d else "assertionId"
             signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
-            signed_data_root = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)[
-                1
-            ]
+            res = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)
+            signed_data_root = res.signed_xml
             ref = signed_root.xpath(
                 "/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference",
                 namespaces={
@@ -584,6 +587,7 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         signed_doc = signer.sign(doc, key=key, cert=cert)
         verifier = XAdESVerifier()
         verify_results = verifier.verify(signed_doc, x509_cert=cert, expect_references=3)
+        self.assertIsInstance(verify_results[1], XAdESVerifyResult)
         self.assertTrue(hasattr(verify_results[1], "signed_properties"))
 
     def test_xades_interop_examples(self):

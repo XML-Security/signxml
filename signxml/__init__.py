@@ -1,7 +1,7 @@
 from base64 import b64decode, b64encode
-from collections import namedtuple
+from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
@@ -38,22 +38,23 @@ from .util import (
 methods = Enum("Methods", "enveloped enveloping detached")
 
 
-class VerifyResult(namedtuple("VerifyResult", "signed_data signed_xml signature_xml")):
+@dataclass
+class VerifyResult:
     """
-    The results of a verification return the signed data, the signed xml and the signature xml
-
-    :param signed_data: The binary data as it was signed (literally)
-    :type data: bytes
-    :param signed_xml: The signed data parsed as XML (or None if parsing failed)
-    :type signed_xml: ElementTree or None
-    :param signature_xml: The signature element parsed as XML
-    :type signed_xml: ElementTree
-
-    This class is a namedtuple representing structured data returned by ``signxml.XMLVerifier.verify()``. As with any
-    namedtuple, elements of the return value can be accessed as attributes. For example::
+    This is a dataclass representing structured data returned by ``signxml.XMLVerifier.verify()``. The results of a
+    verification contain the signed bytes, the parsed signed XML, and the parsed signature XML. Example usage:
 
         verified_data = signxml.XMLVerifier().verify(input_data).signed_xml
     """
+
+    signed_data: bytes
+    "The binary data as it was signed"
+
+    signed_xml: Optional[Element]
+    "The signed data parsed as XML (or None if parsing failed)"
+
+    signature_xml: Element
+    "The signature element parsed as XML"
 
 
 class XMLSignatureProcessor(XMLProcessor):

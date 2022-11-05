@@ -42,7 +42,9 @@ import datetime
 import os
 import secrets
 from base64 import b64decode, b64encode
+from dataclasses import astuple, dataclass
 from typing import Dict, List, Optional
+from xml.dom.minidom import Element
 
 from lxml.etree import SubElement
 from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, load_certificate
@@ -53,6 +55,11 @@ from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_ta
 
 # TODO: make this a dataclass
 default_data_object_format = {"Description": "Default XAdES payload description", "MimeType": "text/xml"}
+
+
+@dataclass
+class XAdESVerifyResult(VerifyResult):
+    signed_properties: Element
 
 
 class XAdESProcessor(XMLSignatureProcessor):
@@ -280,11 +287,13 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
 
     def verify(self, data, **kwargs):
         verify_results = super().verify(data, **kwargs)
-        for verify_result in verify_results:
+        for i, verify_result in enumerate(verify_results):
             if verify_result.signed_xml is None:
                 continue
             if verify_result.signed_xml.tag == xades_tag("SignedProperties"):
-                verify_result.signed_properties = self._verify_signed_properties(verify_result)
+                verify_results[i] = XAdESVerifyResult(
+                    *astuple(verify_result), signed_properties=self._verify_signed_properties(verify_result)
+                )
                 break
         else:
             raise InvalidInput("Expected to find a xades:SignedProperties element")
