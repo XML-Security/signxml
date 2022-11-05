@@ -77,8 +77,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         signature_policy: Optional[Dict] = None,
         claimed_roles: Optional[List] = None,
         data_object_format: Dict = default_data_object_format,
+        **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(**kwargs)
         if self.sign_alg.startswith("hmac-"):
             raise Exception("HMAC signatures are not supported by XAdES")
         self.signature_annotators.append(self._build_xades_ds_object)
@@ -96,6 +97,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         self.signature_policy = signature_policy
         self.claimed_roles = claimed_roles
         self.data_object_format = data_object_format
+        self.namespaces.update(xades=namespaces.xades)
 
     def sign(self, data, always_add_key_value=True, **kwargs):
         return super().sign(data=data, always_add_key_value=always_add_key_value, **kwargs)
@@ -153,7 +155,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
     def add_signing_time(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
         signing_time = SubElement(signed_signature_properties, xades_tag("SigningTime"), nsmap=self.namespaces)
         # TODO: make configurable
-        signing_time.text = datetime.datetime.utcnow().isoformat()
+        utc_iso_ts = datetime.datetime.utcnow().isoformat(timespec="seconds")
+        signing_time.text = f"{utc_iso_ts}+00:00"
 
     def add_signing_certificate(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
         # TODO: check if we need to support SigningCertificate
@@ -193,10 +196,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             description = SubElement(sig_policy_id, xades_tag("Description"), nsmap=self.namespaces)
             description.text = self.signature_policy["Description"]
             sig_policy_hash = SubElement(signature_policy_id, xades_tag("SigPolicyHash"), nsmap=self.namespaces)
-            digest_alg = self.known_digest_tags[self.digest_alg]
+            digest_alg = self.known_digest_tags[self.signature_policy["DigestMethod"]]
             SubElement(sig_policy_hash, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg)
             digest_value_node = SubElement(sig_policy_hash, ds_tag("DigestValue"), nsmap=self.namespaces)
-            digest_value_node.text = b64encode(b"FIXME").decode()
+            digest_value_node.text = b64encode(self.signature_policy["DigestValue"]).decode()
 
     def add_signature_production_place(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
         # SignatureProductionPlace or SignatureProductionPlaceV2

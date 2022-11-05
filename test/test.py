@@ -569,8 +569,10 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         "nonconformant-dss1770.xml": 3,
     }
     signature_policy = {
-        "Identifier": "Hello",
-        "Description": "XAdES",
+        "Identifier": "http://www.facturae.es/politica_de_firma_formato_facturae/politica_de_firma_formato_facturae_v3_1.pdf",
+        "Description": "Política de Firma FacturaE v3.1",
+        "DigestMethod": "sha1",
+        "DigestValue": b":\x18\xb1\x97\xab\xa9\x0f\xa6\xaf\xf0\xde\xe9\x12\xf0\xc0\x06\x11\x0b\xea\x13",
     }
     claimed_roles = ["signer"]
     data_object_format = {"Description": "Important Document", "MimeType": "text/xml"}
