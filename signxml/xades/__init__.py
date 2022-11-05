@@ -294,7 +294,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             if verify_result.signed_xml is None:
                 continue
             if verify_result.signed_xml.tag == xades_tag("SignedProperties"):
-                verify_results[i] = XAdESVerifyResult(
+                verify_results[i] = XAdESVerifyResult(  # type: ignore
                     *astuple(verify_result), signed_properties=self._verify_signed_properties(verify_result)
                 )
                 break

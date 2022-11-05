@@ -50,10 +50,10 @@ class VerifyResult:
     signed_data: bytes
     "The binary data as it was signed"
 
-    signed_xml: Optional[Element]
+    signed_xml: Optional[etree._Element]
     "The signed data parsed as XML (or None if parsing failed)"
 
-    signature_xml: Element
+    signature_xml: etree._Element
     "The signature element parsed as XML"
 
 
