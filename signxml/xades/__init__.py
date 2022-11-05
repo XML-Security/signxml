@@ -288,8 +288,8 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         self._verify_signature_policy(verify_result)
         return self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
 
-    def verify(self, data, **kwargs):
-        verify_results = super().verify(data, **kwargs)
+    def verify(self, data, expect_references=3, **kwargs):
+        verify_results = super().verify(data, expect_references=expect_references, **kwargs)
         for i, verify_result in enumerate(verify_results):
             if verify_result.signed_xml is None:
                 continue
