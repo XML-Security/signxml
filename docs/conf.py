@@ -11,6 +11,7 @@ extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode"]
 source_suffix = [".rst", ".md"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
+autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 typehints_fully_qualified = True
 always_document_param_types = True
