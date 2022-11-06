@@ -12,6 +12,8 @@ source_suffix = [".rst", ".md"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
 autodoc_typehints = "description"
+typehints_fully_qualified = True
+always_document_param_types = True
 
 if "readthedocs.org" in os.getcwd().split("/"):
     with open("index.rst", "w") as fh:

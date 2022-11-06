@@ -1,6 +1,6 @@
 from base64 import b64decode
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Callable, List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
@@ -161,19 +161,19 @@ class XMLVerifier(XMLSignatureProcessor):
     def verify(
         self,
         data,
-        require_x509=True,
-        x509_cert=None,
-        cert_subject_name=None,
-        cert_resolver=None,
-        ca_pem_file=None,
-        ca_path=None,
-        hmac_key=None,
-        validate_schema=True,
+        require_x509: bool = True,
+        x509_cert: Optional[Union[str, X509]] = None,
+        cert_subject_name: Optional[str] = None,
+        cert_resolver: Optional[Callable] = None,
+        ca_pem_file: Optional[Union[str, bytes]] = None,
+        ca_path: Optional[str] = None,
+        hmac_key: Optional[str] = None,
+        validate_schema: bool = True,
         parser=None,
-        uri_resolver=None,
-        id_attribute=None,
-        expect_references=1,
-        ignore_ambiguous_key_info=False,
+        uri_resolver: Optional[Callable] = None,
+        id_attribute: Optional[str] = None,
+        expect_references: Union[int, bool] = 1,
+        ignore_ambiguous_key_info: bool = False,
     ) -> List[VerifyResult]:
         """
         Verify the XML signature supplied in the data and return a list of **VerifyResult** data structures
@@ -210,36 +210,28 @@ class XMLVerifier(XMLSignatureProcessor):
         :param require_x509:
             If ``True``, a valid X.509 certificate-based signature with an established chain of trust is required to
             pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
-        :type require_x509: boolean
         :param x509_cert:
             A trusted external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use
             for verification. Overrides any X.509 certificate information supplied by the signature. If left set to
             ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the
             known certificate authorities. Implies **require_x509=True**.
-        :type x509_cert: string or OpenSSL.crypto.X509
         :param cert_subject_name:
             Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.
-        :type cert_subject_name: string
         :param cert_resolver:
             Function to use to resolve trusted X.509 certificates when X509IssuerSerial and X509Digest references are
             found in the signature. The function is called with the keyword arguments ``x509_issuer_name``,
             ``x509_serial_number`` and ``x509_digest``, and is expected to return an iterable of one or more
             strings containing a PEM-formatted certificate and a chain of intermediate certificates, if needed.
             Implies **require_x509=True**.
-        :type cert_resolver: callable
         :param ca_pem_file:
             Filename of a PEM file containing certificate authority information to use when verifying certificate-based
             signatures.
-        :type ca_pem_file: string or bytes
         :param ca_path:
             Path to a directory containing PEM-formatted certificate authority files to use when verifying
             certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle
             provided by :py:mod:`certifi` will be loaded.
-        :type ca_path: string
         :param hmac_key: If using HMAC, a string containing the shared secret.
-        :type hmac_key: string
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
-        :type validate_schema: boolean
         :param parser:
             Custom XML parser instance to use when parsing **data**. The default parser arguments used by SignXML are:
             ``resolve_entities=False``. See https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint.
@@ -247,14 +239,11 @@ class XMLVerifier(XMLSignatureProcessor):
         :param uri_resolver:
             Function to use to resolve reference URIs that don't start with "#". The function is called with a single
             string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
-        :type uri_resolver: callable
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
-        :type id_attribute: string
         :param expect_references:
             Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
             If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
-        :type expect_references: int or boolean
         :param ignore_ambiguous_key_info:
             Ignore the presence of a KeyValue element when X509Data is present in the signature and used for verifying.
             The presence of both elements is an ambiguity and a security hazard. The public key used to sign the
@@ -262,7 +251,6 @@ class XMLVerifier(XMLSignatureProcessor):
             KeyValue or make sure it matches what's in the certificate. SignXML does not implement the functionality
             necessary to match the keys, and throws an InvalidInput error instead. Set this to True to bypass the error
             and validate the signature using X509Data only.
-        :type ignore_ambiguous_key_info: boolean
 
         :raises: :py:class:`cryptography.exceptions.InvalidSignature`
         """
