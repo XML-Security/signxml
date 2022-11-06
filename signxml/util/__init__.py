@@ -5,19 +5,16 @@ bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/
 """
 
 import math
-import os
 import re
 import struct
 import textwrap
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from typing import Any, List, Optional
-from xml.etree import ElementTree as stdlibElementTree
 
 from cryptography.hazmat.primitives import hashes, hmac
-from lxml import etree
 
-from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert, SignXMLException
+from ..exceptions import InvalidCertificate, RedundantCert, SignXMLException
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
@@ -168,50 +165,6 @@ def add_pem_header(bare_base64_cert):
 def iterate_pem(certs):
     for match in re.findall(pem_regexp, ensure_str(certs)):
         yield match
-
-
-class XMLProcessor:
-    _schemas: List[Any] = []
-    schema_files: List[Any] = []
-    _default_parser, _parser = None, None
-    _schema_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "schemas"))
-
-    @classmethod
-    def schemas(cls):
-        if len(cls._schemas) == 0:
-            for schema_file in cls.schema_files:
-                schema_path = os.path.join(cls._schema_dir, schema_file)
-                cls._schemas.append(etree.XMLSchema(etree.parse(schema_path)))
-        return cls._schemas
-
-    @property
-    def parser(self):
-        if self._parser is None:
-            if self._default_parser is None:
-                self._default_parser = etree.XMLParser(resolve_entities=False)
-            return self._default_parser
-        return self._parser
-
-    def fromstring(self, xml_string, **kwargs):
-        xml_node = etree.fromstring(xml_string, parser=self.parser, **kwargs)
-        for entity in xml_node.iter(etree.Entity):
-            raise InvalidInput("Entities are not supported in XML input")
-        return xml_node
-
-    def tostring(self, xml_node, **kwargs):
-        return etree.tostring(xml_node, **kwargs)
-
-    def get_root(self, data):
-        if isinstance(data, (str, bytes)):
-            return self.fromstring(data)
-        elif isinstance(data, stdlibElementTree.Element):
-            # TODO: add debug level logging statement re: performance impact here
-            return self.fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
-        else:
-            # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
-            # We use a copy so we can modify the tree
-            # TODO: turn this off for xmlenc
-            return self.fromstring(etree.tostring(data))
 
 
 def hmac_sha1(key, message):
