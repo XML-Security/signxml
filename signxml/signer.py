@@ -8,10 +8,7 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from lxml.etree import Element, SubElement
 from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
 
-from .algorithms import XMLSecurityDigestAlgorithm as digest_algorithms
-from .algorithms import XMLSecuritySignatureMethod as signature_methods
-from .algorithms import XMLSignatureMethods as methods
-from .algorithms import digest_algorithm_implementations
+from .algorithms import DigestAlgorithm, SignatureMethod, SignatureType, digest_algorithm_implementations
 from .exceptions import InvalidInput
 from .processor import XMLSignatureProcessor
 from .util import (
@@ -38,37 +35,34 @@ class XMLSigner(XMLSignatureProcessor):
         ``signxml.methods.enveloped``, ``signxml.methods.enveloping``, or ``signxml.methods.detached``. See the list
         of signature types under `XML Signature Syntax and Processing Version 2.0, Definitions
         <http://www.w3.org/TR/xmldsig-core2/#sec-Definitions>`_.
-    :type method: :py:class:`methods`
     :param signature_algorithm:
         Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest
         algorithm, separated by a hyphen. All algorithm IDs listed under the `Algorithm Identifiers and
         Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature
         1.1 standard are supported.
-    :type signature_algorithm: string
     :param digest_algorithm: Algorithm that will be used to hash the data during signature generation. All algorithm IDs
         listed under the `Algorithm Identifiers and Implementation Requirements
         <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
-    :type digest_algorithm: string
     """
 
     def __init__(
         self,
-        method: methods = methods.enveloped,
-        signature_algorithm: Union[signature_methods, str] = signature_methods.RSA_SHA256,
-        digest_algorithm: Union[digest_algorithms, str] = digest_algorithms.SHA256,
+        method: SignatureType = SignatureType.enveloped,
+        signature_algorithm: Union[SignatureMethod, str] = SignatureMethod.RSA_SHA256,
+        digest_algorithm: Union[DigestAlgorithm, str] = DigestAlgorithm.SHA256,
         c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm,
     ):
-        if method is None or method not in methods:
+        if method is None or method not in SignatureType:
             raise InvalidInput("Unknown signature method {}".format(method))
-        self.method = method
+        self.signature_type = method
         if isinstance(signature_algorithm, str) and "#" not in signature_algorithm:
-            self.sign_alg = signature_methods.from_fragment(signature_algorithm)
+            self.sign_alg = SignatureMethod.from_fragment(signature_algorithm)
         else:
-            self.sign_alg = signature_methods(signature_algorithm)
+            self.sign_alg = SignatureMethod(signature_algorithm)
         if isinstance(digest_algorithm, str) and "#" not in digest_algorithm:
-            self.digest_alg = digest_algorithms.from_fragment(digest_algorithm)
+            self.digest_alg = DigestAlgorithm.from_fragment(digest_algorithm)
         else:
-            self.digest_alg = digest_algorithms(digest_algorithm)
+            self.digest_alg = DigestAlgorithm(digest_algorithm)
         assert c14n_algorithm in self.known_c14n_algorithms
         self.c14n_alg = c14n_algorithm
         self.namespaces = dict(ds=namespaces.ds)
@@ -189,7 +183,7 @@ class XMLSigner(XMLSignatureProcessor):
 
         sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
 
-        if self.method == methods.detached and signature_properties is not None:
+        if self.signature_type == SignatureType.detached and signature_properties is not None:
             reference_uris.append("#prop")
             if signature_properties is not None and not isinstance(signature_properties, list):
                 signature_properties = [signature_properties]
@@ -237,14 +231,14 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             raise NotImplementedError()
 
-        if self.method == methods.enveloping:
+        if self.signature_type == SignatureType.enveloping:
             for c14n_input in c14n_inputs:
                 doc_root.append(c14n_input)
 
-        if self.method == methods.detached and signature_properties is not None:
+        if self.signature_type == SignatureType.detached and signature_properties is not None:
             sig_root.append(signature_properties_el)
 
-        return doc_root if self.method == methods.enveloped else sig_root
+        return doc_root if self.signature_type == SignatureType.enveloped else sig_root
 
     def _add_key_info(self, sig_root, signing_settings: SigningSettings):
         if self.sign_alg.name.startswith("HMAC_"):
@@ -280,7 +274,7 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _unpack(self, data, reference_uris):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
-        if self.method == methods.enveloped:
+        if self.signature_type == SignatureType.enveloped:
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             doc_root = self.get_root(data)
@@ -309,7 +303,7 @@ class XMLSigner(XMLSignatureProcessor):
                 for c14n_input in c14n_inputs:
                     payload_id = c14n_input.get("Id", c14n_input.get("ID"))
                     reference_uris.append("#{}".format(payload_id) if payload_id is not None else "")
-        elif self.method == methods.detached:
+        elif self.signature_type == SignatureType.detached:
             doc_root = self.get_root(data)
             if reference_uris is None:
                 reference_uris = ["#{}".format(data.get("Id", data.get("ID", "object")))]
@@ -318,7 +312,7 @@ class XMLSigner(XMLSignatureProcessor):
                 c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
             except InvalidInput:  # Dummy reference URI
                 c14n_inputs = [self.get_root(data)]
-        elif self.method == methods.enveloping:
+        elif self.signature_type == SignatureType.enveloping:
             doc_root = sig_root
             c14n_inputs = [Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")]
             if isinstance(data, (str, bytes)):
@@ -338,7 +332,7 @@ class XMLSigner(XMLSignatureProcessor):
         for i, reference_uri in enumerate(reference_uris):
             reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
             transforms = SubElement(reference, ds_tag("Transforms"))
-            if self.method == methods.enveloped:
+            if self.signature_type == SignatureType.enveloped:
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
                 SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
             else:

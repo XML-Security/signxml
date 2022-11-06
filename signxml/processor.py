@@ -6,8 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.hashes import Hash
 from lxml import etree
 
-from .algorithms import XMLSecurityDigestAlgorithm as digest_algorithms
-from .algorithms import digest_algorithm_implementations
+from .algorithms import DigestAlgorithm, digest_algorithm_implementations
 from .exceptions import InvalidInput
 from .util import namespaces
 
@@ -89,7 +88,7 @@ class XMLSignatureProcessor(XMLProcessor):
 
     id_attributes: Tuple[str, ...] = ("Id", "ID", "id", "xml:id")
 
-    def _get_digest(self, data, algorithm: digest_algorithms):
+    def _get_digest(self, data, algorithm: DigestAlgorithm):
         algorithm_implementation = digest_algorithm_implementations[algorithm]()
         hasher = Hash(algorithm=algorithm_implementation)
         hasher.update(data)

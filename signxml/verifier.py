@@ -12,9 +12,7 @@ from OpenSSL.crypto import Error as OpenSSLCryptoError
 from OpenSSL.crypto import load_certificate
 from OpenSSL.crypto import verify as openssl_verify
 
-from .algorithms import XMLSecurityDigestAlgorithm as digest_algorithms
-from .algorithms import XMLSecuritySignatureMethod as signature_methods
-from .algorithms import digest_algorithm_implementations
+from .algorithms import DigestAlgorithm, SignatureMethod, digest_algorithm_implementations
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature  # noqa
 from .processor import XMLSignatureProcessor
 from .util import (
@@ -280,7 +278,7 @@ class XMLVerifier(XMLSignatureProcessor):
         inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(c14n_method)
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
-        signature_alg = signature_methods(signature_method.get("Algorithm"))
+        signature_alg = SignatureMethod(signature_method.get("Algorithm"))
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
@@ -396,7 +394,7 @@ class XMLVerifier(XMLSignatureProcessor):
             digest_value = self._find(reference, "DigestValue")
             payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
             payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
-            if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_algorithms(digest_alg)):
+            if b64decode(digest_value.text) != self._get_digest(payload_c14n, DigestAlgorithm(digest_alg)):
                 raise InvalidDigest(f"Digest mismatch for reference {len(verify_results)} ({reference.get('URI')})")
 
             # We return the signed XML (and only that) to ensure no access to unsigned data happens
@@ -422,7 +420,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 last_exception = e
         raise last_exception  # type: ignore
 
-    def check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: signature_methods):
+    def check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: SignatureMethod):
         if signature_alg.name.startswith("ECDSA_") and isinstance(
             public_key.to_cryptography_key(), ec.EllipticCurvePublicKey
         ):

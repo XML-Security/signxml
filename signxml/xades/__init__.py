@@ -50,7 +50,7 @@ from lxml.etree import SubElement
 from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, load_certificate
 
 from .. import VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
-from ..algorithms import XMLSecurityDigestAlgorithm as digest_algorithms
+from ..algorithms import DigestAlgorithm
 from ..exceptions import InvalidDigest, InvalidInput
 from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
 
@@ -195,7 +195,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             description = SubElement(sig_policy_id, xades_tag("Description"), nsmap=self.namespaces)
             description.text = self.signature_policy["Description"]
             sig_policy_hash = SubElement(signature_policy_id, xades_tag("SigPolicyHash"), nsmap=self.namespaces)
-            digest_alg = digest_algorithms(self.signature_policy["DigestMethod"])
+            digest_alg = DigestAlgorithm(self.signature_policy["DigestMethod"])
             SubElement(sig_policy_hash, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg.value)
             digest_value_node = SubElement(sig_policy_hash, ds_tag("DigestValue"), nsmap=self.namespaces)
             digest_value_node.text = self.signature_policy["DigestValue"]
@@ -245,7 +245,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _verify_cert_digest(self, signing_cert_node, expect_cert):
         for cert in self._findall(signing_cert_node, "xades:Cert"):
             cert_digest = self._find(cert, "xades:CertDigest")
-            digest_alg = digest_algorithms(self._find(cert_digest, "DigestMethod").get("Algorithm"))
+            digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
             digest_value = self._find(cert_digest, "DigestValue")
             # check spec for specific method of retrieving cert
             der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
@@ -286,7 +286,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                     f"but found {identifier.text}"
                 )
             sig_policy_hash = self._find(signature_policy_id, "xades:SigPolicyHash")
-            digest_alg = digest_algorithms(self._find(sig_policy_hash, "DigestMethod").get("Algorithm"))
+            digest_alg = DigestAlgorithm(self._find(sig_policy_hash, "DigestMethod").get("Algorithm"))
             if digest_alg != self.expect_signature_policy["DigestMethod"]:
                 raise InvalidInput(
                     f"Expected to find signature digest algorithm {self.expect_signature_policy['DigestMethod']}, "

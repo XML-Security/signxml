@@ -15,15 +15,17 @@ from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from signxml import (  # noqa
+    DigestAlgorithm,
     InvalidCertificate,
     InvalidDigest,
     InvalidInput,
     InvalidSignature,
+    SignatureMethod,
+    SignatureType,
     VerifyResult,
     XMLSignatureProcessor,
     XMLSigner,
     XMLVerifier,
-    digest_algorithms,
     methods,
     namespaces,
 )
@@ -571,7 +573,7 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
     signature_policy = {
         "Identifier": "urn:sbr:signature-policy:xml:2.0",
         "Description": "Test description",
-        "DigestMethod": digest_algorithms.SHA256,
+        "DigestMethod": DigestAlgorithm.SHA256,
         "DigestValue": "sVHhN1eqNH/PZ1B6h//ehyC1OwRQOrz/tJ3ZYaRrBgA=",
     }
     claimed_roles = ["signer"]

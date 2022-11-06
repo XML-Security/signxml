@@ -5,10 +5,30 @@ from cryptography.hazmat.primitives import hashes
 from .exceptions import InvalidInput
 
 
-class XMLSignatureMethods(Enum):
+class SignatureType(Enum):
+    """
+    An enumeration of the structural type of signature supported by SignXML.
+    """
+
     enveloped = auto()
+    """
+    The signature is over the XML content that contains the signature as an element. The content provides the root
+    XML document element.
+    """
+
     enveloping = auto()
+    """
+    The signature is over content found within an Object element of the signature itself. The Object (or its
+    content) is identified via a Reference (via a URI fragment identifier or transform).
+    """
+
     detached = auto()
+    """
+    The signature is over content external to the Signature element, and can be identified via a URI or
+    transform. Consequently, the signature is "detached" from the content it signs. This definition typically applies to
+    separate data objects, but it also includes the instance where the Signature and data object reside within the same
+    XML document but are sibling elements.
+    """
 
 
 class FragmentLookupMixin:
@@ -27,7 +47,11 @@ class InvalidInputErrorMixin:
         raise InvalidInput(f"Unrecognized {cls.__name__}: {value}")
 
 
-class XMLSecurityDigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
+class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
+    """
+    An enumeration of digest algorithms supported by SignXML. See RFC 9231 for details.
+    """
+
     SHA1 = "http://www.w3.org/2000/09/xmldsig#sha1"
     SHA224 = "http://www.w3.org/2001/04/xmldsig-more#sha224"
     SHA384 = "http://www.w3.org/2001/04/xmldsig-more#sha384"
@@ -44,7 +68,11 @@ class XMLSecurityDigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, En
 
 
 # TODO: check if padding errors are fixed by using padding=MGF1
-class XMLSecuritySignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
+class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
+    """
+    An enumeration of signature methods supported by SignXML. See RFC 9231 for details.
+    """
+
     DSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#dsa-sha1"
     HMAC_SHA1 = "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
     RSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
@@ -72,36 +100,36 @@ class XMLSecuritySignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, En
 
 
 digest_algorithm_implementations = {
-    XMLSecurityDigestAlgorithm.SHA1: hashes.SHA1,
-    XMLSecurityDigestAlgorithm.SHA224: hashes.SHA224,
-    XMLSecurityDigestAlgorithm.SHA384: hashes.SHA384,
-    XMLSecurityDigestAlgorithm.SHA256: hashes.SHA256,
-    XMLSecurityDigestAlgorithm.SHA512: hashes.SHA512,
-    XMLSecurityDigestAlgorithm.SHA3_224: hashes.SHA3_224,
-    XMLSecurityDigestAlgorithm.SHA3_256: hashes.SHA3_256,
-    XMLSecurityDigestAlgorithm.SHA3_384: hashes.SHA3_384,
-    XMLSecurityDigestAlgorithm.SHA3_512: hashes.SHA3_512,
-    XMLSecuritySignatureMethod.DSA_SHA1: hashes.SHA1,
-    XMLSecuritySignatureMethod.HMAC_SHA1: hashes.SHA1,
-    XMLSecuritySignatureMethod.RSA_SHA1: hashes.SHA1,
-    XMLSecuritySignatureMethod.ECDSA_SHA1: hashes.SHA1,
-    XMLSecuritySignatureMethod.ECDSA_SHA224: hashes.SHA224,
-    XMLSecuritySignatureMethod.ECDSA_SHA256: hashes.SHA256,
-    XMLSecuritySignatureMethod.ECDSA_SHA384: hashes.SHA384,
-    XMLSecuritySignatureMethod.ECDSA_SHA512: hashes.SHA512,
-    XMLSecuritySignatureMethod.HMAC_SHA224: hashes.SHA224,
-    XMLSecuritySignatureMethod.HMAC_SHA256: hashes.SHA256,
-    XMLSecuritySignatureMethod.HMAC_SHA384: hashes.SHA384,
-    XMLSecuritySignatureMethod.HMAC_SHA512: hashes.SHA512,
-    XMLSecuritySignatureMethod.RSA_SHA224: hashes.SHA224,
-    XMLSecuritySignatureMethod.RSA_SHA256: hashes.SHA256,
-    XMLSecuritySignatureMethod.RSA_SHA384: hashes.SHA384,
-    XMLSecuritySignatureMethod.RSA_SHA512: hashes.SHA512,
-    XMLSecuritySignatureMethod.DSA_SHA256: hashes.SHA256,
-    XMLSecuritySignatureMethod.ECDSA_SHA3_224: hashes.SHA1,
-    XMLSecuritySignatureMethod.ECDSA_SHA3_256: hashes.SHA1,
-    XMLSecuritySignatureMethod.ECDSA_SHA3_384: hashes.SHA1,
-    XMLSecuritySignatureMethod.ECDSA_SHA3_512: hashes.SHA1,
-    XMLSecuritySignatureMethod.EDDSA_ED25519: hashes.SHA512,
-    XMLSecuritySignatureMethod.EDDSA_ED448: hashes.SHAKE256,
+    DigestAlgorithm.SHA1: hashes.SHA1,
+    DigestAlgorithm.SHA224: hashes.SHA224,
+    DigestAlgorithm.SHA384: hashes.SHA384,
+    DigestAlgorithm.SHA256: hashes.SHA256,
+    DigestAlgorithm.SHA512: hashes.SHA512,
+    DigestAlgorithm.SHA3_224: hashes.SHA3_224,
+    DigestAlgorithm.SHA3_256: hashes.SHA3_256,
+    DigestAlgorithm.SHA3_384: hashes.SHA3_384,
+    DigestAlgorithm.SHA3_512: hashes.SHA3_512,
+    SignatureMethod.DSA_SHA1: hashes.SHA1,
+    SignatureMethod.HMAC_SHA1: hashes.SHA1,
+    SignatureMethod.RSA_SHA1: hashes.SHA1,
+    SignatureMethod.ECDSA_SHA1: hashes.SHA1,
+    SignatureMethod.ECDSA_SHA224: hashes.SHA224,
+    SignatureMethod.ECDSA_SHA256: hashes.SHA256,
+    SignatureMethod.ECDSA_SHA384: hashes.SHA384,
+    SignatureMethod.ECDSA_SHA512: hashes.SHA512,
+    SignatureMethod.HMAC_SHA224: hashes.SHA224,
+    SignatureMethod.HMAC_SHA256: hashes.SHA256,
+    SignatureMethod.HMAC_SHA384: hashes.SHA384,
+    SignatureMethod.HMAC_SHA512: hashes.SHA512,
+    SignatureMethod.RSA_SHA224: hashes.SHA224,
+    SignatureMethod.RSA_SHA256: hashes.SHA256,
+    SignatureMethod.RSA_SHA384: hashes.SHA384,
+    SignatureMethod.RSA_SHA512: hashes.SHA512,
+    SignatureMethod.DSA_SHA256: hashes.SHA256,
+    SignatureMethod.ECDSA_SHA3_224: hashes.SHA1,
+    SignatureMethod.ECDSA_SHA3_256: hashes.SHA1,
+    SignatureMethod.ECDSA_SHA3_384: hashes.SHA1,
+    SignatureMethod.ECDSA_SHA3_512: hashes.SHA1,
+    SignatureMethod.EDDSA_ED25519: hashes.SHA512,
+    SignatureMethod.EDDSA_ED448: hashes.SHAKE256,
 }
