@@ -5,6 +5,7 @@ API documentation
 
 .. automodule:: signxml
    :members:
+   :imported-members:
 
 Change log
 ==========
