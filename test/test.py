@@ -24,6 +24,7 @@ from signxml import (  # noqa
     XMLSignatureProcessor,
     XMLSigner,
     XMLVerifier,
+    digest_algorithms,
     methods,
     namespaces,
 )
@@ -139,17 +140,17 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 XMLVerifier().verify(signed_data, **verify_kwargs)
                 XMLVerifier().verify(signed_data, parser=parser, **verify_kwargs)
                 res = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
-                self.assertIsInstance(res, VerifyResult)
+                self.assertIsInstance(res[0], VerifyResult)
                 for attr in "signed_data", "signed_xml", "signature_xml":
-                    self.assertTrue(hasattr(res, attr))
+                    self.assertTrue(hasattr(res[0], attr))
 
-                if res.signed_xml is not None:
+                if res[0].signed_xml is not None:
                     # Ensure the signature is not part of the signed data
-                    self.assertIsNone(res.signed_xml.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
-                    self.assertNotEqual(res.signed_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                    self.assertIsNone(res[0].signed_xml.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
+                    self.assertNotEqual(res[0].signed_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 # Ensure the signature was returned
-                self.assertEqual(res.signature_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                self.assertEqual(res[0].signature_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 if method == methods.enveloping:
                     with self.assertRaisesRegex(InvalidInput, "Unable to resolve reference URI"):
@@ -435,7 +436,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             reference_uri = ["assertionId", "assertion2"] if "assertion2" in d else "assertionId"
             signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
             res = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)
-            signed_data_root = res.signed_xml
+            signed_data_root = res[0].signed_xml
             ref = signed_root.xpath(
                 "/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference",
                 namespaces={
@@ -569,12 +570,10 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         "nonconformant-dss1770.xml": 3,
     }
     signature_policy = {
-        "Identifier": (
-            "http://www.facturae.es/politica_de_firma_formato_facturae/politica_de_firma_formato_facturae_v3_1.pdf"
-        ),
-        "Description": "Política de Firma FacturaE v3.1",
-        "DigestMethod": "sha1",
-        "DigestValue": b":\x18\xb1\x97\xab\xa9\x0f\xa6\xaf\xf0\xde\xe9\x12\xf0\xc0\x06\x11\x0b\xea\x13",
+        "Identifier": "urn:sbr:signature-policy:xml:2.0",
+        "Description": "Test description",
+        "DigestMethod": digest_algorithms.SHA256,
+        "DigestValue": "sVHhN1eqNH/PZ1B6h//ehyC1OwRQOrz/tJ3ZYaRrBgA=",
     }
     claimed_roles = ["signer"]
     data_object_format = {"Description": "Important Document", "MimeType": "text/xml"}
@@ -590,7 +589,9 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         )
         signed_doc = signer.sign(doc, key=key, cert=cert)
         verifier = XAdESVerifier()
-        verify_results = verifier.verify(signed_doc, x509_cert=cert, expect_references=3)
+        verify_results = verifier.verify(
+            signed_doc, x509_cert=cert, expect_references=3, expect_signature_policy=self.signature_policy
+        )
         self.assertIsInstance(verify_results[1], XAdESVerifyResult)
         self.assertTrue(hasattr(verify_results[1], "signed_properties"))
 
@@ -613,6 +614,8 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             kwargs = dict(x509_cert=cert, expect_references=self.expect_references.get(os.path.basename(sig_file), 2))
             if "nonconformant" in sig_file:
                 kwargs.update(validate_schema=False)
+            if "sigPolStore" in sig_file:
+                kwargs.update(expect_signature_policy=self.signature_policy)
             for condition, error in error_conditions.items():
                 if condition in sig_file:
                     with self.assertRaises(error):

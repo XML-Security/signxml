@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><album Id="root">
+    <title>Questions, unanswered</title>
+    <artist>Steve and the flubberblubs</artist>
+    <year>1989</year>
+    <tracks>
+        <song length="4:05" tracknumber="1">
+            <title>What do you know?</title>
+            <artist>Steve and the flubberblubs</artist>
+            <lastplayed>2006-10-17-08:31</lastplayed>
+        </song>
+        <song length="3:45" tracknumber="2">
+            <title>Who do you know?</title>
+            <artist>Steve and the flubberblubs</artist>
+            <lastplayed>2006-10-17-08:35</lastplayed>
+        </song>
+        <song length="5:14" tracknumber="3">
+            <title>When do you know?</title>
+            <artist>Steve and the flubberblubs</artist>
+            <lastplayed>2006-10-17-08:39</lastplayed>
+        </song>
+        <song length="4:19" tracknumber="4">
+            <title>Do you know?</title>
+            <artist>Steve and the flubberblubs</artist>
+            <lastplayed>2006-10-17-08:44</lastplayed>
+        </song>
+    </tracks>
+<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="xmldsig-a5b3d17f-74cd-402b-a4ba-af57a22c0894">
+<ds:SignedInfo>
+<ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+<ds:Reference Id="xmldsig-a5b3d17f-74cd-402b-a4ba-af57a22c0894-ref0" URI="#root">
+<ds:Transforms>
+<ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+</ds:Transforms>
+<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+<ds:DigestValue>rFhUNSbn59sfre23/DB2+uxCdaSCgsc/FFwhMiqKe7A=</ds:DigestValue>
+</ds:Reference>
+<ds:Reference Type="http://uri.etsi.org/01903#SignedProperties" URI="#xmldsig-a5b3d17f-74cd-402b-a4ba-af57a22c0894-signedprops">
+<ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+<ds:DigestValue>dnJSsh82D1T1mUYMRqYlbtSBt1h7e7Lyt/mKlbcdNSY=</ds:DigestValue>
+</ds:Reference>
+</ds:SignedInfo>
+<ds:SignatureValue Id="xmldsig-a5b3d17f-74cd-402b-a4ba-af57a22c0894-sigvalue">
+AMfT30WD59QnQVjBr6g+9uNcYeM5XSDP2D+kZr8owg1VjLHEGe74JLXNc7RnAy+oqliXvEopSQCH
++lGCKM6CqcLP3OoVQ1OX5fRS8uRmT6PgbRcaDTU0iQPE7wG0cBEpUIVhj71tG/+c0Ze8VrMnmgLX
+JDyks28YKvu0VVLHD0c=
+</ds:SignatureValue>
+<ds:KeyInfo>
+<ds:X509Data>
+<ds:X509SubjectName>CN=JOSÉ MANUEL DE CAMPOS LAGES GARCIA SIMÃO,2.5.4.5=#130b4249313039373034313639,2.5.4.42=#0c0c4a4f53c389204d414e55454c,2.5.4.4=#0c1d44452043414d504f53204c41474553204741524349412053494dc3834f,OU=Cidadão Português,OU=Autenticação do Cidadão,O=Cartão de Cidadão,C=PT</ds:X509SubjectName>
+<ds:X509IssuerSerial>
+<ds:X509IssuerName>CN=EC de Autenticação do Cartão de Cidadão 0004,OU=subECEstado,O=Cartão de Cidadão,C=PT</ds:X509IssuerName>
+<ds:X509SerialNumber>6188391070440742905</ds:X509SerialNumber>
+</ds:X509IssuerSerial>
+<ds:X509Certificate>
+MIIHOjCCBiKgAwIBAgIIVeGU5BzR3/kwDQYJKoZIhvcNAQEFBQAwfDELMAkGA1UEBhMCUFQxHDAa
+BgNVBAoME0NhcnTDo28gZGUgQ2lkYWTDo28xFDASBgNVBAsMC3N1YkVDRXN0YWRvMTkwNwYDVQQD
+DDBFQyBkZSBBdXRlbnRpY2HDp8OjbyBkbyBDYXJ0w6NvIGRlIENpZGFkw6NvIDAwMDQwHhcNMTAw
+NzE5MTMxNDE4WhcNMTUwNzE4MjMwMDAwWjCB+DELMAkGA1UEBhMCUFQxHDAaBgNVBAoME0NhcnTD
+o28gZGUgQ2lkYWTDo28xIzAhBgNVBAsMGkF1dGVudGljYcOnw6NvIGRvIENpZGFkw6NvMRwwGgYD
+VQQLDBNDaWRhZMOjbyBQb3J0dWd1w6pzMSYwJAYDVQQEDB1ERSBDQU1QT1MgTEFHRVMgR0FSQ0lB
+IFNJTcODTzEVMBMGA1UEKgwMSk9Tw4kgTUFOVUVMMRQwEgYDVQQFEwtCSTEwOTcwNDE2OTEzMDEG
+A1UEAwwqSk9Tw4kgTUFOVUVMIERFIENBTVBPUyBMQUdFUyBHQVJDSUEgU0lNw4NPMIGfMA0GCSqG
+SIb3DQEBAQUAA4GNADCBiQKBgQDTC3r1baabufb76Bdtqf5pgzYM2/yDvHilYdfWtIAtmKA+dZLn
+Sli6e90/5we8+EeRGFijMsfARjvtZoZQKwkxYYLTUriofbOhJXCSlbE1LeAWHr41c8XfGDnr1IDz
+PUFSws/Av/BG1tkxRzBkiVFBa50EXrfUnfcqjY+tmhqGowIDAQABo4IDxTCCA8EwDAYDVR0TAQH/
+BAIwADAOBgNVHQ8BAf8EBAMCA4gwHQYDVR0OBBYEFGdtPp4VTTNSRuDhjBgdpOMAuEZNMB8GA1Ud
+IwQYMBaAFHqcpgwkJ5wTnUbDM6eZUaYlhm10MIIB9QYDVR0gBIIB7DCCAegwgfIGCGCEbAEBAQIU
+MIHlMCgGCCsGAQUFBwIBFhxodHRwOi8vd3d3LnNjZWUuZ292LnB0L3BjZXJ0MIG4BggrBgEFBQcC
+AjCBqx6BqABPACAAYwBlAHIAdABpAGYAaQBjAGEAZABvACAAZQBtAGkAdABpAGQAbwAgAHMAZQBn
+AHUAbgBkAG8AIABlAHMAdABhACAAcABvAGwA7QB0AGkAYwBhACAA6QAgAHUAdABpAGwAaQB6AGEA
+ZABvACAAcABhAHIAYQAgAGEAdQB0AGUAbgB0AGkAYwBhAOcA4wBvACAAZABvACAAQwBpAGQAYQBk
+AOMAbzB4BgtghGwBAQECBAIABzBpMGcGCCsGAQUFBwIBFltodHRwOi8vcGtpLmNhcnRhb2RlY2lk
+YWRhby5wdC9wdWJsaWNvL3BvbGl0aWNhcy9kcGMvY2Nfc3ViLWVjX2NpZGFkYW9fYXV0ZW50aWNh
+Y2FvX2RwYy5odG1sMHcGDGCEbAEBAQIEAgABATBnMGUGCCsGAQUFBwIBFllodHRwOi8vcGtpLmNh
+cnRhb2RlY2lkYWRhby5wdC9wdWJsaWNvL3BvbGl0aWNhcy9wYy9jY19zdWItZWNfY2lkYWRhb19h
+dXRlbnRpY2FjYW9fcGMuaHRtbDBrBgNVHR8EZDBiMGCgXqBchlpodHRwOi8vcGtpLmNhcnRhb2Rl
+Y2lkYWRhby5wdC9wdWJsaWNvL2xyYy9jY19zdWItZWNfY2lkYWRhb19hdXRlbnRpY2FjYW9fY3Js
+MDAwNF9wMDAwMi5jcmwwcQYDVR0uBGowaDBmoGSgYoZgaHR0cDovL3BraS5jYXJ0YW9kZWNpZGFk
+YW8ucHQvcHVibGljby9scmMvY2Nfc3ViLWVjX2NpZGFkYW9fYXV0ZW50aWNhY2FvX2NybDAwMDRf
+ZGVsdGFfcDAwMDIuY3JsMEsGCCsGAQUFBwEBBD8wPTA7BggrBgEFBQcwAYYvaHR0cDovL29jc3Au
+YXVjLmNhcnRhb2RlY2lkYWRhby5wdC9wdWJsaWNvL29jc3AwEQYJYIZIAYb4QgEBBAQDAgCgMCgG
+A1UdCQQhMB8wHQYIKwYBBQUHCQExERgPMTk3NzAxMjcxMjAwMDBaMA0GCSqGSIb3DQEBBQUAA4IB
+AQDFzhs7E412+5uYT2SNlr9YBiOtq/Y5mm9HRBr0mvmKS+Y0oUj3NmS9Cy5CawHn01mglB5Q0Yk4
+6x2ATb2SA3G7iQy+fG/NHMKpNxhpbCQjvfD26FG2gTVYrfH3DuepebuysAjf/wgEUKK3QgG1EQhh
+0iww3+qCVyfsytTnxbURa51zBiH7wUhrdrdOJAzH8JfapcNUcyNnTtXbzzsHtXYaccrso/WDLyN8
+wASCaV98MgSOrUwYpLmSdLuL2nzC2GL4hYeLbIGoKyeou85ckgG40LR0c9g9UmIY7iN8yD+SjTyw
+NUuoyIiSo31TCD/e7MO4YvZwwf6lHNiZACspTSL7
+</ds:X509Certificate>
+</ds:X509Data>
+<ds:KeyValue>
+<ds:RSAKeyValue>
+<ds:Modulus>
+0wt69W2mm7n2++gXban+aYM2DNv8g7x4pWHX1rSALZigPnWS50pYunvdP+cHvPhHkRhYozLHwEY7
+7WaGUCsJMWGC01K4qH2zoSVwkpWxNS3gFh6+NXPF3xg569SA8z1BUsLPwL/wRtbZMUcwZIlRQWud
+BF631J33Ko2PrZoahqM=
+</ds:Modulus>
+<ds:Exponent>AQAB</ds:Exponent>
+</ds:RSAKeyValue>
+</ds:KeyValue>
+</ds:KeyInfo>
+<ds:Object><xades:QualifyingProperties xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" xmlns:xades141="http://uri.etsi.org/01903/v1.4.1#" Target="#xmldsig-a5b3d17f-74cd-402b-a4ba-af57a22c0894"><xades:SignedProperties Id="xmldsig-a5b3d17f-74cd-402b-a4ba-af57a22c0894-signedprops"><xades:SignedSignatureProperties><xades:SigningTime>2010-09-29T17:23:21.518+01:00</xades:SigningTime><xades:SigningCertificate><xades:Cert><xades:CertDigest><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>r+L6cPwxjWjlduBIEdat8I/6j0bMqWFQQu/8ml6oU8E=</ds:DigestValue></xades:CertDigest><xades:IssuerSerial><ds:X509IssuerName>CN=EC de Autenticação do Cartão de Cidadão 0004,OU=subECEstado,O=Cartão de Cidadão,C=PT</ds:X509IssuerName><ds:X509SerialNumber>6188391070440742905</ds:X509SerialNumber></xades:IssuerSerial></xades:Cert></xades:SigningCertificate></xades:SignedSignatureProperties></xades:SignedProperties></xades:QualifyingProperties></ds:Object>
+</ds:Signature></album>

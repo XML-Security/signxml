@@ -51,7 +51,9 @@ from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, 
 
 from .. import VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
 from ..exceptions import InvalidDigest, InvalidInput
-from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
+from ..util import SigningSettings
+from ..util import XMLSecurityDigestAlgorithm as digest_algorithms
+from ..util import add_pem_header, ds_tag, namespaces, xades_tag
 
 # TODO: make this a dataclass
 default_data_object_format = {"Description": "Default XAdES payload description", "MimeType": "text/xml"}
@@ -69,7 +71,7 @@ class XAdESProcessor(XMLSignatureProcessor):
 
 class XAdESSigner(XAdESProcessor, XMLSigner):
     """
-    - assert signature algorithm is not sha1
+    TODO: docs and signature forwarding for autodocs
     """
 
     def __init__(
@@ -80,7 +82,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        if self.sign_alg.startswith("hmac-"):
+        if self.sign_alg.name.startswith("HMAC_"):
             raise Exception("HMAC signatures are not supported by XAdES")
         self.signature_annotators.append(self._build_xades_ds_object)
         self._tokens_used: Dict[str, bool] = {}
@@ -145,11 +147,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         signed_info = self._find(sig_root, "SignedInfo")
         reference = SubElement(signed_info, ds_tag("Reference"), nsmap=self.namespaces)
         reference.set("URI", f"#{node_to_reference.get('Id')}")
-        digest_alg = self.known_digest_tags[self.digest_alg]
-        SubElement(reference, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg)
+        SubElement(reference, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=self.digest_alg.value)
         digest_value_node = SubElement(reference, ds_tag("DigestValue"), nsmap=self.namespaces)
         node_to_reference_c14n = self._c14n(node_to_reference, algorithm=self.c14n_alg)
-        digest = self._get_digest(node_to_reference_c14n, self._get_digest_method_by_tag(self.digest_alg))
+        digest = self._get_digest(node_to_reference_c14n, algorithm=self.digest_alg)
         digest_value_node.text = b64encode(digest).decode()
 
     def add_signing_time(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
@@ -169,11 +170,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             else:
                 loaded_cert = load_certificate(FILETYPE_PEM, add_pem_header(cert))
             der_encoded_cert = dump_certificate(FILETYPE_ASN1, loaded_cert)
-            digest_alg = self.known_digest_tags[self.digest_alg]
-            cert_digest_bytes = self._get_digest(der_encoded_cert, self._get_digest_method(digest_alg))
+            cert_digest_bytes = self._get_digest(der_encoded_cert, algorithm=self.digest_alg)
             cert_node = SubElement(signing_cert_v2, xades_tag("Cert"), nsmap=self.namespaces)
             cert_digest = SubElement(cert_node, xades_tag("CertDigest"), nsmap=self.namespaces)
-            SubElement(cert_digest, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg)
+            SubElement(cert_digest, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=self.digest_alg.value)
             digest_value_node = SubElement(cert_digest, ds_tag("DigestValue"), nsmap=self.namespaces)
             digest_value_node.text = b64encode(cert_digest_bytes).decode()
 
@@ -196,10 +196,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             description = SubElement(sig_policy_id, xades_tag("Description"), nsmap=self.namespaces)
             description.text = self.signature_policy["Description"]
             sig_policy_hash = SubElement(signature_policy_id, xades_tag("SigPolicyHash"), nsmap=self.namespaces)
-            digest_alg = self.known_digest_tags[self.signature_policy["DigestMethod"]]
-            SubElement(sig_policy_hash, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg)
+            digest_alg = digest_algorithms(self.signature_policy["DigestMethod"])
+            SubElement(sig_policy_hash, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg.value)
             digest_value_node = SubElement(sig_policy_hash, ds_tag("DigestValue"), nsmap=self.namespaces)
-            digest_value_node.text = b64encode(self.signature_policy["DigestValue"]).decode()
+            digest_value_node.text = self.signature_policy["DigestValue"]
 
     def add_signature_production_place(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
         # SignatureProductionPlace or SignatureProductionPlaceV2
@@ -234,19 +234,24 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
 
 class XAdESVerifier(XAdESProcessor, XMLVerifier):
     """
-    - implement registry of assertion callbacks
-    - assert signature algorithm is not hmac
+    FIXME: add docs
     """
+
+    # TODO: document/support SignatureTimeStamp / timestamp attestation
+    # SignatureTimeStamp is required by certain profiles but is an unsigned property
+
+    def _verify_signing_time(self, verify_result: VerifyResult):
+        pass
 
     def _verify_cert_digest(self, signing_cert_node, expect_cert):
         for cert in self._findall(signing_cert_node, "xades:Cert"):
             cert_digest = self._find(cert, "xades:CertDigest")
-            digest_alg = self._find(cert_digest, "DigestMethod").get("Algorithm")
+            digest_alg = digest_algorithms(self._find(cert_digest, "DigestMethod").get("Algorithm"))
             digest_value = self._find(cert_digest, "DigestValue")
             # check spec for specific method of retrieving cert
             der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
 
-            if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, self._get_digest_method(digest_alg)):
+            if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, algorithm=digest_alg):
                 raise InvalidDigest("Digest mismatch for certificate digest")
 
     def _verify_cert_digests(self, verify_result: VerifyResult):
@@ -272,23 +277,35 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             "xades:SignaturePolicyIdentifier/xades:SignaturePolicyId", namespaces=namespaces
         )
         if signature_policy_id is not None:
+            # FIXME: assert on all elements of self.expect_signature_policy
+            # FIXME: make signature policy into a dataclass
             sig_policy_id = self._find(signature_policy_id, "xades:SigPolicyId")
             identifier = self._find(sig_policy_id, "xades:Identifier")
+            if identifier.text != self.expect_signature_policy["Identifier"]:
+                raise InvalidInput(
+                    f"Expected to find signature policy identifier {self.expect_signature_policy['Identifier']}, "
+                    f"but found {identifier.text}"
+                )
             sig_policy_hash = self._find(signature_policy_id, "xades:SigPolicyHash")
-            digest_alg = self._find(sig_policy_hash, "DigestMethod").get("Algorithm")
+            digest_alg = digest_algorithms(self._find(sig_policy_hash, "DigestMethod").get("Algorithm"))
+            if digest_alg != self.expect_signature_policy["DigestMethod"]:
+                raise InvalidInput(
+                    f"Expected to find signature digest algorithm {self.expect_signature_policy['DigestMethod']}, "
+                    f"but found {digest_alg}"
+                )
             digest_value = self._find(sig_policy_hash, "DigestValue")
-            if b64decode(digest_value.text) != self._get_digest(
-                identifier.text.encode(), self._get_digest_method(digest_alg)
-            ):
-                pass  # FIXME
-                # raise InvalidDigest("Digest mismatch for signature policy hash")
+            if b64decode(digest_value.text) != b64decode(self.expect_signature_policy["DigestValue"]):
+                raise InvalidInput("Digest mismatch for signature policy hash")
 
     def _verify_signed_properties(self, verify_result):
+        self._verify_signing_time(verify_result)
         self._verify_cert_digests(verify_result)
-        self._verify_signature_policy(verify_result)
+        if self.expect_signature_policy:
+            self._verify_signature_policy(verify_result)
         return self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
 
-    def verify(self, data, expect_references=3, **kwargs):
+    def verify(self, data, expect_signature_policy=None, expect_references=3, **kwargs):
+        self.expect_signature_policy = expect_signature_policy
         verify_results = super().verify(data, expect_references=expect_references, **kwargs)
         for i, verify_result in enumerate(verify_results):
             if verify_result.signed_xml is None:
@@ -302,5 +319,4 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             raise InvalidInput("Expected to find a xades:SignedProperties element")
 
         # TODO: assert all mandatory signed properties are set
-        # TODO: add signed properties to verify_result
         return verify_results
