@@ -2,7 +2,6 @@ from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import Hash
@@ -92,7 +91,7 @@ class XMLSignatureProcessor(XMLProcessor):
 
     def _get_digest(self, data, algorithm: digest_algorithms):
         algorithm_implementation = digest_algorithm_implementations[algorithm]()
-        hasher = Hash(algorithm=algorithm_implementation, backend=default_backend())
+        hasher = Hash(algorithm=algorithm_implementation)
         hasher.update(data)
         return hasher.finalize()
 
@@ -324,9 +323,7 @@ class XMLSigner(XMLSignatureProcessor):
             raise InvalidInput('Parameter "key" is required')
         elif not self.sign_alg.name.startswith("HMAC_"):
             if isinstance(key, (str, bytes)):
-                signing_settings.key = load_pem_private_key(
-                    ensure_bytes(key), password=passphrase, backend=default_backend()
-                )
+                signing_settings.key = load_pem_private_key(ensure_bytes(key), password=passphrase)
             else:
                 signing_settings.key = key
 
@@ -354,9 +351,7 @@ class XMLSigner(XMLSignatureProcessor):
             signed_info_node, algorithm=self.c14n_alg, inclusive_ns_prefixes=signature_inclusive_ns_prefixes
         )
         if self.sign_alg.name.startswith("HMAC_"):
-            signer = HMAC(
-                key=key, algorithm=digest_algorithm_implementations[self.sign_alg](), backend=default_backend()
-            )
+            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())
             signer.update(signed_info_c14n)
             signature_value_node.text = b64encode(signer.finalize()).decode()
             sig_root.append(signature_value_node)
@@ -565,7 +560,7 @@ class XMLVerifier(XMLSignatureProcessor):
         self, signed_info_c14n, raw_signature, key_value, der_encoded_key_value, signature_alg
     ):
         if der_encoded_key_value is not None:
-            key = load_der_public_key(b64decode(der_encoded_key_value.text), backend=default_backend())
+            key = load_der_public_key(b64decode(der_encoded_key_value.text))
 
         digest_algorithm_implementation = digest_algorithm_implementations[signature_alg]()
         if signature_alg.name.startswith("ECDSA_"):
@@ -578,7 +573,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 y = bytes_to_long(key_data[len(key_data) // 2 :])
                 curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
                 ecpn = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class())  # type: ignore
-                key = ecpn.public_key(backend=default_backend())
+                key = ecpn.public_key()
             elif not isinstance(key, ec.EllipticCurvePublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             dss_signature = self._encode_dss_signature(raw_signature, key.key_size)
@@ -593,7 +588,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
                 dsapn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
-                key = dsapn.public_key(backend=default_backend())  # type: ignore
+                key = dsapn.public_key()  # type: ignore
             elif not isinstance(key, dsa.DSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
@@ -604,7 +599,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 rsa_key_value = self._find(key_value, "RSAKeyValue")
                 modulus = self._get_long(rsa_key_value, "Modulus")
                 exponent = self._get_long(rsa_key_value, "Exponent")
-                key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key(backend=default_backend())
+                key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key()
             elif not isinstance(key, rsa.RSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             key.verify(
@@ -884,11 +879,7 @@ class XMLVerifier(XMLSignatureProcessor):
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
-            signer = HMAC(
-                key=ensure_bytes(self.hmac_key),
-                algorithm=digest_algorithm_implementations[signature_alg](),
-                backend=default_backend(),
-            )
+            signer = HMAC(key=ensure_bytes(self.hmac_key), algorithm=digest_algorithm_implementations[signature_alg]())
             signer.update(signed_info_c14n)
             if raw_signature != signer.finalize():
                 raise InvalidSignature("Signature mismatch (HMAC)")
@@ -983,7 +974,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
     def check_der_key_value_matches_cert_public_key(self, der_encoded_key_value, public_key, signature_alg):
         # TODO: Add a test case for this functionality
-        der_public_key = load_der_public_key(b64decode(der_encoded_key_value.text), backend=default_backend())
+        der_public_key = load_der_public_key(b64decode(der_encoded_key_value.text))
 
         if (
             signature_alg.name.startswith("ECDSA_")

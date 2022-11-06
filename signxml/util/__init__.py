@@ -15,7 +15,7 @@ from enum import Enum, auto
 from typing import Any, List, Optional
 from xml.etree import ElementTree as stdlibElementTree
 
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, hmac
 from lxml import etree
 
 from ..exceptions import InvalidCertificate, InvalidInput, RedundantCert, SignXMLException
@@ -318,10 +318,7 @@ class XMLProcessor:
 
 
 def hmac_sha1(key, message):
-    from cryptography.hazmat.backends import default_backend
-    from cryptography.hazmat.primitives import hashes, hmac
-
-    hasher = hmac.HMAC(key, hashes.SHA1(), backend=default_backend())
+    hasher = hmac.HMAC(key, hashes.SHA1())
     hasher.update(message)
     return hasher.finalize()
 

@@ -10,7 +10,6 @@ from glob import glob
 from xml.etree import ElementTree as stdlibElementTree
 
 import cryptography.exceptions
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from lxml import etree
 
@@ -81,9 +80,9 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         )
         self.keys = dict(
             hmac=b"secret",
-            rsa=rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend()),
-            dsa=dsa.generate_private_key(key_size=1024, backend=default_backend()),
-            ecdsa=ec.generate_private_key(curve=ec.SECP384R1(), backend=default_backend()),
+            rsa=rsa.generate_private_key(public_exponent=65537, key_size=2048),
+            dsa=dsa.generate_private_key(key_size=1024),
+            ecdsa=ec.generate_private_key(curve=ec.SECP384R1()),
         )
 
     def test_basic_signxml_statements(self):
@@ -230,7 +229,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             from OpenSSL.crypto import X509
 
             with open(os.path.join(interop_dir, "TR2012", "rsa-cert.der"), "rb") as fh:
-                return [X509.from_cryptography(load_der_x509_certificate(fh.read(), backend=default_backend()))]
+                return [X509.from_cryptography(load_der_x509_certificate(fh.read()))]
 
         signature_files = glob(os.path.join(interop_dir, "TR2012", "signature*.xml"))
         for signature_file in signature_files:
