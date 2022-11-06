@@ -61,7 +61,7 @@ def xades141_tag(tag):
 @dataclass
 class SigningSettings:
     key: Any
-    key_name: str
+    key_name: Optional[str]
     key_info: Any
     always_add_key_value: bool
     cert_chain: Optional[List]

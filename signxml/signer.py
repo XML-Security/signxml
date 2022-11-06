@@ -1,14 +1,20 @@
 from base64 import b64encode
-from typing import Union
+from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
-from lxml.etree import Element, SubElement
+from lxml.etree import Element, SubElement, _Element
 from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
 
-from .algorithms import DigestAlgorithm, SignatureMethod, SignatureType, digest_algorithm_implementations
+from .algorithms import (
+    CanonicalizationMethod,
+    DigestAlgorithm,
+    SignatureMethod,
+    SignatureType,
+    digest_algorithm_implementations,
+)
 from .exceptions import InvalidInput
 from .processor import XMLSignatureProcessor
 from .util import (
@@ -50,10 +56,10 @@ class XMLSigner(XMLSignatureProcessor):
         method: SignatureType = SignatureType.enveloped,
         signature_algorithm: Union[SignatureMethod, str] = SignatureMethod.RSA_SHA256,
         digest_algorithm: Union[DigestAlgorithm, str] = DigestAlgorithm.SHA256,
-        c14n_algorithm=XMLSignatureProcessor.default_c14n_algorithm,
+        c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_1,
     ):
         if method is None or method not in SignatureType:
-            raise InvalidInput("Unknown signature method {}".format(method))
+            raise InvalidInput(f"Unknown signature method {method}")
         self.signature_type = method
         if isinstance(signature_algorithm, str) and "#" not in signature_algorithm:
             self.sign_alg = SignatureMethod.from_fragment(signature_algorithm)
@@ -63,8 +69,7 @@ class XMLSigner(XMLSignatureProcessor):
             self.digest_alg = DigestAlgorithm.from_fragment(digest_algorithm)
         else:
             self.digest_alg = DigestAlgorithm(digest_algorithm)
-        assert c14n_algorithm in self.known_c14n_algorithms
-        self.c14n_alg = c14n_algorithm
+        self.c14n_alg = CanonicalizationMethod(c14n_algorithm)
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
         self.signature_annotators = [self._add_key_info]
@@ -73,15 +78,15 @@ class XMLSigner(XMLSignatureProcessor):
         self,
         data,
         key=None,
-        passphrase=None,
+        passphrase: Optional[bytes] = None,
         cert=None,
-        reference_uri=None,
-        key_name=None,
-        key_info=None,
-        id_attribute=None,
-        always_add_key_value=False,
-        payload_inclusive_ns_prefixes=frozenset(),
-        signature_inclusive_ns_prefixes=frozenset(),
+        reference_uri: Optional[Union[str, List[str]]] = None,
+        key_name: Optional[str] = None,
+        key_info: Optional[_Element] = None,
+        id_attribute: Optional[str] = None,
+        always_add_key_value: bool = False,
+        payload_inclusive_ns_prefixes: Optional[List[str]] = None,
+        signature_inclusive_ns_prefixes: Optional[List[str]] = None,
         signature_properties=None,
     ):
         """
@@ -100,7 +105,6 @@ class XMLSigner(XMLSignatureProcessor):
             :py:class:`cryptography.hazmat.primitives.interfaces.DSAPrivateKey`, or
             :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePrivateKey` object
         :param passphrase: Passphrase to use to decrypt the key, if any.
-        :type passphrase: string
         :param cert:
             X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an
             array of strings or OpenSSL.crypto.X509 objects containing the certificate and a chain of intermediate
@@ -110,30 +114,24 @@ class XMLSigner(XMLSignatureProcessor):
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
             signed.
-        :type reference_uri: string or list
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
-        :type key_name: string
         :param key_info:
             A custom KeyInfo element to insert in the signature. Use this to supply ``<wsse:SecurityTokenReference>``
             or other custom key references. An example value can be found here:
             https://github.com/XML-Security/signxml/blob/master/test/wsse_keyinfo.xml
-        :type key_info: :py:class:`lxml.etree.Element`
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
-        :type id_attribute: string
         :param always_add_key_value:
             Write the key value to the KeyInfo element even if a X509 certificate is present. Use of this parameter
             is discouraged, as it introduces an ambiguity and a security hazard. The public key used to sign the
             document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
             KeyValue or make sure it matches what's in the certificate. This parameter is provided for compatibility
             purposes only.
-        :type always_add_key_value: boolean
         :param payload_inclusive_ns_prefixes:
             Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
             content referenced by the signature (**InclusiveNamespaces PrefixList**).
-        :type inclusive_ns_prefixes: list
         :param signature_inclusive_ns_prefixes:
             Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
             signature itself (**InclusiveNamespaces PrefixList**).
@@ -161,9 +159,9 @@ class XMLSigner(XMLSignatureProcessor):
             cert_chain = cert
 
         if isinstance(reference_uri, (str, bytes)):
-            reference_uris = [reference_uri]
+            input_reference_uris = [reference_uri]
         else:
-            reference_uris = reference_uri
+            input_reference_uris = reference_uri  # type: ignore
 
         signing_settings = SigningSettings(
             key=None,
@@ -181,7 +179,7 @@ class XMLSigner(XMLSignatureProcessor):
             else:
                 signing_settings.key = key
 
-        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, reference_uris)
+        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, input_reference_uris)
 
         if self.signature_type == SignatureType.detached and signature_properties is not None:
             reference_uris.append("#prop")
@@ -324,7 +322,7 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
-        sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg)
+        sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg.value)
         if sig_insp:
             SubElement(sig_c14n_method, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(sig_insp))
 
@@ -334,9 +332,9 @@ class XMLSigner(XMLSignatureProcessor):
             transforms = SubElement(reference, ds_tag("Transforms"))
             if self.signature_type == SignatureType.enveloped:
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg.value)
             else:
-                c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg)
+                c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg.value)
                 if payload_insp:
                     SubElement(c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(payload_insp))
 
@@ -356,8 +354,8 @@ class XMLSigner(XMLSignatureProcessor):
             signature_property = Element(
                 ds_tag("SignatureProperty"),
                 attrib={
-                    "Id": el.attrib.pop("Id", "sigprop{}".format(i)),
-                    "Target": el.attrib.pop("Target", "#sigproptarget{}".format(i)),
+                    "Id": el.attrib.pop("Id", f"sigprop{i}"),
+                    "Target": el.attrib.pop("Target", f"#sigproptarget{i}"),
                 },
             )
             signature_property.append(el)

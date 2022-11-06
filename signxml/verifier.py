@@ -12,8 +12,8 @@ from OpenSSL.crypto import Error as OpenSSLCryptoError
 from OpenSSL.crypto import load_certificate
 from OpenSSL.crypto import verify as openssl_verify
 
-from .algorithms import DigestAlgorithm, SignatureMethod, digest_algorithm_implementations
-from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature  # noqa
+from .algorithms import CanonicalizationMethod, DigestAlgorithm, SignatureMethod, digest_algorithm_implementations
+from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
 from .processor import XMLSignatureProcessor
 from .util import (
     _remove_sig,
@@ -59,10 +59,15 @@ class XMLVerifier(XMLSignatureProcessor):
             return self._find(root, "Signature", anywhere=True)
 
     def _verify_signature_with_pubkey(
-        self, signed_info_c14n, raw_signature, key_value, der_encoded_key_value, signature_alg
-    ):
+        self,
+        signed_info_c14n: bytes,
+        raw_signature: bytes,
+        key_value: etree._Element,
+        der_encoded_key_value: Optional[etree._Element],
+        signature_alg: SignatureMethod,
+    ) -> None:
         if der_encoded_key_value is not None:
-            key = load_der_public_key(b64decode(der_encoded_key_value.text))
+            key = load_der_public_key(b64decode(der_encoded_key_value.text))  # type: ignore
 
         digest_algorithm_implementation = digest_algorithm_implementations[signature_alg]()
         if signature_alg.name.startswith("ECDSA_"):
@@ -94,7 +99,7 @@ class XMLVerifier(XMLSignatureProcessor):
             elif not isinstance(key, dsa.DSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
-            dss_signature = self._encode_dss_signature(raw_signature, len(raw_signature) * 8 / 2)
+            dss_signature = self._encode_dss_signature(raw_signature, len(raw_signature) * 8 // 2)
             key.verify(dss_signature, data=signed_info_c14n, algorithm=digest_algorithm_implementation)
         elif signature_alg.name.startswith("RSA_"):
             if key_value is not None:
@@ -113,7 +118,7 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             raise NotImplementedError()
 
-    def _encode_dss_signature(self, raw_signature, key_size_bits):
+    def _encode_dss_signature(self, raw_signature: bytes, key_size_bits: int) -> bytes:
         want_raw_signature_len = bits_to_bytes_unit(key_size_bits) * 2
         if len(raw_signature) != want_raw_signature_len:
             raise InvalidSignature(
@@ -131,7 +136,7 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             return inclusive_namespaces.get("PrefixList").split(" ")
 
-    def _apply_transforms(self, payload, transforms_node, signature, c14n_algorithm):
+    def _apply_transforms(self, payload, transforms_node, signature, c14n_algorithm: CanonicalizationMethod):
         transforms, c14n_applied = [], False
         if transforms_node is not None:
             transforms = self._findall(transforms_node, "Transform")
@@ -146,10 +151,15 @@ class XMLVerifier(XMLSignatureProcessor):
 
         for transform in transforms:
             algorithm = transform.get("Algorithm")
-            if algorithm in self.known_c14n_algorithms:
-                inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(transform)
-                payload = self._c14n(payload, algorithm=algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes)
-                c14n_applied = True
+            try:
+                c14n_algorithm_from_transform = CanonicalizationMethod(algorithm)
+            except ValueError:
+                continue
+            inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(transform)
+            payload = self._c14n(
+                payload, algorithm=c14n_algorithm_from_transform, inclusive_ns_prefixes=inclusive_ns_prefixes
+            )
+            c14n_applied = True
 
         if not c14n_applied and not isinstance(payload, (str, bytes)):
             payload = self._c14n(payload, algorithm=c14n_algorithm)
@@ -172,7 +182,7 @@ class XMLVerifier(XMLSignatureProcessor):
         id_attribute: Optional[str] = None,
         expect_references: Union[int, bool] = 1,
         ignore_ambiguous_key_info: bool = False,
-    ) -> List[VerifyResult]:
+    ) -> Union[VerifyResult, List[VerifyResult]]:
         """
         Verify the XML signature supplied in the data and return a list of **VerifyResult** data structures
         representing the data signed by the signature, or raise an exception if the signature is not valid. By default,
@@ -274,7 +284,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         signed_info = self._find(signature, "SignedInfo")
         c14n_method = self._find(signed_info, "CanonicalizationMethod")
-        c14n_algorithm = c14n_method.get("Algorithm")
+        c14n_algorithm = CanonicalizationMethod(c14n_method.get("Algorithm"))
         inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(c14n_method)
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
@@ -331,7 +341,7 @@ class XMLVerifier(XMLSignatureProcessor):
                     lib, func, reason = e.args[0][0]
                 except Exception:
                     reason = e
-                raise InvalidSignature("Signature verification failed: {}".format(reason))
+                raise InvalidSignature(f"Signature verification failed: {reason}")
 
             # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
             if key_value is not None:
@@ -408,7 +418,7 @@ class XMLVerifier(XMLSignatureProcessor):
             msg = "Expected to find {} references, but found {}"
             raise InvalidSignature(msg.format(expect_references, len(verify_results)))
 
-        return verify_results
+        return verify_results if expect_references > 1 else verify_results[0]
 
     def validate_schema(self, signature):
         last_exception = None

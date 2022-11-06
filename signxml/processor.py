@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.hashes import Hash
 from lxml import etree
 
-from .algorithms import DigestAlgorithm, digest_algorithm_implementations
+from .algorithms import CanonicalizationMethod, DigestAlgorithm, digest_algorithm_implementations
 from .exceptions import InvalidInput
 from .util import namespaces
 
@@ -75,15 +75,6 @@ class XMLSignatureProcessor(XMLProcessor):
     }
     known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.items()}  # type: ignore
 
-    known_c14n_algorithms = {
-        "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
-        "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments",
-        "http://www.w3.org/2001/10/xml-exc-c14n#",
-        "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
-        "http://www.w3.org/2006/12/xml-c14n11",
-        "http://www.w3.org/2006/12/xml-c14n11#WithComments",
-    }
-    default_c14n_algorithm = "http://www.w3.org/2006/12/xml-c14n11"
     excise_empty_xmlns_declarations = False
 
     id_attributes: Tuple[str, ...] = ("Id", "ID", "id", "xml:id")
@@ -104,7 +95,7 @@ class XMLSignatureProcessor(XMLProcessor):
             result = element.find(namespace + ":" + query, namespaces=namespaces)
 
         if require and result is None:
-            raise InvalidInput("Expected to find XML element {} in {}".format(query, element.tag))
+            raise InvalidInput(f"Expected to find XML element {query} in {element.tag}")
         return result
 
     def _findall(self, element, query, anywhere=False):
@@ -116,12 +107,12 @@ class XMLSignatureProcessor(XMLProcessor):
         else:
             return element.findall(namespace + ":" + query, namespaces=namespaces)
 
-    def _c14n(self, nodes, algorithm, inclusive_ns_prefixes=None):
+    def _c14n(self, nodes, algorithm: CanonicalizationMethod, inclusive_ns_prefixes=None):
         exclusive, with_comments = False, False
 
-        if algorithm.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
+        if algorithm.value.startswith("http://www.w3.org/2001/10/xml-exc-c14n#"):
             exclusive = True
-        if algorithm.endswith("#WithComments"):
+        if algorithm.value.endswith("#WithComments"):
             with_comments = True
 
         if not isinstance(nodes, list):
@@ -152,17 +143,17 @@ class XMLSignatureProcessor(XMLProcessor):
             # doc_root.xpath(uri.lstrip("#"))[0]
         elif uri.startswith("#"):
             for id_attribute in self.id_attributes:
-                xpath_query = "//*[@*[local-name() = '{}']=$uri]".format(id_attribute)
+                xpath_query = f"//*[@*[local-name() = '{id_attribute}']=$uri]"
                 results = doc_root.xpath(xpath_query, uri=uri.lstrip("#"))
                 if len(results) > 1:
-                    raise InvalidInput("Ambiguous reference URI {} resolved to {} nodes".format(uri, len(results)))
+                    raise InvalidInput(f"Ambiguous reference URI {uri} resolved to {len(results)} nodes")
                 elif len(results) == 1:
                     return results[0]
-            raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
+            raise InvalidInput(f"Unable to resolve reference URI: {uri}")
         else:
             if uri_resolver is None:
-                raise InvalidInput("External URI dereferencing is not configured: {}".format(uri))
+                raise InvalidInput(f"External URI dereferencing is not configured: {uri}")
             result = uri_resolver(uri)
             if result is None:
-                raise InvalidInput("Unable to resolve reference URI: {}".format(uri))
+                raise InvalidInput(f"Unable to resolve reference URI: {uri}")
             return result

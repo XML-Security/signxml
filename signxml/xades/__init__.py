@@ -306,6 +306,8 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def verify(self, data, expect_signature_policy=None, expect_references=3, **kwargs):
         self.expect_signature_policy = expect_signature_policy
         verify_results = super().verify(data, expect_references=expect_references, **kwargs)
+        if not isinstance(verify_results, list):
+            raise InvalidInput("Expected to find multiple references in signature")
         for i, verify_result in enumerate(verify_results):
             if verify_result.signed_xml is None:
                 continue

@@ -14,7 +14,8 @@ from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from signxml import (  # noqa
+from signxml import (  # noqa:E402
+    CanonicalizationMethod,
     DigestAlgorithm,
     InvalidCertificate,
     InvalidDigest,
@@ -42,7 +43,7 @@ def reset_tree(t, method):
 
 class URIResolver(etree.Resolver):
     def resolve(self, url, id, context):
-        print("Resolving URL '%s'" % url)
+        print(f"Resolving URL '{url}'")
         return None
 
 
@@ -88,6 +89,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         )
 
     def test_basic_signxml_statements(self):
+        self.assertEqual(SignatureMethod.RSA_SHA256.value, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
+        self.assertEqual(SignatureType.enveloped, methods.enveloped)
         with self.assertRaisesRegex(InvalidInput, "Unknown signature method"):
             signer = XMLSigner(method=None)
 
@@ -100,7 +103,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         c14n_algs = {
             "http://www.w3.org/2001/10/xml-exc-c14n#",
             "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
-            XMLSignatureProcessor.default_c14n_algorithm,
         }
 
         all_methods = itertools.product(digest_algs, sig_algs, hash_algs, methods, c14n_algs)
@@ -141,17 +143,17 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 XMLVerifier().verify(signed_data, **verify_kwargs)
                 XMLVerifier().verify(signed_data, parser=parser, **verify_kwargs)
                 res = XMLVerifier().verify(signed_data, id_attribute="Id", **verify_kwargs)
-                self.assertIsInstance(res[0], VerifyResult)
+                self.assertIsInstance(res, VerifyResult)
                 for attr in "signed_data", "signed_xml", "signature_xml":
-                    self.assertTrue(hasattr(res[0], attr))
+                    self.assertTrue(hasattr(res, attr))
 
-                if res[0].signed_xml is not None:
+                if res.signed_xml is not None:
                     # Ensure the signature is not part of the signed data
-                    self.assertIsNone(res[0].signed_xml.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
-                    self.assertNotEqual(res[0].signed_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                    self.assertIsNone(res.signed_xml.find(".//{http://www.w3.org/2000/09/xmldsig#}Signature"))
+                    self.assertNotEqual(res.signed_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 # Ensure the signature was returned
-                self.assertEqual(res[0].signature_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
+                self.assertEqual(res.signature_xml.tag, "{http://www.w3.org/2000/09/xmldsig#}Signature")
 
                 if method == methods.enveloping:
                     with self.assertRaisesRegex(InvalidInput, "Unable to resolve reference URI"):
@@ -385,16 +387,16 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     elif "TR2012" not in signature_file:
                         raise
 
-    def test_signxml_changing_signature_namespace_prefix(self):
+    def test_changing_signature_namespace_prefix(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
         signer.namespaces = dict(digi_sign=namespaces["ds"])
         signed = signer.sign(data, key=self.keys["rsa"])
         signed_data = etree.tostring(signed)
-        expected_match = ("<digi_sign:Signature xmlns:" 'digi_sign="%s">') % namespaces["ds"]
+        expected_match = f'<digi_sign:Signature xmlns:digi_sign="{namespaces["ds"]}">'
         self.assertTrue(re.search(expected_match.encode("ascii"), signed_data))
 
-    def test_signxml_changing_signature_namespace_prefix_to_default(self):
+    def test_changing_signature_namespace_prefix_to_default(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
         ns = dict()
@@ -402,7 +404,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         signer.namespaces = ns
         signed = signer.sign(data, key=self.keys["rsa"])
         signed_data = etree.tostring(signed)
-        expected_match = ('<Signature xmlns="%s">') % namespaces["ds"]
+        expected_match = f'<Signature xmlns="{namespaces["ds"]}">'
         self.assertTrue(re.search(expected_match.encode("ascii"), signed_data))
 
     def test_elementtree_compat(self):
@@ -410,34 +412,36 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         signer = XMLSigner()
         signer.sign(data, key=self.keys["rsa"])
 
+    saml_test_vectors = [
+        """<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                            xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="responseId">
+            <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                            xmlns:xs="http://www.w3.org/2001/XMLSchema" ID="assertionId">
+            <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
+            </saml:Assertion>
+            </samlp:Response>""",
+        """<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                            xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Id="responseId">
+            <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                            xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertionId">
+            <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
+            </saml:Assertion>
+            <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                            xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertion2">
+            </saml:Assertion>
+            </samlp:Response>""",
+    ]
+
     def test_reference_uris_and_custom_key_info(self):
         crt, key = self.load_example_keys()
 
         # Both ID and Id formats. XPath 1 doesn't have case insensitive attribute search
-        for d in [
-            """<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
-                                     xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="responseId">
-                      <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                                      xmlns:xs="http://www.w3.org/2001/XMLSchema" ID="assertionId">
-                       <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
-                      </saml:Assertion>
-                     </samlp:Response>""",
-            """<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
-                                     xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" Id="responseId">
-                      <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                                      xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertionId">
-                       <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="placeholder" />
-                      </saml:Assertion>
-                      <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                                      xmlns:xs="http://www.w3.org/2001/XMLSchema" Id="assertion2">
-                      </saml:Assertion>
-                     </samlp:Response>""",
-        ]:
+        for d in self.saml_test_vectors:
             data = etree.fromstring(d)
             reference_uri = ["assertionId", "assertion2"] if "assertion2" in d else "assertionId"
             signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
             res = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)
-            signed_data_root = res[0].signed_xml
+            signed_data_root = res.signed_xml
             ref = signed_root.xpath(
                 "/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference",
                 namespaces={
@@ -483,6 +487,29 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 self.assertIn("Expected to find 1 references, but found 2", str(e))
             expect_refs = etree.tostring(s4).decode().count("<ds:Reference")
             XMLVerifier().verify(s4, x509_cert=crt, ignore_ambiguous_key_info=True, expect_references=expect_refs)
+
+    def test_inclusive_namespaces_signing(self):
+        # Test exclusive canonicalization with InclusiveNamespace PrefixList
+        data = etree.fromstring(self.saml_test_vectors[0])
+        reference_uri = "assertionId"
+        signer = XMLSigner(
+            c14n_algorithm="http://www.w3.org/2001/10/xml-exc-c14n#", signature_algorithm=SignatureMethod.HMAC_SHA256
+        )
+        sign_args = dict(data=data, reference_uri=reference_uri, key=b"secret")
+        signed_with_insp = signer.sign(
+            signature_inclusive_ns_prefixes=["saml", "samlp", "ds"],
+            payload_inclusive_ns_prefixes=["saml", "samlp", "ds"],
+            **sign_args,
+        )
+        self.assertEqual(
+            signed_with_insp.find(".//ds:SignatureValue", namespaces=namespaces).text,
+            "V3HwLySk6TmkPFlqtOU3xCln1Cga7v30rFqy8ZmJITA=",
+        )
+        signed_without_insp = signer.sign(**sign_args)
+        self.assertEqual(
+            signed_without_insp.find(".//ds:SignatureValue", namespaces=namespaces).text,
+            "2Sk3E2SZwQCqX2STDkplw5JJp1ATAB5wsdRdQBAe/7o=",
+        )
 
     def test_excision_of_untrusted_comments(self):
         pass  # TODO: test comments excision
@@ -548,7 +575,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
     def test_payload_c14n(self):
         doc = etree.fromstring('<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>')
         self.assertEqual(
-            XMLVerifier()._c14n(doc, algorithm=""), b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>'
+            XMLSignatureProcessor()._c14n(doc, algorithm=CanonicalizationMethod.CANONICAL_XML_1_1),
+            b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>',
         )
 
 
