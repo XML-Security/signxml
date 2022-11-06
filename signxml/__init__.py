@@ -14,17 +14,18 @@ from OpenSSL.crypto import Error as OpenSSLCryptoError
 from OpenSSL.crypto import dump_certificate, load_certificate
 from OpenSSL.crypto import verify as openssl_verify
 
+from .algorithms import XMLSecurityDigestAlgorithm as digest_algorithms
+from .algorithms import XMLSecuritySignatureMethod as signature_methods
+from .algorithms import XMLSignatureMethods as methods
+from .algorithms import digest_algorithm_implementations
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature  # noqa
-from .util import SigningSettings, XMLProcessor
-from .util import XMLSecurityDigestAlgorithm as digest_algorithms
-from .util import XMLSecuritySignatureMethod as signature_methods
-from .util import XMLSignatureMethods as methods
 from .util import (
+    SigningSettings,
+    XMLProcessor,
     _remove_sig,
     add_pem_header,
     bits_to_bytes_unit,
     bytes_to_long,
-    digest_algorithm_implementations,
     ds_tag,
     dsig11_tag,
     ec_tag,

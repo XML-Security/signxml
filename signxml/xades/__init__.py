@@ -50,10 +50,9 @@ from lxml.etree import SubElement
 from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, load_certificate
 
 from .. import VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
+from ..algorithms import XMLSecurityDigestAlgorithm as digest_algorithms
 from ..exceptions import InvalidDigest, InvalidInput
-from ..util import SigningSettings
-from ..util import XMLSecurityDigestAlgorithm as digest_algorithms
-from ..util import add_pem_header, ds_tag, namespaces, xades_tag
+from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
 
 # TODO: make this a dataclass
 default_data_object_format = {"Description": "Default XAdES payload description", "MimeType": "text/xml"}
