@@ -54,8 +54,19 @@ from ..algorithms import DigestAlgorithm
 from ..exceptions import InvalidDigest, InvalidInput
 from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
 
-# TODO: make this a dataclass
-default_data_object_format = {"Description": "Default XAdES payload description", "MimeType": "text/xml"}
+
+@dataclass
+class XAdESSignaturePolicy:
+    Identifier: str
+    Description: str
+    DigestMethod: DigestAlgorithm
+    DigestValue: str
+
+
+@dataclass
+class XAdESDataObjectFormat:
+    Description: str = "Default XAdES payload description"
+    MimeType: str = "text/xml"
 
 
 @dataclass
@@ -75,9 +86,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
 
     def __init__(
         self,
-        signature_policy: Optional[Dict] = None,
+        signature_policy: Optional[XAdESSignaturePolicy] = None,
         claimed_roles: Optional[List] = None,
-        data_object_format: Dict = default_data_object_format,
+        data_object_format: Optional[XAdESDataObjectFormat] = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -97,6 +108,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         ]
         self.signature_policy = signature_policy
         self.claimed_roles = claimed_roles
+        if data_object_format is None:
+            data_object_format = XAdESDataObjectFormat()
         self.data_object_format = data_object_format
         self.namespaces.update(xades=namespaces.xades)
 
@@ -191,14 +204,14 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             )
             sig_policy_id = SubElement(signature_policy_id, xades_tag("SigPolicyId"), nsmap=self.namespaces)
             identifier = SubElement(sig_policy_id, xades_tag("Identifier"), nsmap=self.namespaces)
-            identifier.text = self.signature_policy["Identifier"]
+            identifier.text = self.signature_policy.Identifier
             description = SubElement(sig_policy_id, xades_tag("Description"), nsmap=self.namespaces)
-            description.text = self.signature_policy["Description"]
+            description.text = self.signature_policy.Description
             sig_policy_hash = SubElement(signature_policy_id, xades_tag("SigPolicyHash"), nsmap=self.namespaces)
-            digest_alg = DigestAlgorithm(self.signature_policy["DigestMethod"])
+            digest_alg = DigestAlgorithm(self.signature_policy.DigestMethod)
             SubElement(sig_policy_hash, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=digest_alg.value)
             digest_value_node = SubElement(sig_policy_hash, ds_tag("DigestValue"), nsmap=self.namespaces)
-            digest_value_node.text = self.signature_policy["DigestValue"]
+            digest_value_node.text = self.signature_policy.DigestValue
 
     def add_signature_production_place(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
         # SignatureProductionPlace or SignatureProductionPlaceV2
@@ -226,9 +239,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             ObjectReference=f"#{reference.get('Id')}",
         )
         description = SubElement(data_object_format, xades_tag("Description"), nsmap=self.namespaces)
-        description.text = self.data_object_format["Description"]
+        description.text = self.data_object_format.Description
         mime_type = SubElement(data_object_format, xades_tag("MimeType"), nsmap=self.namespaces)
-        mime_type.text = self.data_object_format["MimeType"]
+        mime_type.text = self.data_object_format.MimeType
 
 
 class XAdESVerifier(XAdESProcessor, XMLVerifier):
@@ -276,24 +289,22 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             "xades:SignaturePolicyIdentifier/xades:SignaturePolicyId", namespaces=namespaces
         )
         if signature_policy_id is not None:
-            # FIXME: assert on all elements of self.expect_signature_policy
-            # FIXME: make signature policy into a dataclass
             sig_policy_id = self._find(signature_policy_id, "xades:SigPolicyId")
             identifier = self._find(sig_policy_id, "xades:Identifier")
-            if identifier.text != self.expect_signature_policy["Identifier"]:
+            if identifier.text != self.expect_signature_policy.Identifier:
                 raise InvalidInput(
-                    f"Expected to find signature policy identifier {self.expect_signature_policy['Identifier']}, "
+                    f"Expected to find signature policy identifier {self.expect_signature_policy.Identifier}, "
                     f"but found {identifier.text}"
                 )
             sig_policy_hash = self._find(signature_policy_id, "xades:SigPolicyHash")
             digest_alg = DigestAlgorithm(self._find(sig_policy_hash, "DigestMethod").get("Algorithm"))
-            if digest_alg != self.expect_signature_policy["DigestMethod"]:
+            if digest_alg != self.expect_signature_policy.DigestMethod:
                 raise InvalidInput(
-                    f"Expected to find signature digest algorithm {self.expect_signature_policy['DigestMethod']}, "
+                    f"Expected to find signature digest algorithm {self.expect_signature_policy.DigestMethod}, "
                     f"but found {digest_alg}"
                 )
             digest_value = self._find(sig_policy_hash, "DigestValue")
-            if b64decode(digest_value.text) != b64decode(self.expect_signature_policy["DigestValue"]):
+            if b64decode(digest_value.text) != b64decode(self.expect_signature_policy.DigestValue):
                 raise InvalidInput("Digest mismatch for signature policy hash")
 
     def _verify_signed_properties(self, verify_result):

@@ -13,6 +13,8 @@ import cryptography.exceptions
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from lxml import etree
 
+from signxml.signer import XMLSignatureReference
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from signxml import (  # noqa:E402
     CanonicalizationMethod,
@@ -30,7 +32,13 @@ from signxml import (  # noqa:E402
     methods,
     namespaces,
 )
-from signxml.xades import XAdESSigner, XAdESVerifier, XAdESVerifyResult  # noqa
+from signxml.xades import (  # noqa:E402
+    XAdESDataObjectFormat,
+    XAdESSignaturePolicy,
+    XAdESSigner,
+    XAdESVerifier,
+    XAdESVerifyResult,
+)
 
 
 def reset_tree(t, method):
@@ -493,14 +501,11 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         data = etree.fromstring(self.saml_test_vectors[0])
         reference_uri = "assertionId"
         signer = XMLSigner(
-            c14n_algorithm="http://www.w3.org/2001/10/xml-exc-c14n#", signature_algorithm=SignatureMethod.HMAC_SHA256
+            c14n_algorithm=CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0,
+            signature_algorithm=SignatureMethod.HMAC_SHA256,
         )
         sign_args = dict(data=data, reference_uri=reference_uri, key=b"secret")
-        signed_with_insp = signer.sign(
-            signature_inclusive_ns_prefixes=["saml", "samlp", "ds"],
-            payload_inclusive_ns_prefixes=["saml", "samlp", "ds"],
-            **sign_args,
-        )
+        signed_with_insp = signer.sign(inclusive_ns_prefixes=["saml", "samlp", "ds"], **sign_args)
         self.assertEqual(
             signed_with_insp.find(".//ds:SignatureValue", namespaces=namespaces).text,
             "V3HwLySk6TmkPFlqtOU3xCln1Cga7v30rFqy8ZmJITA=",
@@ -509,6 +514,22 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         self.assertEqual(
             signed_without_insp.find(".//ds:SignatureValue", namespaces=namespaces).text,
             "2Sk3E2SZwQCqX2STDkplw5JJp1ATAB5wsdRdQBAe/7o=",
+        )
+        # Test different c14n methods for signature and payload
+        ref = XMLSignatureReference(
+            URI=reference_uri, c14n_method=CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0
+        )
+        sign_args = dict(data=data, reference_uri=[ref], key=b"secret")
+        signed = signer.sign(**sign_args)
+        self.assertEqual(
+            signed.find(".//ds:SignatureValue", namespaces=namespaces).text,
+            "2Sk3E2SZwQCqX2STDkplw5JJp1ATAB5wsdRdQBAe/7o=",
+        )
+        sign_args["reference_uri"][0].c14n_method = CanonicalizationMethod.CANONICAL_XML_1_0
+        signed2 = signer.sign(**sign_args)
+        self.assertEqual(
+            signed2.find(".//ds:SignatureValue", namespaces=namespaces).text,
+            "8GPAVJstDxHyuoJqec8C0ssji4zfdXanu1YHGlWbfx0=",
         )
 
     def test_excision_of_untrusted_comments(self):
@@ -598,14 +619,14 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         "nonconformant-Signature-X-ES-103.xml": 3,
         "nonconformant-dss1770.xml": 3,
     }
-    signature_policy = {
-        "Identifier": "urn:sbr:signature-policy:xml:2.0",
-        "Description": "Test description",
-        "DigestMethod": DigestAlgorithm.SHA256,
-        "DigestValue": "sVHhN1eqNH/PZ1B6h//ehyC1OwRQOrz/tJ3ZYaRrBgA=",
-    }
+    signature_policy = XAdESSignaturePolicy(
+        Identifier="urn:sbr:signature-policy:xml:2.0",
+        Description="Test description",
+        DigestMethod=DigestAlgorithm.SHA256,
+        DigestValue="sVHhN1eqNH/PZ1B6h//ehyC1OwRQOrz/tJ3ZYaRrBgA=",
+    )
     claimed_roles = ["signer"]
-    data_object_format = {"Description": "Important Document", "MimeType": "text/xml"}
+    data_object_format = XAdESDataObjectFormat(Description="Important Document", MimeType="text/xml")
 
     def test_xades_roundtrip(self):
         cert, key = self.load_example_keys()

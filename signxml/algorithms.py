@@ -7,7 +7,7 @@ from .exceptions import InvalidInput
 
 class SignatureType(Enum):
     """
-    An enumeration of the structural type of signature supported by SignXML.
+    An enumeration of structural signature types supported by SignXML.
     """
 
     enveloped = auto()
@@ -100,6 +100,10 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 
 
 class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
+    """
+    An enumeration of XML canonicalization methods supported by SignXML. See RFC 9231 for details.
+    """
+
     CANONICAL_XML_1_0 = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
     CANONICAL_XML_1_0_WITH_COMMENTS = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments"
     CANONICAL_XML_1_1 = "http://www.w3.org/2006/12/xmlc14n11#"

@@ -1,5 +1,5 @@
 # isort: skip_file
-from .signer import XMLSigner  # noqa:F401
+from .signer import XMLSigner, XMLSignatureReference  # noqa:F401
 from .verifier import XMLVerifier, VerifyResult  # noqa:F401
 from .algorithms import DigestAlgorithm, SignatureMethod, CanonicalizationMethod, SignatureType  # noqa:F401
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature  # noqa:F401

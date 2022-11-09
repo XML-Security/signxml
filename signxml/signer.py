@@ -1,4 +1,5 @@
 from base64 import b64encode
+from dataclasses import dataclass
 from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import ec, utils
@@ -30,6 +31,26 @@ from .util import (
     namespaces,
     strip_pem_header,
 )
+
+
+@dataclass
+class XMLSignatureReference:
+    URI: str
+    """
+    The reference URI, for example ``#elementId`` to refer to an element whose Id attribute is set to ``elementId``.
+    """
+
+    c14n_method: Optional[CanonicalizationMethod] = None
+    """
+    Use this parameter to set a canonicalization method for the reference value that is distinct from that for the
+    signature itself.
+    """
+
+    inclusive_ns_prefixes: Optional[List] = None
+    """
+    When using exclusive XML canonicalization, use this parameter to provide a list of XML namespace prefixes whose
+    declarations should be preserved when canonicalizing the reference value (**InclusiveNamespaces PrefixList**).
+    """
 
 
 class XMLSigner(XMLSignatureProcessor):
@@ -80,13 +101,12 @@ class XMLSigner(XMLSignatureProcessor):
         key=None,
         passphrase: Optional[bytes] = None,
         cert=None,
-        reference_uri: Optional[Union[str, List[str]]] = None,
+        reference_uri: Optional[Union[str, List[str], List[XMLSignatureReference]]] = None,
         key_name: Optional[str] = None,
         key_info: Optional[_Element] = None,
         id_attribute: Optional[str] = None,
         always_add_key_value: bool = False,
-        payload_inclusive_ns_prefixes: Optional[List[str]] = None,
-        signature_inclusive_ns_prefixes: Optional[List[str]] = None,
+        inclusive_ns_prefixes: Optional[List[str]] = None,
         signature_properties=None,
     ):
         """
@@ -113,7 +133,8 @@ class XMLSigner(XMLSignatureProcessor):
         :param reference_uri:
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
-            signed.
+            signed. To specify extra options specific to each reference URI, pass a list of one or more
+            XMLSignatureReference objects.
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
@@ -129,13 +150,13 @@ class XMLSigner(XMLSignatureProcessor):
             document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
             KeyValue or make sure it matches what's in the certificate. This parameter is provided for compatibility
             purposes only.
-        :param payload_inclusive_ns_prefixes:
+        :param inclusive_ns_prefixes:
             Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
-            content referenced by the signature (**InclusiveNamespaces PrefixList**).
-        :param signature_inclusive_ns_prefixes:
-            Provide a list of XML namespace prefixes whose declarations should be preserved when canonicalizing the
-            signature itself (**InclusiveNamespaces PrefixList**).
-        :type signature_inclusive_ns_prefixes: list
+            signature (**InclusiveNamespaces PrefixList**).
+
+            To specify this value separately for reference canonicalizaition, pass a list of one or more
+            XMLSignatureReference objects as the ``reference_uri`` keyword argument, and set the
+            ``inclusive_ns_prefixes`` attribute on those objects.
         :param signature_properties:
             One or more Elements that are to be included in the SignatureProperies section when using the detached
             method.
@@ -158,10 +179,7 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             cert_chain = cert
 
-        if isinstance(reference_uri, (str, bytes)):
-            input_reference_uris = [reference_uri]
-        else:
-            input_reference_uris = reference_uri  # type: ignore
+        input_references = self._preprocess_reference_uri(reference_uri)
 
         signing_settings = SigningSettings(
             key=None,
@@ -179,10 +197,10 @@ class XMLSigner(XMLSignatureProcessor):
             else:
                 signing_settings.key = key
 
-        sig_root, doc_root, c14n_inputs, reference_uris = self._unpack(data, input_reference_uris)
+        sig_root, doc_root, c14n_inputs, references = self._unpack(data, input_references)
 
         if self.signature_type == SignatureType.detached and signature_properties is not None:
-            reference_uris.append("#prop")
+            references.append(XMLSignatureReference(URI="#prop"))
             if signature_properties is not None and not isinstance(signature_properties, list):
                 signature_properties = [signature_properties]
             signature_properties_el = self._build_signature_properties(signature_properties)
@@ -190,17 +208,16 @@ class XMLSigner(XMLSignatureProcessor):
 
         signed_info_node, signature_value_node = self._build_sig(
             sig_root,
-            reference_uris,
-            c14n_inputs,
-            sig_insp=signature_inclusive_ns_prefixes,
-            payload_insp=payload_inclusive_ns_prefixes,
+            references=references,
+            c14n_inputs=c14n_inputs,
+            inclusive_ns_prefixes=inclusive_ns_prefixes,
         )
 
         for signature_annotator in self.signature_annotators:
             signature_annotator(sig_root, signing_settings=signing_settings)
 
         signed_info_c14n = self._c14n(
-            signed_info_node, algorithm=self.c14n_alg, inclusive_ns_prefixes=signature_inclusive_ns_prefixes
+            signed_info_node, algorithm=self.c14n_alg, inclusive_ns_prefixes=inclusive_ns_prefixes
         )
         if self.sign_alg.name.startswith("HMAC_"):
             signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())
@@ -238,6 +255,16 @@ class XMLSigner(XMLSignatureProcessor):
 
         return doc_root if self.signature_type == SignatureType.enveloped else sig_root
 
+    def _preprocess_reference_uri(self, reference_uris):
+        if reference_uris is None:
+            return None
+        if isinstance(reference_uris, (str, bytes)):
+            reference_uris = [reference_uris]
+        references = list(
+            ref if isinstance(ref, XMLSignatureReference) else XMLSignatureReference(URI=ref) for ref in reference_uris
+        )
+        return references
+
     def _add_key_info(self, sig_root, signing_settings: SigningSettings):
         if self.sign_alg.name.startswith("HMAC_"):
             return
@@ -261,25 +288,24 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             sig_root.append(signing_settings.key_info)
 
-    def _get_c14n_inputs_from_reference_uris(self, doc_root, reference_uris):
-        c14n_inputs, new_reference_uris = [], []
-        for reference_uri in reference_uris:
-            if not reference_uri.startswith("#"):
-                reference_uri = "#" + reference_uri
-            c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {"URI": reference_uri})))
-            new_reference_uris.append(reference_uri)
-        return c14n_inputs, new_reference_uris
+    def _get_c14n_inputs_from_references(self, doc_root, references: List[XMLSignatureReference]):
+        c14n_inputs, new_references = [], []
+        for reference in references:
+            uri = reference.URI if reference.URI.startswith("#") else "#" + reference.URI
+            c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {"URI": uri})))
+            new_references.append(XMLSignatureReference(URI=uri, c14n_method=reference.c14n_method))
+        return c14n_inputs, new_references
 
-    def _unpack(self, data, reference_uris):
+    def _unpack(self, data, references: List[XMLSignatureReference]):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         if self.signature_type == SignatureType.enveloped:
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             doc_root = self.get_root(data)
             c14n_inputs = [self.get_root(data)]
-            if reference_uris is not None:
+            if references is not None:
                 # Only sign the referenced element(s)
-                c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
+                c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
 
             signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
             if len(signature_placeholders) == 0:
@@ -295,19 +321,21 @@ class XMLSigner(XMLSignatureProcessor):
             else:
                 raise InvalidInput("Enveloped signature input contains more than one placeholder")
 
-            if reference_uris is None:
+            if references is None:
                 # Set default reference URIs based on signed data ID attribute values
-                reference_uris = []
+                references = []
                 for c14n_input in c14n_inputs:
                     payload_id = c14n_input.get("Id", c14n_input.get("ID"))
-                    reference_uris.append("#{}".format(payload_id) if payload_id is not None else "")
+                    uri = "#{}".format(payload_id) if payload_id is not None else ""
+                    references.append(XMLSignatureReference(URI=uri))
         elif self.signature_type == SignatureType.detached:
             doc_root = self.get_root(data)
-            if reference_uris is None:
-                reference_uris = ["#{}".format(data.get("Id", data.get("ID", "object")))]
+            if references is None:
+                uri = "#{}".format(data.get("Id", data.get("ID", "object")))
+                references = [XMLSignatureReference(URI=uri)]
                 c14n_inputs = [self.get_root(data)]
             try:
-                c14n_inputs, reference_uris = self._get_c14n_inputs_from_reference_uris(doc_root, reference_uris)
+                c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
             except InvalidInput:  # Dummy reference URI
                 c14n_inputs = [self.get_root(data)]
         elif self.signature_type == SignatureType.enveloping:
@@ -317,30 +345,38 @@ class XMLSigner(XMLSignatureProcessor):
                 c14n_inputs[0].text = data
             else:
                 c14n_inputs[0].append(self.get_root(data))
-            reference_uris = ["#object"]
-        return sig_root, doc_root, c14n_inputs, reference_uris
+            references = [XMLSignatureReference(URI="#object")]
+        return sig_root, doc_root, c14n_inputs, references
 
-    def _build_sig(self, sig_root, reference_uris, c14n_inputs, sig_insp, payload_insp):
+    def _build_sig(self, sig_root, references, c14n_inputs, inclusive_ns_prefixes):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg.value)
-        if sig_insp:
-            SubElement(sig_c14n_method, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(sig_insp))
+        if inclusive_ns_prefixes:
+            SubElement(sig_c14n_method, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(inclusive_ns_prefixes))
 
         SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=self.sign_alg.value)
-        for i, reference_uri in enumerate(reference_uris):
-            reference = SubElement(signed_info, ds_tag("Reference"), URI=reference_uri)
-            transforms = SubElement(reference, ds_tag("Transforms"))
+        for i, reference in enumerate(references):
+            if reference.c14n_method is None:
+                reference.c14n_method = self.c14n_alg
+            if reference.inclusive_ns_prefixes is None:
+                reference.inclusive_ns_prefixes = inclusive_ns_prefixes
+            reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
+            transforms = SubElement(reference_node, ds_tag("Transforms"))
             if self.signature_type == SignatureType.enveloped:
                 SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
-                SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg.value)
+                SubElement(transforms, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
             else:
-                c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=self.c14n_alg.value)
-                if payload_insp:
-                    SubElement(c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(payload_insp))
+                c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
+                if reference.inclusive_ns_prefixes:
+                    SubElement(
+                        c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(reference.inclusive_ns_prefixes)
+                    )
 
-            SubElement(reference, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
-            digest_value = SubElement(reference, ds_tag("DigestValue"))
-            payload_c14n = self._c14n(c14n_inputs[i], algorithm=self.c14n_alg, inclusive_ns_prefixes=payload_insp)
+            SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
+            digest_value = SubElement(reference_node, ds_tag("DigestValue"))
+            payload_c14n = self._c14n(
+                c14n_inputs[i], algorithm=reference.c14n_method, inclusive_ns_prefixes=reference.inclusive_ns_prefixes
+            )
             digest = self._get_digest(payload_c14n, algorithm=self.digest_alg)
             digest_value.text = b64encode(digest).decode()
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))

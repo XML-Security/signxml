@@ -175,17 +175,22 @@ SignXML supports signing and verifying documents using `XAdES <https://en.wikipe
 
 .. code-block:: python
 
-    from signxml.xades import XAdESSigner, XAdESVerifier, XAdESVerifyResult, digest_algorithms
-    signature_policy = {
-        "Identifier": "MyPolicyIdentifier",
-        "Description": "Hello XAdES",
-        "DigestMethod": digest_algorithms.SHA256,
-        "DigestValue": "Ohixl6upD6av8N7pEvDABhEL6hM=",
-    }
+    from signxml.xades import (XAdESSigner, XAdESVerifier, XAdESVerifyResult,
+                               XAdESSignaturePolicy, XAdESDataObjectFormat, DigestAlgorithm)
+    signature_policy = XAdESSignaturePolicy(
+        Identifier="MyPolicyIdentifier",
+        Description="Hello XAdES",
+        DigestMethod=DigestAlgorithm.SHA256,
+        DigestValue="Ohixl6upD6av8N7pEvDABhEL6hM=",
+    )
+    data_object_format = XAdESDataObjectFormat(
+        Description="My XAdES signature",
+        MimeType="text/xml",
+    )
     signer = XAdESSigner(
         signature_policy=signature_policy,
         claimed_roles=["signer"],
-        data_object_format={"Description": "My XAdES signature", "MimeType": "text/xml"},
+        data_object_format=data_object_format,
         c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
     )
     signed_doc = signer.sign(doc, key=private_key, cert=certificate)
@@ -217,6 +222,7 @@ Links
 * `W3C Working Group Note: XML Signature Best Practices <http://www.w3.org/TR/xmldsig-bestpractices/>`_
 * `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
+* `RFC 9231: Additional XML Security Uniform Resource Identifiers (URIs) <https://www.rfc-editor.org/rfc/rfc9231.html>`_
 * `XMLSec: Related links <https://www.aleksey.com/xmlsec/related.html>`_
 * `OWASP SAML Security Cheat Sheet <https://www.owasp.org/index.php/SAML_Security_Cheat_Sheet>`_
 * `Okta Developer Docs: SAML <https://developer.okta.com/standards/SAML/>`_
