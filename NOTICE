@@ -1,0 +1,5 @@
+SignXML is a free open source implementation of the XML Signature and XAdES standards. The SignXML project is staffed by
+volunteers. If you are using this library in a for-profit project, please contribute to SignXML development and
+maintenance using the "Sponsor" button on the SignXML GitHub project page, https://github.com/XML-Security/signxml. If
+you are looking for support with your commercial XML Signature or XAdES based application, please donate and contact
+SignXML developers using the issue tracker on the SignXML project page or the contact information listed in README.rst.

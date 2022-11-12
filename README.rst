@@ -3,10 +3,13 @@ SignXML: XML Signature in Python
 
 *SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard in
 Python. This standard (also known as XMLDSig and `RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_) is used to provide
-payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_ and
-`WS-Security <https://en.wikipedia.org/wiki/WS-Security>`_, among other uses. Two versions of the standard exist
-(`Version 1.1 <http://www.w3.org/TR/xmldsig-core1/>`_ and `Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_).
-*SignXML* implements all of the required components of the standard, and most recommended ones. Its features are:
+payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, `XAdES <https://en.wikipedia.org/wiki/XAdES>`_,
+and `WS-Security <https://en.wikipedia.org/wiki/WS-Security>`_, among other uses. Two versions of the standard are in
+use (`Version 1.1 <http://www.w3.org/TR/xmldsig-core1/>`_, a finalized
+`W3C Recommendation <https://www.w3.org/standards/types#REC>`_, and
+`Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_, a draft
+`W3C Working Group Note <https://www.w3.org/standards/types#NOTE>`_). *SignXML* implements all of the required components
+of the Version 1.1 standard, and most recommended ones. Its features are:
 
 * Use of a libxml2-based XML parser configured to defend against
   `common XML attacks <https://docs.python.org/3/library/xml.html#xml-vulnerabilities>`_ when verifying signatures
@@ -117,8 +120,8 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
  domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
 
-XML signature methods: enveloped, detached, enveloping
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+XML signature construction methods: enveloped, detached, enveloping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
 detached, and enveloping signature. Enveloped is the default method. To specify the type of signature that you want to
 generate, pass the ``method`` argument to ``sign()``:
@@ -133,7 +136,7 @@ For detached signatures, the code above will use the ``Id`` or ``ID`` attribute 
 ``sign()``. To verify a detached signature that refers to an external entity, pass a callable resolver in
 ``XMLVerifier().verify(data, uri_resolver=...)``.
 
-See the `API documentation <https://xml-security.github.io/signxml/#id5>`_ for more.
+See the `API documentation <https://xml-security.github.io/signxml/#id5>`_ for more details.
 
 
 XML representation details: Configuring namespace prefixes and whitespace
@@ -141,8 +144,8 @@ XML representation details: Configuring namespace prefixes and whitespace
 Some applications require a particular namespace prefix configuration - for example, a number of applications assume
 that the ``http://www.w3.org/2000/09/xmldsig#`` namespace is set as the default, unprefixed namespace instead of using
 the customary ``ds:`` prefix. While in normal use namespace prefix naming is an insignificant representation detail,
-it is significant for XML canonicalization and signature purposes. To configure the namespace prefix map when generating
-a signature, set the ``XMLSigner.namespaces`` attribute:
+it can be significant in some XML canonicalization and signature configurations. To configure the namespace prefix map
+when generating a signature, set the ``XMLSigner.namespaces`` attribute:
 
 .. code-block:: python
 
@@ -171,6 +174,10 @@ references for more information:
 
 XAdES signatures
 ~~~~~~~~~~~~~~~~
+`XAdES ("XML Advanced Electronic Signatures") <https://en.wikipedia.org/wiki/XAdES>`_ is a standard for attaching
+metadata to XML Signature objects. This standard is endorsed by the European Union as the implementation for its
+`eSignature <https://ec.europa.eu/digital-building-blocks/wikis/display/DIGITAL/eSignature+Overview>`_ regulations.
+
 SignXML supports signing and verifying documents using `XAdES <https://en.wikipedia.org/wiki/XAdES>`_ signatures:
 
 .. code-block:: python
@@ -207,7 +214,7 @@ SignXML supports signing and verifying documents using `XAdES <https://en.wikipe
 
 Authors
 -------
-* Andrey Kislyuk
+* `Andrey Kislyuk <https://github.com/kislyuk>`_ and SignXML contributors.
 
 Links
 -----
@@ -233,7 +240,9 @@ Please report bugs, issues, feature requests, etc. on `GitHub <https://github.co
 
 License
 -------
-Licensed under the terms of the `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_.
+Copyright 2014-2022, Andrey Kislyuk and SignXML contributors. Licensed under the terms of the
+`Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_. Distribution of the LICENSE and NOTICE
+files with source copies of this package and derivative works is **REQUIRED** as specified by the Apache License.
 
 .. image:: https://github.com/XML-Security/signxml/workflows/Test%20suite/badge.svg
         :target: https://github.com/XML-Security/signxml/actions
