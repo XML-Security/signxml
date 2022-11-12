@@ -33,26 +33,26 @@ class XMLProcessor:
             return self._default_parser
         return self._parser
 
-    def fromstring(self, xml_string, **kwargs):
+    def _fromstring(self, xml_string, **kwargs):
         xml_node = etree.fromstring(xml_string, parser=self.parser, **kwargs)
         for entity in xml_node.iter(etree.Entity):
             raise InvalidInput("Entities are not supported in XML input")
         return xml_node
 
-    def tostring(self, xml_node, **kwargs):
+    def _tostring(self, xml_node, **kwargs):
         return etree.tostring(xml_node, **kwargs)
 
     def get_root(self, data):
         if isinstance(data, (str, bytes)):
-            return self.fromstring(data)
+            return self._fromstring(data)
         elif isinstance(data, stdlibElementTree.Element):
             # TODO: add debug level logging statement re: performance impact here
-            return self.fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
+            return self._fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
         else:
             # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
             # We use a copy so we can modify the tree
             # TODO: turn this off for xmlenc
-            return self.fromstring(etree.tostring(data))
+            return self._fromstring(etree.tostring(data))
 
 
 class XMLSignatureProcessor(XMLProcessor):

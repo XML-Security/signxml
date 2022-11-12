@@ -27,7 +27,7 @@ Installation
 ------------
 ::
 
-    pip3 install signxml
+    pip install signxml
 
 Note: SignXML depends on `lxml <https://github.com/lxml/lxml>`_ and `cryptography
 <https://github.com/pyca/cryptography>`_, which in turn depend on `OpenSSL <https://www.openssl.org/>`_, `LibXML

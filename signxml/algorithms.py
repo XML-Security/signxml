@@ -1,19 +1,22 @@
 from enum import Enum, auto
+from typing import Callable
 
 from cryptography.hazmat.primitives import hashes
 
 from .exceptions import InvalidInput
 
 
-class SignatureType(Enum):
+class SignatureConstructionMethod(Enum):
     """
-    An enumeration of structural signature types supported by SignXML.
+    An enumeration of signature construction methods supported by SignXML, used to specify the method when signing.
+    See the list of signature types under `XML Signature Syntax and Processing Version 2.0, Definitions
+    <http://www.w3.org/TR/xmldsig-core2/#sec-Definitions>`_.
     """
 
     enveloped = auto()
     """
     The signature is over the XML content that contains the signature as an element. The content provides the root
-    XML document element.
+    XML document element. This is the most common XML signature type in modern applications.
     """
 
     enveloping = auto()
@@ -63,14 +66,18 @@ class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     SHA3_512 = "http://www.w3.org/2007/05/xmldsig-more#sha3-512"
 
     @property
-    def implementation(self):
+    def implementation(self) -> Callable:
+        """
+        The cryptography callable that implements the specified algorithm.
+        """
         return digest_algorithm_implementations[self]
 
 
 # TODO: check if padding errors are fixed by using padding=MGF1
 class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     """
-    An enumeration of signature methods supported by SignXML. See RFC 9231 for details.
+    An enumeration of signature methods (also referred to as signature algorithms) supported by SignXML. See RFC 9231
+    for details.
     """
 
     DSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#dsa-sha1"
@@ -101,7 +108,8 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 
 class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     """
-    An enumeration of XML canonicalization methods supported by SignXML. See RFC 9231 for details.
+    An enumeration of XML canonicalization methods (also referred to as canonicalization algorithms) supported by
+    SignXML. See RFC 9231 for details.
     """
 
     CANONICAL_XML_1_0 = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"

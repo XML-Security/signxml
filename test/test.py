@@ -23,8 +23,8 @@ from signxml import (  # noqa:E402
     InvalidDigest,
     InvalidInput,
     InvalidSignature,
+    SignatureConstructionMethod,
     SignatureMethod,
-    SignatureType,
     VerifyResult,
     XMLSignatureProcessor,
     XMLSigner,
@@ -98,8 +98,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
     def test_basic_signxml_statements(self):
         self.assertEqual(SignatureMethod.RSA_SHA256.value, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
-        self.assertEqual(SignatureType.enveloped, methods.enveloped)
-        with self.assertRaisesRegex(InvalidInput, "Unknown signature method"):
+        self.assertEqual(SignatureConstructionMethod.enveloped, methods.enveloped)
+        with self.assertRaisesRegex(InvalidInput, "Unknown signature construction method"):
             signer = XMLSigner(method=None)
 
         with self.assertRaisesRegex(InvalidInput, "must be an XML element"):

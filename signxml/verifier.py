@@ -48,8 +48,7 @@ class VerifyResult:
 
 class XMLVerifier(XMLSignatureProcessor):
     """
-    Create a new XML Signature Verifier object, which can be used to hold configuration information and verify multiple
-    pieces of data.
+    Create a new XML Signature Verifier object, which can be used to verify multiple pieces of data.
     """
 
     def _get_signature(self, root):
@@ -184,7 +183,7 @@ class XMLVerifier(XMLSignatureProcessor):
         ignore_ambiguous_key_info: bool = False,
     ) -> Union[VerifyResult, List[VerifyResult]]:
         """
-        Verify the XML signature supplied in the data and return a list of **VerifyResult** data structures
+        Verify the XML signature supplied in the data and return a list of :class:`VerifyResult` data structures
         representing the data signed by the signature, or raise an exception if the signature is not valid. By default,
         this requires the signature to be generated using a valid X.509 certificate. To enable other means of signature
         validation, set the **require_x509** argument to `False`.
@@ -277,7 +276,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_ref = self._get_signature(root)
 
         # HACK: deep copy won't keep root's namespaces
-        signature = self.fromstring(self.tostring(signature_ref))
+        signature = self._fromstring(self._tostring(signature_ref))
 
         if validate_schema:
             self.validate_schema(signature)
@@ -346,7 +345,7 @@ class XMLVerifier(XMLSignatureProcessor):
             # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
             if key_value is not None:
                 if (
-                    self.check_key_value_matches_cert_public_key(key_value, signing_cert.get_pubkey(), signature_alg)
+                    self._check_key_value_matches_cert_public_key(key_value, signing_cert.get_pubkey(), signature_alg)
                     is False
                 ):
                     if ignore_ambiguous_key_info is False:
@@ -360,7 +359,7 @@ class XMLVerifier(XMLSignatureProcessor):
             # mismatch
             if der_encoded_key_value is not None:
                 if (
-                    self.check_der_key_value_matches_cert_public_key(
+                    self._check_der_key_value_matches_cert_public_key(
                         der_encoded_key_value, signing_cert.get_pubkey(), signature_alg
                     )
                     is False
@@ -397,7 +396,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         verify_results: List[VerifyResult] = []
         for reference in self._findall(signed_info, "Reference"):
-            copied_root = self.fromstring(self.tostring(root))
+            copied_root = self._fromstring(self._tostring(root))
             copied_signature_ref = self._get_signature(copied_root)
             transforms = self._find(reference, "Transforms", require=False)
             digest_alg = self._find(reference, "DigestMethod").get("Algorithm")
@@ -409,7 +408,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
             # We return the signed XML (and only that) to ensure no access to unsigned data happens
             try:
-                payload_c14n_xml = self.fromstring(payload_c14n)
+                payload_c14n_xml = self._fromstring(payload_c14n)
             except etree.XMLSyntaxError:
                 payload_c14n_xml = None
             verify_results.append(VerifyResult(payload_c14n, payload_c14n_xml, signature))
@@ -430,7 +429,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 last_exception = e
         raise last_exception  # type: ignore
 
-    def check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: SignatureMethod):
+    def _check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: SignatureMethod):
         if signature_alg.name.startswith("ECDSA_") and isinstance(
             public_key.to_cryptography_key(), ec.EllipticCurvePublicKey
         ):
@@ -472,7 +471,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         raise NotImplementedError()
 
-    def check_der_key_value_matches_cert_public_key(self, der_encoded_key_value, public_key, signature_alg):
+    def _check_der_key_value_matches_cert_public_key(self, der_encoded_key_value, public_key, signature_alg):
         # TODO: Add a test case for this functionality
         der_public_key = load_der_public_key(b64decode(der_encoded_key_value.text))
 
