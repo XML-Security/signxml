@@ -24,8 +24,14 @@ jobs:
     - name: Test
       run: |
         make test
-    - uses: isort/isort-action@v1.1.0
-    - uses: psf/black@stable
     - name: Upload coverage data
       run: |
         bash <(curl -s https://codecov.io/bash)
+  black:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: psf/black@stable
+  isort:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: isort/isort-action@v1.1.0
