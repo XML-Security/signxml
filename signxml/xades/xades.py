@@ -318,7 +318,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def verify(  # type: ignore
         self,
         data,
-        expect_signature_policy: XAdESSignaturePolicy = None,
+        expect_signature_policy: Optional[XAdESSignaturePolicy] = None,
         expect_references: int = 3,
         **xml_verifier_args,
     ) -> List[XAdESVerifyResult]:
