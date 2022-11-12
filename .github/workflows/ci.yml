@@ -24,7 +24,7 @@ jobs:
     - name: Test
       run: |
         make test
-    - uses: isort/isort-action@v1.0.0
+    - uses: isort/isort-action@v1.1.0
     - uses: psf/black@stable
     - name: Upload coverage data
       run: |
