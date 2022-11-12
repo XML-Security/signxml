@@ -8,7 +8,7 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-10.15]
+        os: [ubuntu-18.04, ubuntu-22.04, macos-12]
         python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v2
@@ -24,8 +24,14 @@ jobs:
     - name: Test
       run: |
         make test
-    - uses: isort/isort-action@v1.0.0
-    - uses: psf/black@stable
     - name: Upload coverage data
       run: |
         bash <(curl -s https://codecov.io/bash)
+  black:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: psf/black@stable
+  isort:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: isort/isort-action@v1.1.0
