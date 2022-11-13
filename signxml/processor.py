@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Any, List, Tuple
 from xml.etree import ElementTree as stdlibElementTree
 
@@ -128,9 +129,14 @@ class XMLSignatureProcessor(XMLProcessor):
                 inclusive_ns_prefixes=inclusive_ns_prefixes,
             )
         if exclusive is False and self.excise_empty_xmlns_declarations is True:
-            # TODO: there must be a nicer way to do this. See also:
-            # http://www.w3.org/TR/xml-c14n, "namespace axis"
-            # http://www.w3.org/TR/xml-c14n2/#sec-Namespace-Processing
+            warnings.warn(
+                "excise_empty_xmlns_declarations is deprecated and will be removed in a future SignXML release",
+                DeprecationWarning,
+            )
+            # Incorrect legacy behavior. See also:
+            # - https://github.com/XML-Security/signxml/issues/193
+            # - http://www.w3.org/TR/xml-c14n, "namespace axis"
+            # - http://www.w3.org/TR/xml-c14n2/#sec-Namespace-Processing
             c14n = c14n.replace(b' xmlns=""', b"")
         return c14n
 
