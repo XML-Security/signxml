@@ -323,10 +323,10 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         **xml_verifier_args,
     ) -> List[XAdESVerifyResult]:
         """
-        Verify the XAdES signature supplied in the data and return a list of **VerifyResult** data structures
-        representing the data signed by the signature, or raise an exception if the signature is not valid. By default,
-        this requires the signature to be generated using a valid X.509 certificate. To enable other means of signature
-        validation, set the **require_x509** argument to `False`.
+        Verify the XAdES signature supplied in the data and return a list of :class:`XAdESVerifyResult` data structures
+        representing the data signed by the signature, or raise an exception if the signature is not valid. This method
+        is a wrapper around :meth:`signxml.XMLVerifier.verify`; see its documentation for more details and arguments it
+        supports.
 
         :param expect_signature_policy:
             If you need to assert that the verified XAdES signature carries specific data in the
@@ -340,6 +340,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             Parameters to pass to :meth:`signxml.XMLVerifier.verify`.
         """
         self.expect_signature_policy = expect_signature_policy
+        xml_verifier_args["require_x509"] = True
         verify_results = super().verify(data, expect_references=expect_references, **xml_verifier_args)
         if not isinstance(verify_results, list):
             raise InvalidInput("Expected to find multiple references in signature")

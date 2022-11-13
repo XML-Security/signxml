@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 from typing import Callable
 
 from cryptography.hazmat.primitives import hashes
@@ -13,19 +13,19 @@ class SignatureConstructionMethod(Enum):
     <http://www.w3.org/TR/xmldsig-core2/#sec-Definitions>`_.
     """
 
-    enveloped = auto()
+    enveloped = "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
     """
     The signature is over the XML content that contains the signature as an element. The content provides the root
     XML document element. This is the most common XML signature type in modern applications.
     """
 
-    enveloping = auto()
+    enveloping = "enveloping-signature"
     """
     The signature is over content found within an Object element of the signature itself. The Object (or its
     content) is identified via a Reference (via a URI fragment identifier or transform).
     """
 
-    detached = auto()
+    detached = "detached-signature"
     """
     The signature is over content external to the Signature element, and can be identified via a URI or
     transform. Consequently, the signature is "detached" from the content it signs. This definition typically applies to
@@ -52,7 +52,9 @@ class InvalidInputErrorMixin:
 
 class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     """
-    An enumeration of digest algorithms supported by SignXML. See RFC 9231 for details.
+    An enumeration of digest algorithms supported by SignXML. See `RFC 9231
+    <https://www.rfc-editor.org/rfc/rfc9231.html>`_ and the `Algorithm Identifiers and Implementation Requirements
+    <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
     """
 
     SHA1 = "http://www.w3.org/2000/09/xmldsig#sha1"
@@ -76,8 +78,9 @@ class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 # TODO: check if padding errors are fixed by using padding=MGF1
 class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     """
-    An enumeration of signature methods (also referred to as signature algorithms) supported by SignXML. See RFC 9231
-    for details.
+    An enumeration of signature methods (also referred to as signature algorithms) supported by SignXML. See `RFC 9231
+    <https://www.rfc-editor.org/rfc/rfc9231.html>`_ and the `Algorithm Identifiers and Implementation Requirements
+    <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
     """
 
     DSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#dsa-sha1"
@@ -109,7 +112,9 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     """
     An enumeration of XML canonicalization methods (also referred to as canonicalization algorithms) supported by
-    SignXML. See RFC 9231 for details.
+    SignXML. See `RFC 9231 <https://www.rfc-editor.org/rfc/rfc9231.html>`_ and the `Algorithm Identifiers and
+    Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1
+    standard for details.
     """
 
     CANONICAL_XML_1_0 = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"

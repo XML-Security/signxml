@@ -12,7 +12,13 @@ from OpenSSL.crypto import Error as OpenSSLCryptoError
 from OpenSSL.crypto import load_certificate
 from OpenSSL.crypto import verify as openssl_verify
 
-from .algorithms import CanonicalizationMethod, DigestAlgorithm, SignatureMethod, digest_algorithm_implementations
+from .algorithms import (
+    CanonicalizationMethod,
+    DigestAlgorithm,
+    SignatureConstructionMethod,
+    SignatureMethod,
+    digest_algorithm_implementations,
+)
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
 from .processor import XMLSignatureProcessor
 from .util import (
@@ -141,7 +147,7 @@ class XMLVerifier(XMLSignatureProcessor):
             transforms = self._findall(transforms_node, "Transform")
 
         for transform in transforms:
-            if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#enveloped-signature":
+            if transform.get("Algorithm") == SignatureConstructionMethod.enveloped.value:
                 _remove_sig(signature, idempotent=True)
 
         for transform in transforms:
@@ -242,7 +248,7 @@ class XMLVerifier(XMLSignatureProcessor):
         :param parser:
             Custom XML parser instance to use when parsing **data**. The default parser arguments used by SignXML are:
             ``resolve_entities=False``. See https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint.
-        :type parser: :py:class:`lxml.etree.XMLParser` compatible parser
+        :type parser: :class:`lxml.etree.XMLParser` compatible parser
         :param uri_resolver:
             Function to use to resolve reference URIs that don't start with "#". The function is called with a single
             string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
@@ -259,7 +265,7 @@ class XMLVerifier(XMLSignatureProcessor):
             necessary to match the keys, and throws an InvalidInput error instead. Set this to True to bypass the error
             and validate the signature using X509Data only.
 
-        :raises: :py:class:`cryptography.exceptions.InvalidSignature`
+        :raises: :class:`signxml.exceptions.InvalidSignature`
         """
         self.hmac_key = hmac_key
         self.require_x509 = require_x509

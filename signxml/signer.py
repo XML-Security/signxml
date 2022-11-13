@@ -2,12 +2,12 @@ from base64 import b64encode
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-from cryptography.hazmat.primitives.asymmetric import ec, utils
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from lxml.etree import Element, SubElement, _Element
-from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
+from OpenSSL.crypto import FILETYPE_PEM, X509, dump_certificate
 
 from .algorithms import (
     CanonicalizationMethod,
@@ -62,13 +62,14 @@ class XMLSigner(XMLSignatureProcessor):
         ``signxml.methods.enveloped``, ``signxml.methods.enveloping``, or ``signxml.methods.detached``. See
         :class:`SignatureConstructionMethod` for details.
     :param signature_algorithm:
-        Algorithm that will be used to generate the signature, composed of the signature algorithm and the digest
-        algorithm, separated by a hyphen. All algorithm IDs listed under the `Algorithm Identifiers and
-        Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature
-        1.1 standard are supported.
-    :param digest_algorithm: Algorithm that will be used to hash the data during signature generation. All algorithm IDs
-        listed under the `Algorithm Identifiers and Implementation Requirements
-        <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard are supported.
+        Algorithm that will be used to generate the signature. See :class:`SignatureMethod` for the list of algorithm
+        IDs supported.
+    :param digest_algorithm:
+        Algorithm that will be used to hash the data during signature generation. See :class:`DigestAlgorithm` for the
+        list of algorithm IDs supported.
+    :param c14n_algorithm:
+        Algorithm that will be used to canonicalize (serialize in a reproducible way) the XML that is signed. See
+        :class:`CanonicalizationMethod` for the list of algorithm IDs supported.
     """
 
     signature_annotators: List
@@ -92,7 +93,7 @@ class XMLSigner(XMLSignatureProcessor):
         method: SignatureConstructionMethod = SignatureConstructionMethod.enveloped,
         signature_algorithm: Union[SignatureMethod, str] = SignatureMethod.RSA_SHA256,
         digest_algorithm: Union[DigestAlgorithm, str] = DigestAlgorithm.SHA256,
-        c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_1,
+        c14n_algorithm: Union[CanonicalizationMethod, str] = CanonicalizationMethod.CANONICAL_XML_1_1,
     ):
         if method is None or method not in SignatureConstructionMethod:
             raise InvalidInput(f"Unknown signature construction method {method}")
@@ -113,16 +114,16 @@ class XMLSigner(XMLSignatureProcessor):
     def sign(
         self,
         data,
-        key=None,
+        key: Optional[Union[str, bytes, rsa.RSAPrivateKey, dsa.DSAPrivateKey, ec.EllipticCurvePrivateKey]] = None,
         passphrase: Optional[bytes] = None,
-        cert=None,
+        cert: Optional[Union[str, List[str], List[X509]]] = None,
         reference_uri: Optional[Union[str, List[str], List[XMLSignatureReference]]] = None,
         key_name: Optional[str] = None,
         key_info: Optional[_Element] = None,
         id_attribute: Optional[str] = None,
         always_add_key_value: bool = False,
         inclusive_ns_prefixes: Optional[List[str]] = None,
-        signature_properties=None,
+        signature_properties: Optional[Union[_Element, List[_Element]]] = None,
     ) -> _Element:
         """
         Sign the data and return the root element of the resulting XML tree.
@@ -131,20 +132,15 @@ class XMLSigner(XMLSignatureProcessor):
         :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param key:
             Key to be used for signing. When signing with a certificate or RSA/DSA/ECDSA key, this can be a string/bytes
-            containing a PEM-formatted key, or a :py:class:`cryptography.hazmat.primitives.interfaces.RSAPrivateKey`,
-            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPrivateKey`, or
-            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePrivateKey` object. When signing with a
+            containing a PEM-formatted key, or a :class:`cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`,
+            :class:`cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`, or
+            :class:`cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey` object. When signing with a
             HMAC, this should be a string containing the shared secret.
-        :type key:
-            string, bytes, :py:class:`cryptography.hazmat.primitives.interfaces.RSAPrivateKey`,
-            :py:class:`cryptography.hazmat.primitives.interfaces.DSAPrivateKey`, or
-            :py:class:`cryptography.hazmat.primitives.interfaces.EllipticCurvePrivateKey` object
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :param cert:
             X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an
-            array of strings or OpenSSL.crypto.X509 objects containing the certificate and a chain of intermediate
-            certificates.
-        :type cert: string, array of strings, or array of OpenSSL.crypto.X509 objects
+            array of strings or :class:`OpenSSL.crypto.X509` objects containing the certificate and a chain of
+            intermediate certificates.
         :param reference_uri:
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
@@ -175,10 +171,9 @@ class XMLSigner(XMLSignatureProcessor):
         :param signature_properties:
             One or more Elements that are to be included in the SignatureProperies section when using the detached
             method.
-        :type signature_properties: :py:class:`lxml.etree.Element` or list of :py:class:`lxml.etree.Element` s
 
         :returns:
-            A :py:class:`lxml.etree.Element` object representing the root of the XML tree containing the signature and
+            A :class:`lxml.etree._Element` object representing the root of the XML tree containing the signature and
             the payload data.
 
         To specify the location of an enveloped signature within **data**, insert a
@@ -192,7 +187,7 @@ class XMLSigner(XMLSignatureProcessor):
         if isinstance(cert, (str, bytes)):
             cert_chain = list(iterate_pem(cert))
         else:
-            cert_chain = cert
+            cert_chain = cert  # type: ignore
 
         input_references = self._preprocess_reference_uri(reference_uri)
 
@@ -235,7 +230,7 @@ class XMLSigner(XMLSignatureProcessor):
             signed_info_node, algorithm=self.c14n_alg, inclusive_ns_prefixes=inclusive_ns_prefixes
         )
         if self.sign_alg.name.startswith("HMAC_"):
-            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())
+            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())  # type: ignore
             signer.update(signed_info_c14n)
             signature_value_node.text = b64encode(signer.finalize()).decode()
             sig_root.append(signature_value_node)
@@ -378,7 +373,7 @@ class XMLSigner(XMLSignatureProcessor):
             reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
             transforms = SubElement(reference_node, ds_tag("Transforms"))
             if self.construction_method == SignatureConstructionMethod.enveloped:
-                SubElement(transforms, ds_tag("Transform"), Algorithm=namespaces.ds + "enveloped-signature")
+                SubElement(transforms, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
                 SubElement(transforms, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
             else:
                 c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=reference.c14n_method.value)

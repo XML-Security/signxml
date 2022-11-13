@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any, List, Optional
 
 from cryptography.hazmat.primitives import hashes, hmac
+from lxml.etree import QName
 
 from ..exceptions import InvalidCertificate, RedundantCert, SignXMLException
 
@@ -39,23 +40,23 @@ namespaces = Namespace(
 
 
 def ds_tag(tag):
-    return "{" + namespaces.ds + "}" + tag
+    return QName(namespaces.ds, tag)
 
 
 def dsig11_tag(tag):
-    return "{" + namespaces.dsig11 + "}" + tag
+    return QName(namespaces.dsig11, tag)
 
 
 def ec_tag(tag):
-    return "{" + namespaces.ec + "}" + tag
+    return QName(namespaces.ec, tag)
 
 
 def xades_tag(tag):
-    return "{" + namespaces.xades + "}" + tag
+    return QName(namespaces.xades, tag)
 
 
 def xades141_tag(tag):
-    return "{" + namespaces.xades141 + "}" + tag
+    return QName(namespaces.xades141, tag)
 
 
 @dataclass
