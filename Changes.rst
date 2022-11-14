@@ -1,3 +1,23 @@
+Changes for v3.0.0 (2022-11-13)
+===============================
+
+-  Add XAdES support
+
+-  Migrate all configuration inputs to enums (string identifiers are
+   still supported, but will be deprecated in a future version)
+
+-  Migrate structured data inputs to dataclasses
+
+-  Deprecate excise_empty_xmlns_declarations
+
+-  Documentation and test infrastructure improvements
+
+-  Clean up top level signxml and signxml.xades namespaces
+
+-  Stop using default_backend for cryptography, it is no longer required
+
+-  Drop Python 3.6 support (#200)
+
 -  Drop Python 3.6 support.
 
 Changes for v2.10.1 (2022-09-09)
