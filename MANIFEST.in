@@ -1,1 +1,2 @@
 include signxml/schemas/*.xsd
+include signxml/xades/schemas/*.xsd
