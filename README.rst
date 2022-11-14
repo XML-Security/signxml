@@ -182,8 +182,9 @@ SignXML supports signing and verifying documents using `XAdES <https://en.wikipe
 
 .. code-block:: python
 
+    from signxml import DigestAlgorithm
     from signxml.xades import (XAdESSigner, XAdESVerifier, XAdESVerifyResult,
-                               XAdESSignaturePolicy, XAdESDataObjectFormat, DigestAlgorithm)
+                               XAdESSignaturePolicy, XAdESDataObjectFormat)
     signature_policy = XAdESSignaturePolicy(
         Identifier="MyPolicyIdentifier",
         Description="Hello XAdES",
