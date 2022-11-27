@@ -86,7 +86,7 @@ class SignatureConfiguration:
 @dataclass(frozen=True)
 class VerifyResult:
     """
-    This is a dataclass representing structured data returned by ``signxml.XMLVerifier.verify()``. The results of a
+    This is a dataclass representing structured data returned by :func:`signxml.XMLVerifier.verify`. The results of a
     verification contain the signed bytes, the parsed signed XML, and the parsed signature XML. Example usage:
 
         verified_data = signxml.XMLVerifier().verify(input_data).signed_xml
@@ -239,7 +239,7 @@ class XMLVerifier(XMLSignatureProcessor):
         Verify the XML signature supplied in the data and return a list of :class:`VerifyResult` data structures
         representing the data signed by the signature, or raise an exception if the signature is not valid. By default,
         this requires the signature to be generated using a valid X.509 certificate. To enable other means of signature
-        validation, set the **require_x509** argument to `False`.
+        validation, set ``expect_config`` to a configuration with the **require_x509** parameter set to `False`.
 
         .. admonition:: See what is signed
 
