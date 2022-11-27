@@ -57,7 +57,6 @@ class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
     """
 
-    SHA1 = "http://www.w3.org/2000/09/xmldsig#sha1"
     SHA224 = "http://www.w3.org/2001/04/xmldsig-more#sha224"
     SHA384 = "http://www.w3.org/2001/04/xmldsig-more#sha384"
     SHA256 = "http://www.w3.org/2001/04/xmlenc#sha256"
@@ -66,6 +65,12 @@ class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     SHA3_256 = "http://www.w3.org/2007/05/xmldsig-more#sha3-256"
     SHA3_384 = "http://www.w3.org/2007/05/xmldsig-more#sha3-384"
     SHA3_512 = "http://www.w3.org/2007/05/xmldsig-more#sha3-512"
+
+    SHA1 = "http://www.w3.org/2000/09/xmldsig#sha1"
+    """
+    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
+    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    """
 
     @property
     def implementation(self) -> Callable:
@@ -83,10 +88,6 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
     """
 
-    DSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#dsa-sha1"
-    HMAC_SHA1 = "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
-    RSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
-    ECDSA_SHA1 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1"
     ECDSA_SHA224 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha224"
     ECDSA_SHA256 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256"
     ECDSA_SHA384 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384"
@@ -99,14 +100,45 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     RSA_SHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
     RSA_SHA384 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha384"
     RSA_SHA512 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha512"
-    RSA_PSS = "http://www.w3.org/2007/05/xmldsig-more#rsa-pss"
     DSA_SHA256 = "http://www.w3.org/2009/xmldsig11#dsa-sha256"
     ECDSA_SHA3_224 = "http://www.w3.org/2021/04/xmldsig-more#ecdsa-sha3-224"
     ECDSA_SHA3_256 = "http://www.w3.org/2021/04/xmldsig-more#ecdsa-sha3-256"
     ECDSA_SHA3_384 = "http://www.w3.org/2021/04/xmldsig-more#ecdsa-sha3-384"
     ECDSA_SHA3_512 = "http://www.w3.org/2021/04/xmldsig-more#ecdsa-sha3-512"
-    EDDSA_ED25519 = "http://www.w3.org/2021/04/xmldsig-more#eddsa-ed25519"
-    EDDSA_ED448 = "http://www.w3.org/2021/04/xmldsig-more#eddsa-ed448"
+    SHA3_224_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha3-224-rsa-MGF1"
+    SHA3_256_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha3-256-rsa-MGF1"
+    SHA3_384_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha3-384-rsa-MGF1"
+    SHA3_512_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha3-512-rsa-MGF1"
+    SHA224_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha224-rsa-MGF1"
+    SHA256_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha256-rsa-MGF1"
+    SHA384_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha384-rsa-MGF1"
+    SHA512_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha512-rsa-MGF1"
+
+    DSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#dsa-sha1"
+    """
+    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
+    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    """
+    HMAC_SHA1 = "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
+    """
+    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
+    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    """
+    RSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
+    """
+    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
+    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    """
+    ECDSA_SHA1 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1"
+    """
+    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
+    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    """
+    SHA1_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha1-rsa-MGF1"
+    """
+    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
+    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    """
 
 
 class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
@@ -157,6 +189,13 @@ digest_algorithm_implementations = {
     SignatureMethod.ECDSA_SHA3_256: hashes.SHA3_256,
     SignatureMethod.ECDSA_SHA3_384: hashes.SHA3_384,
     SignatureMethod.ECDSA_SHA3_512: hashes.SHA3_512,
-    SignatureMethod.EDDSA_ED25519: hashes.SHA512,
-    SignatureMethod.EDDSA_ED448: hashes.SHAKE256,
+    SignatureMethod.SHA3_224_RSA_MGF1: hashes.SHA3_224,
+    SignatureMethod.SHA3_256_RSA_MGF1: hashes.SHA3_256,
+    SignatureMethod.SHA3_384_RSA_MGF1: hashes.SHA3_384,
+    SignatureMethod.SHA3_512_RSA_MGF1: hashes.SHA3_512,
+    SignatureMethod.SHA224_RSA_MGF1: hashes.SHA224,
+    SignatureMethod.SHA256_RSA_MGF1: hashes.SHA256,
+    SignatureMethod.SHA384_RSA_MGF1: hashes.SHA384,
+    SignatureMethod.SHA512_RSA_MGF1: hashes.SHA512,
+    SignatureMethod.SHA1_RSA_MGF1: hashes.SHA1,
 }

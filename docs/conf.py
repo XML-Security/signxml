@@ -13,8 +13,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
-typehints_fully_qualified = True
-always_document_param_types = True
+autodoc_typehints_description_target = "documented_params"
 intersphinx_mapping = {
     "https://docs.python.org/3": None,
     "https://lxml.de/apidoc": "https://lxml.de/apidoc/objects.inv",

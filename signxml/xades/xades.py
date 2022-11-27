@@ -25,18 +25,32 @@ import secrets
 from base64 import b64decode, b64encode
 from dataclasses import astuple, dataclass
 from functools import wraps
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from lxml.etree import SubElement, _Element
 from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, load_certificate
 
-from .. import VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
+from .. import SignatureConfiguration, VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
 from ..algorithms import DigestAlgorithm
 from ..exceptions import InvalidDigest, InvalidInput
 from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
 
 
-@dataclass
+@dataclass(frozen=True)
+class XAdESSignatureConfiguration(SignatureConfiguration):
+    """
+    A subclass of :class:`signxml.SignatureConfiguration`, with default overrides as described below.
+    """
+
+    expect_references: Union[int, bool] = 3
+    """
+    By default, XAdES signatures carry 3 references (the original data reference, the KeyInfo (X.509 certificate)
+    reference, and the signed properties reference). Signatures can carry more references if more data or extensions
+    are present. Specify the expected number of references here.
+    """
+
+
+@dataclass(frozen=True)
 class XAdESSignaturePolicy:
     Identifier: str
     Description: str
@@ -44,13 +58,13 @@ class XAdESSignaturePolicy:
     DigestValue: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class XAdESDataObjectFormat:
     Description: str = "Default XAdES payload description"
     MimeType: str = "text/xml"
 
 
-@dataclass
+@dataclass(frozen=True)
 class XAdESVerifyResult(VerifyResult):
     """
     A subclass of :class:`signxml.VerifyResult`. See VerifyResult for attribute semantics not covered here.
@@ -318,8 +332,9 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def verify(  # type: ignore
         self,
         data,
+        *,
         expect_signature_policy: Optional[XAdESSignaturePolicy] = None,
-        expect_references: int = 3,
+        expect_config: XAdESSignatureConfiguration = XAdESSignatureConfiguration(),
         **xml_verifier_args,
     ) -> List[XAdESVerifyResult]:
         """
@@ -332,16 +347,16 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             If you need to assert that the verified XAdES signature carries specific data in the
             **SignaturePolicyIdentifier** element, use this parameter to pass a :class:`XAdESSignaturePolicy` object
             carrying strings and the digest method identifier for the element.
-        :param expect_references:
-            By default, XAdES signatures carry 3 references (the original data reference, the KeyInfo (X.509
-            certificate) reference, and the signed properties reference). Signatures can carry more references if more
-            data or extensions are present. Specify the expected number of references here.
+        :param expect_config:
+            Expected signature configuration. Pass a :class:`XAdESSignatureConfiguration` object to describe expected
+            properties of the verified signature. Signatures with unexpected configurations will fail validation.
         :param xml_verifier_args:
             Parameters to pass to :meth:`signxml.XMLVerifier.verify`.
         """
         self.expect_signature_policy = expect_signature_policy
-        xml_verifier_args["require_x509"] = True
-        verify_results = super().verify(data, expect_references=expect_references, **xml_verifier_args)
+        if expect_config.require_x509 is not True:
+            raise InvalidInput("XAdES signatures require X509")
+        verify_results = super().verify(data, expect_config=expect_config, **xml_verifier_args)
         if not isinstance(verify_results, list):
             raise InvalidInput("Expected to find multiple references in signature")
         for i, verify_result in enumerate(verify_results):

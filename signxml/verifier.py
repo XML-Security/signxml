@@ -1,9 +1,9 @@
 from base64 import b64decode
-from dataclasses import dataclass
-from typing import Callable, List, Optional, Union
+from dataclasses import dataclass, replace
+from typing import Callable, FrozenSet, List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
+from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, AsymmetricPadding, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from lxml import etree
@@ -33,7 +33,57 @@ from .util import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
+class SignatureConfiguration:
+    """
+    A container holding signature settings that will be used to assert properties of the signature.
+    """
+
+    require_x509: bool = True
+    """
+    If ``True``, a valid X.509 certificate-based signature with an established chain of trust is required to
+    pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
+    """
+
+    location: str = ".//"
+    """
+    XPath location where the signature tag will be expected. By default, the signature tag is expected to be a child of
+    the top level element (i.e. enveloped at the top level). If your signature is enveloping (i.e. the ``ds:Signature``
+    tag is itself the top level tag), it is recommended that you set this to ``./``. If your signature is nested
+    elsewhere in the document, you can reference the full path as ``./{ns}Tag1/{ns}Tag2/{ns}Tag3/``. If you wish to
+    search for the signature anywhere in the document, you can set this to ``.//``.
+    """
+
+    expect_references: Union[int, bool] = 1
+    """
+    Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
+    If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
+    """
+
+    signature_methods: FrozenSet[SignatureMethod] = frozenset()
+    """
+    Set of acceptable signature methods (signature algorithms). Any signature generated using an algorithm not listed
+    here will fail verification (but if this set is left empty, then all supported algorithms are accepted).
+    """
+
+    digest_algorithms: FrozenSet[DigestAlgorithm] = frozenset()
+    """
+    Set of acceptable digest algorithms. Any signature or reference transform generated using an algorithm not listed
+    here will cause verification to fail (but if this set is left empty, then all supported algorithms are accepted).
+    """
+
+    ignore_ambiguous_key_info: bool = False
+    """
+    Ignore the presence of a KeyValue element when X509Data is present in the signature and used for verifying.
+    The presence of both elements is an ambiguity and a security hazard. The public key used to sign the
+    document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
+    KeyValue or make sure it matches what's in the certificate. SignXML does not implement the functionality
+    necessary to match the keys, and throws an InvalidInput error instead. Set this to True to bypass the error
+    and validate the signature using X509Data only.
+    """
+
+
+@dataclass(frozen=True)
 class VerifyResult:
     """
     This is a dataclass representing structured data returned by ``signxml.XMLVerifier.verify()``. The results of a
@@ -61,7 +111,7 @@ class XMLVerifier(XMLSignatureProcessor):
         if root.tag == ds_tag("Signature"):
             return root
         else:
-            return self._find(root, "Signature", anywhere=True)
+            return self._find(root, "Signature", xpath=self.config.location)
 
     def _verify_signature_with_pubkey(
         self,
@@ -74,7 +124,7 @@ class XMLVerifier(XMLSignatureProcessor):
         if der_encoded_key_value is not None:
             key = load_der_public_key(b64decode(der_encoded_key_value.text))  # type: ignore
 
-        digest_algorithm_implementation = digest_algorithm_implementations[signature_alg]()
+        digest_alg_impl = digest_algorithm_implementations[signature_alg]()
         if signature_alg.name.startswith("ECDSA_"):
             if key_value is not None:
                 ec_key_value = self._find(key_value, "dsig11:ECKeyValue")
@@ -89,9 +139,7 @@ class XMLVerifier(XMLSignatureProcessor):
             elif not isinstance(key, ec.EllipticCurvePublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             dss_signature = self._encode_dss_signature(raw_signature, key.key_size)
-            key.verify(
-                dss_signature, data=signed_info_c14n, signature_algorithm=ec.ECDSA(digest_algorithm_implementation)
-            )
+            key.verify(dss_signature, data=signed_info_c14n, signature_algorithm=ec.ECDSA(digest_alg_impl))
         elif signature_alg.name.startswith("DSA_"):
             if key_value is not None:
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
@@ -105,8 +153,8 @@ class XMLVerifier(XMLSignatureProcessor):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
             dss_signature = self._encode_dss_signature(raw_signature, len(raw_signature) * 8 // 2)
-            key.verify(dss_signature, data=signed_info_c14n, algorithm=digest_algorithm_implementation)
-        elif signature_alg.name.startswith("RSA_"):
+            key.verify(dss_signature, data=signed_info_c14n, algorithm=digest_alg_impl)
+        elif signature_alg.name.startswith("RSA_") or signature_alg.name.startswith("SHA"):
             if key_value is not None:
                 rsa_key_value = self._find(key_value, "RSAKeyValue")
                 modulus = self._get_long(rsa_key_value, "Modulus")
@@ -114,12 +162,11 @@ class XMLVerifier(XMLSignatureProcessor):
                 key = rsa.RSAPublicNumbers(e=exponent, n=modulus).public_key()
             elif not isinstance(key, rsa.RSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
-            key.verify(
-                raw_signature,
-                data=signed_info_c14n,
-                padding=PKCS1v15(),
-                algorithm=digest_algorithm_implementation,
-            )
+            if signature_alg.name.startswith("RSA_"):
+                padding: AsymmetricPadding = PKCS1v15()
+            else:
+                padding = PSS(mgf=MGF1(algorithm=digest_alg_impl), salt_length=digest_alg_impl.digest_size)
+            key.verify(raw_signature, data=signed_info_c14n, padding=padding, algorithm=digest_alg_impl)
         else:
             raise NotImplementedError()
 
@@ -174,7 +221,7 @@ class XMLVerifier(XMLSignatureProcessor):
     def verify(
         self,
         data,
-        require_x509: bool = True,
+        *,
         x509_cert: Optional[Union[str, X509]] = None,
         cert_subject_name: Optional[str] = None,
         cert_resolver: Optional[Callable] = None,
@@ -185,8 +232,8 @@ class XMLVerifier(XMLSignatureProcessor):
         parser=None,
         uri_resolver: Optional[Callable] = None,
         id_attribute: Optional[str] = None,
-        expect_references: Union[int, bool] = 1,
-        ignore_ambiguous_key_info: bool = False,
+        expect_config: SignatureConfiguration = SignatureConfiguration(),
+        **deprecated_kwargs,
     ) -> Union[VerifyResult, List[VerifyResult]]:
         """
         Verify the XML signature supplied in the data and return a list of :class:`VerifyResult` data structures
@@ -220,9 +267,6 @@ class XMLVerifier(XMLSignatureProcessor):
 
         :param data: Signature data to verify
         :type data: String, file-like object, or XML ElementTree Element API compatible object
-        :param require_x509:
-            If ``True``, a valid X.509 certificate-based signature with an established chain of trust is required to
-            pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.
         :param x509_cert:
             A trusted external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use
             for verification. Overrides any X.509 certificate information supplied by the signature. If left set to
@@ -254,26 +298,24 @@ class XMLVerifier(XMLSignatureProcessor):
             string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
-        :param expect_references:
-            Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
-            If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
-        :param ignore_ambiguous_key_info:
-            Ignore the presence of a KeyValue element when X509Data is present in the signature and used for verifying.
-            The presence of both elements is an ambiguity and a security hazard. The public key used to sign the
-            document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
-            KeyValue or make sure it matches what's in the certificate. SignXML does not implement the functionality
-            necessary to match the keys, and throws an InvalidInput error instead. Set this to True to bypass the error
-            and validate the signature using X509Data only.
+        :param expect_config:
+            Expected signature configuration. Pass a :class:`SignatureConfiguration` object to describe expected
+            properties of the verified signature. Signatures with unexpected configurations will fail validation.
+        :param deprecated_kwargs:
+            Direct application of the parameters **require_x509**, **expect_references**, and
+            **ignore_ambiguous_key_info** is deprecated. Use **expect_config** instead.
 
         :raises: :class:`signxml.exceptions.InvalidSignature`
         """
         self.hmac_key = hmac_key
-        self.require_x509 = require_x509
+        self.config = expect_config
+        if deprecated_kwargs:
+            self.config = replace(expect_config, **deprecated_kwargs)
         self.x509_cert = x509_cert
         self._parser = parser
 
         if x509_cert or cert_resolver:
-            self.require_x509 = True
+            self.config = replace(self.config, require_x509=True)
 
         if id_attribute is not None:
             self.id_attributes = (id_attribute,)
@@ -294,6 +336,8 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = SignatureMethod(signature_method.get("Algorithm"))
+        if self.config.signature_methods and signature_alg not in self.config.signature_methods:
+            raise InvalidInput(f"Signature method {signature_alg.name} forbidden by configuration")
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
@@ -302,7 +346,7 @@ class XMLVerifier(XMLSignatureProcessor):
             signed_info, algorithm=c14n_algorithm, inclusive_ns_prefixes=inclusive_ns_prefixes
         )
 
-        if x509_data is not None or self.require_x509:
+        if x509_data is not None or self.config.require_x509:
             if self.x509_cert is None:
                 if x509_data is None:
                     raise InvalidInput("Expected a X.509 certificate based signature")
@@ -339,7 +383,7 @@ class XMLVerifier(XMLSignatureProcessor):
             if signature_alg.name.startswith("ECDSA"):
                 raw_signature = self._encode_dss_signature(raw_signature, signing_cert.get_pubkey().bits())
             try:
-                digest_alg_name = digest_algorithm_implementations[signature_alg].name  # type: ignore
+                digest_alg_name = str(digest_algorithm_implementations[signature_alg].name)
                 openssl_verify(signing_cert, raw_signature, signed_info_c14n, digest_alg_name)
             except OpenSSLCryptoError as e:
                 try:
@@ -354,7 +398,7 @@ class XMLVerifier(XMLSignatureProcessor):
                     self._check_key_value_matches_cert_public_key(key_value, signing_cert.get_pubkey(), signature_alg)
                     is False
                 ):
-                    if ignore_ambiguous_key_info is False:
+                    if self.config.ignore_ambiguous_key_info is False:
                         raise InvalidInput(
                             "Both X509Data and KeyValue found and they represent different public keys. "
                             "Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate "
@@ -370,7 +414,7 @@ class XMLVerifier(XMLSignatureProcessor):
                     )
                     is False
                 ):
-                    if ignore_ambiguous_key_info is False:
+                    if self.config.ignore_ambiguous_key_info is False:
                         raise InvalidInput(
                             "Both X509Data and DEREncodedKeyValue found and they represent different "
                             "public keys. Use verify(ignore_ambiguous_key_info=True) to ignore "
@@ -401,29 +445,37 @@ class XMLVerifier(XMLSignatureProcessor):
             )
 
         verify_results: List[VerifyResult] = []
-        for reference in self._findall(signed_info, "Reference"):
-            copied_root = self._fromstring(self._tostring(root))
-            copied_signature_ref = self._get_signature(copied_root)
-            transforms = self._find(reference, "Transforms", require=False)
-            digest_alg = self._find(reference, "DigestMethod").get("Algorithm")
-            digest_value = self._find(reference, "DigestValue")
-            payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
-            payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
-            if b64decode(digest_value.text) != self._get_digest(payload_c14n, DigestAlgorithm(digest_alg)):
-                raise InvalidDigest(f"Digest mismatch for reference {len(verify_results)} ({reference.get('URI')})")
+        for idx, reference in enumerate(self._findall(signed_info, "Reference")):
+            verify_results.append(self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature))
 
-            # We return the signed XML (and only that) to ensure no access to unsigned data happens
-            try:
-                payload_c14n_xml = self._fromstring(payload_c14n)
-            except etree.XMLSyntaxError:
-                payload_c14n_xml = None
-            verify_results.append(VerifyResult(payload_c14n, payload_c14n_xml, signature))
-
-        if type(expect_references) is int and len(verify_results) != expect_references:
+        if type(self.config.expect_references) is int and len(verify_results) != self.config.expect_references:
             msg = "Expected to find {} references, but found {}"
-            raise InvalidSignature(msg.format(expect_references, len(verify_results)))
+            raise InvalidSignature(msg.format(self.config.expect_references, len(verify_results)))
 
-        return verify_results if expect_references > 1 else verify_results[0]
+        return verify_results if self.config.expect_references > 1 else verify_results[0]
+
+    def _verify_reference(self, reference, index, root, uri_resolver, c14n_algorithm, signature):
+        copied_root = self._fromstring(self._tostring(root))
+        copied_signature_ref = self._get_signature(copied_root)
+        transforms = self._find(reference, "Transforms", require=False)
+        digest_method_alg_name = self._find(reference, "DigestMethod").get("Algorithm")
+        digest_value = self._find(reference, "DigestValue")
+        payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
+        # TODO: payload-specific c14n alg
+        payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
+        digest_alg = DigestAlgorithm(digest_method_alg_name)
+        if self.config.digest_algorithms and digest_alg not in self.config.digest_algorithms:
+            raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
+
+        if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
+            raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
+
+        # We return the signed XML (and only that) to ensure no access to unsigned data happens
+        try:
+            payload_c14n_xml = self._fromstring(payload_c14n)
+        except etree.XMLSyntaxError:
+            payload_c14n_xml = None
+        return VerifyResult(payload_c14n, payload_c14n_xml, signature)
 
     def validate_schema(self, signature):
         last_exception = None

@@ -1,5 +1,5 @@
-SignXML: XML Signature in Python
-================================
+SignXML: XML Signature and XAdES in Python
+==========================================
 
 *SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard in
 Python. This standard (also known as XMLDSig and `RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_) is used to provide
@@ -23,7 +23,7 @@ of the Version 1.1 standard, and most recommended ones. Its features are:
   `cryptography <https://github.com/pyca/cryptography>`_, `pyOpenSSL <https://github.com/pyca/pyopenssl>`_
 * Comprehensive testing (including the XMLDSig interoperability suite) and `continuous integration
   <https://github.com/XML-Security/signxml/actions>`_
-* Simple interface with useful defaults
+* Simple interface with useful, ergonomic, and secure defaults (no network calls, XSLT or XPath transforms)
 * Compactness, readability, and extensibility
 
 Installation
@@ -108,7 +108,10 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  data returned by the ``verify()`` method. The ``signed_xml`` attribute of the return value is the XML node or string that
  was signed.
 
- **Recommended reading:** `W3C XML Signature Best Practices for Applications <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `On Breaking SAML: Be Whoever You Want to Be <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_, `Duo Finds SAML Vulnerabilities Affecting Multiple Implementations <https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations>`_
+ **Recommended reading:** `W3C XML Signature Best Practices for Applications
+ <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `On Breaking SAML: Be Whoever You Want to Be
+ <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_, `Duo Finds SAML Vulnerabilities
+ Affecting Multiple Implementations <https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations>`_
 
 .. admonition:: Establish trust
 
@@ -167,7 +170,8 @@ parsing, and use lxml to work with untrusted XML input in general. If you do pas
 SignXML, you should be aware of differences in XML namespace handling between the two libraries. See the following
 references for more information:
 
-* `How do I use lxml safely as a web-service endpoint? <https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint>`_
+* `How do I use lxml safely as a web-service endpoint?
+  <https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint>`_
 * `ElementTree compatibility of lxml.etree <https://lxml.de/compatibility.html>`_
 * `XML Signatures with Python ElementTree <https://technotes.shemyak.com/posts/xml-signatures-with-python-elementtree>`_
 
@@ -226,11 +230,14 @@ Links
 * `List of W3C XML Signature standards and drafts <https://www.w3.org/TR/?title=xml%20signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
 * `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
-* `W3C Working Group Note: XML Security 2.0 Requirements and Design Considerations <https://www.w3.org/TR/2013/NOTE-xmlsec-reqs2-20130411/>`_
+* `W3C Working Group Note: XML Security 2.0 Requirements and Design Considerations
+  <https://www.w3.org/TR/2013/NOTE-xmlsec-reqs2-20130411/>`_
 * `W3C Working Group Note: XML Signature Best Practices <http://www.w3.org/TR/xmldsig-bestpractices/>`_
 * `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
 * `RFC 9231: Additional XML Security Uniform Resource Identifiers (URIs) <https://www.rfc-editor.org/rfc/rfc9231.html>`_
+* `Intelligence Community Technical Specification: Web Service Security Guidance for Use of XML Signature and XML
+  Encryption <https://github.com/XML-Security/signxml/blob/develop/docs/dni-guidance.pdf>`_
 * `XMLSec: Related links <https://www.aleksey.com/xmlsec/related.html>`_
 * `OWASP SAML Security Cheat Sheet <https://www.owasp.org/index.php/SAML_Security_Cheat_Sheet>`_
 * `Okta Developer Docs: SAML <https://developer.okta.com/standards/SAML/>`_

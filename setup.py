@@ -9,7 +9,7 @@ setup(
     license="Apache Software License",
     author="Andrey Kislyuk",
     author_email="kislyuk@gmail.com",
-    description="Python XML Signature library",
+    description="Python XML Signature and XAdES library",
     long_description=open("README.rst").read(),
     python_requires=">=3.7",
     install_requires=[

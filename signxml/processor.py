@@ -1,3 +1,4 @@
+import logging
 import os
 import warnings
 from typing import Any, List, Tuple
@@ -10,6 +11,8 @@ from lxml import etree
 from .algorithms import CanonicalizationMethod, DigestAlgorithm, digest_algorithm_implementations
 from .exceptions import InvalidInput
 from .util import namespaces
+
+logger = logging.getLogger(__name__)
 
 
 class XMLProcessor:
@@ -86,27 +89,21 @@ class XMLSignatureProcessor(XMLProcessor):
         hasher.update(data)
         return hasher.finalize()
 
-    def _find(self, element, query, require=True, anywhere=False):
+    def _find(self, element, query, require=True, xpath=""):
         namespace = "ds"
         if ":" in query:
             namespace, _, query = query.partition(":")
-        if anywhere:
-            result = element.find(".//" + namespace + ":" + query, namespaces=namespaces)
-        else:
-            result = element.find(namespace + ":" + query, namespaces=namespaces)
+        result = element.find(f"{xpath}{namespace}:{query}", namespaces=namespaces)
 
         if require and result is None:
             raise InvalidInput(f"Expected to find XML element {query} in {element.tag}")
         return result
 
-    def _findall(self, element, query, anywhere=False):
+    def _findall(self, element, query, xpath=""):
         namespace = "ds"
         if ":" in query:
             namespace, _, query = query.partition(":")
-        if anywhere:
-            return element.findall(".//" + namespace + ":" + query, namespaces=namespaces)
-        else:
-            return element.findall(namespace + ":" + query, namespaces=namespaces)
+        return element.findall(f"{xpath}{namespace}:{query}", namespaces=namespaces)
 
     def _c14n(self, nodes, algorithm: CanonicalizationMethod, inclusive_ns_prefixes=None):
         exclusive, with_comments = False, False
@@ -138,6 +135,7 @@ class XMLSignatureProcessor(XMLProcessor):
             # - http://www.w3.org/TR/xml-c14n, "namespace axis"
             # - http://www.w3.org/TR/xml-c14n2/#sec-Namespace-Processing
             c14n = c14n.replace(b' xmlns=""', b"")
+        logger.debug("Canonicalized string (exclusive=%s, with_comments=%s): %s", exclusive, with_comments, c14n)
         return c14n
 
     def _resolve_reference(self, doc_root, reference, uri_resolver=None):

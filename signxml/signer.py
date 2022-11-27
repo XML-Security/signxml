@@ -1,9 +1,9 @@
 from base64 import b64encode
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import List, Optional, Union
 
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
+from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from lxml.etree import Element, SubElement, _Element
@@ -33,8 +33,13 @@ from .util import (
 )
 
 
-@dataclass
-class XMLSignatureReference:
+@dataclass(frozen=True)
+class SignatureReference:
+    """
+    A container representing a signature reference (pointer to data covered by the signature). A signature can include
+    one or more references. The integrity of each reference is attested by including the digest (hash) of its value.
+    """
+
     URI: str
     """
     The reference URI, for example ``#elementId`` to refer to an element whose Id attribute is set to ``elementId``.
@@ -114,10 +119,11 @@ class XMLSigner(XMLSignatureProcessor):
     def sign(
         self,
         data,
+        *,
         key: Optional[Union[str, bytes, rsa.RSAPrivateKey, dsa.DSAPrivateKey, ec.EllipticCurvePrivateKey]] = None,
         passphrase: Optional[bytes] = None,
         cert: Optional[Union[str, List[str], List[X509]]] = None,
-        reference_uri: Optional[Union[str, List[str], List[XMLSignatureReference]]] = None,
+        reference_uri: Optional[Union[str, List[str], List[SignatureReference]]] = None,
         key_name: Optional[str] = None,
         key_info: Optional[_Element] = None,
         id_attribute: Optional[str] = None,
@@ -145,7 +151,7 @@ class XMLSigner(XMLSignatureProcessor):
             Custom reference URI or list of reference URIs to incorporate into the signature. When ``method`` is set to
             ``detached`` or ``enveloped``, reference URIs are set to this value and only the referenced elements are
             signed. To specify extra options specific to each reference URI, pass a list of one or more
-            XMLSignatureReference objects.
+            :class:`SignatureReference` objects.
         :param key_name: Add a KeyName element in the KeyInfo element that may be used by the signer to communicate a
             key identifier to the recipient. Typically, KeyName contains an identifier related to the key pair used to
             sign the message.
@@ -166,7 +172,7 @@ class XMLSigner(XMLSignatureProcessor):
             signature (**InclusiveNamespaces PrefixList**).
 
             To specify this value separately for reference canonicalizaition, pass a list of one or more
-            XMLSignatureReference objects as the ``reference_uri`` keyword argument, and set the
+            :class:`SignatureReference` objects as the ``reference_uri`` keyword argument, and set the
             ``inclusive_ns_prefixes`` attribute on those objects.
         :param signature_properties:
             One or more Elements that are to be included in the SignatureProperies section when using the detached
@@ -210,7 +216,7 @@ class XMLSigner(XMLSignatureProcessor):
         sig_root, doc_root, c14n_inputs, references = self._unpack(data, input_references)
 
         if self.construction_method == SignatureConstructionMethod.detached and signature_properties is not None:
-            references.append(XMLSignatureReference(URI="#prop"))
+            references.append(SignatureReference(URI="#prop"))
             if signature_properties is not None and not isinstance(signature_properties, list):
                 signature_properties = [signature_properties]
             signature_properties_el = self._build_signature_properties(signature_properties)
@@ -234,7 +240,7 @@ class XMLSigner(XMLSignatureProcessor):
             signer.update(signed_info_c14n)
             signature_value_node.text = b64encode(signer.finalize()).decode()
             sig_root.append(signature_value_node)
-        elif any(self.sign_alg.name.startswith(i) for i in ["DSA_", "RSA_", "ECDSA_"]):
+        elif any(self.sign_alg.name.startswith(i) for i in ["DSA_", "RSA_", "ECDSA_", "SHA"]):
             hash_alg = digest_algorithm_implementations[self.sign_alg]()
             if self.sign_alg.name.startswith("DSA_"):
                 signature = signing_settings.key.sign(signed_info_c14n, algorithm=hash_alg)
@@ -244,6 +250,10 @@ class XMLSigner(XMLSignatureProcessor):
                 )
             elif self.sign_alg.name.startswith("RSA_"):
                 signature = signing_settings.key.sign(signed_info_c14n, padding=PKCS1v15(), algorithm=hash_alg)
+            elif self.sign_alg.name.startswith("SHA"):
+                # See https://www.rfc-editor.org/rfc/rfc9231.html#section-2.3.10
+                padding = PSS(mgf=MGF1(algorithm=hash_alg), salt_length=hash_alg.digest_size)
+                signature = signing_settings.key.sign(signed_info_c14n, padding=padding, algorithm=hash_alg)
             else:
                 raise NotImplementedError()
             if self.sign_alg.name.startswith("DSA_") or self.sign_alg.name.startswith("ECDSA_"):
@@ -271,7 +281,7 @@ class XMLSigner(XMLSignatureProcessor):
         if isinstance(reference_uris, (str, bytes)):
             reference_uris = [reference_uris]
         references = list(
-            ref if isinstance(ref, XMLSignatureReference) else XMLSignatureReference(URI=ref) for ref in reference_uris
+            ref if isinstance(ref, SignatureReference) else SignatureReference(URI=ref) for ref in reference_uris
         )
         return references
 
@@ -298,15 +308,15 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             sig_root.append(signing_settings.key_info)
 
-    def _get_c14n_inputs_from_references(self, doc_root, references: List[XMLSignatureReference]):
+    def _get_c14n_inputs_from_references(self, doc_root, references: List[SignatureReference]):
         c14n_inputs, new_references = [], []
         for reference in references:
             uri = reference.URI if reference.URI.startswith("#") else "#" + reference.URI
             c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {"URI": uri})))
-            new_references.append(XMLSignatureReference(URI=uri, c14n_method=reference.c14n_method))
+            new_references.append(SignatureReference(URI=uri, c14n_method=reference.c14n_method))
         return c14n_inputs, new_references
 
-    def _unpack(self, data, references: List[XMLSignatureReference]):
+    def _unpack(self, data, references: List[SignatureReference]):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         if self.construction_method == SignatureConstructionMethod.enveloped:
             if isinstance(data, (str, bytes)):
@@ -317,14 +327,14 @@ class XMLSigner(XMLSignatureProcessor):
                 # Only sign the referenced element(s)
                 c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
 
-            signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", anywhere=True)
+            signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", xpath=".//")
             if len(signature_placeholders) == 0:
                 doc_root.append(sig_root)
             elif len(signature_placeholders) == 1:
                 sig_root = signature_placeholders[0]
                 del sig_root.attrib["Id"]
                 for c14n_input in c14n_inputs:
-                    placeholders = self._findall(c14n_input, "Signature[@Id='placeholder']", anywhere=True)
+                    placeholders = self._findall(c14n_input, "Signature[@Id='placeholder']", xpath=".//")
                     if placeholders:
                         assert len(placeholders) == 1
                         _remove_sig(placeholders[0])
@@ -337,12 +347,12 @@ class XMLSigner(XMLSignatureProcessor):
                 for c14n_input in c14n_inputs:
                     payload_id = c14n_input.get("Id", c14n_input.get("ID"))
                     uri = "#{}".format(payload_id) if payload_id is not None else ""
-                    references.append(XMLSignatureReference(URI=uri))
+                    references.append(SignatureReference(URI=uri))
         elif self.construction_method == SignatureConstructionMethod.detached:
             doc_root = self.get_root(data)
             if references is None:
                 uri = "#{}".format(data.get("Id", data.get("ID", "object")))
-                references = [XMLSignatureReference(URI=uri)]
+                references = [SignatureReference(URI=uri)]
                 c14n_inputs = [self.get_root(data)]
             try:
                 c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
@@ -355,7 +365,7 @@ class XMLSigner(XMLSignatureProcessor):
                 c14n_inputs[0].text = data
             else:
                 c14n_inputs[0].append(self.get_root(data))
-            references = [XMLSignatureReference(URI="#object")]
+            references = [SignatureReference(URI="#object")]
         return sig_root, doc_root, c14n_inputs, references
 
     def _build_sig(self, sig_root, references, c14n_inputs, inclusive_ns_prefixes):
@@ -367,9 +377,9 @@ class XMLSigner(XMLSignatureProcessor):
         SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=self.sign_alg.value)
         for i, reference in enumerate(references):
             if reference.c14n_method is None:
-                reference.c14n_method = self.c14n_alg
+                reference = replace(reference, c14n_method=self.c14n_alg)
             if reference.inclusive_ns_prefixes is None:
-                reference.inclusive_ns_prefixes = inclusive_ns_prefixes
+                reference = replace(reference, inclusive_ns_prefixes=inclusive_ns_prefixes)
             reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
             transforms = SubElement(reference_node, ds_tag("Transforms"))
             if self.construction_method == SignatureConstructionMethod.enveloped:
@@ -414,7 +424,7 @@ class XMLSigner(XMLSignatureProcessor):
         Add the public components of the key to the signature (see https://www.w3.org/TR/xmldsig-core2/#sec-KeyValue).
         """
         key_value = SubElement(key_info_node, ds_tag("KeyValue"))
-        if self.sign_alg.name.startswith("RSA_"):
+        if self.sign_alg.name.startswith("RSA_") or self.sign_alg.name.startswith("SHA"):
             rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
             modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
             modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n)).decode()

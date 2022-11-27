@@ -6,14 +6,13 @@ import re
 import sys
 import unittest
 from base64 import b64decode, b64encode
+from dataclasses import replace
 from glob import glob
 from xml.etree import ElementTree as stdlibElementTree
 
 import cryptography.exceptions
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from lxml import etree
-
-from signxml.signer import XMLSignatureReference
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from signxml import (  # noqa:E402
@@ -23,8 +22,10 @@ from signxml import (  # noqa:E402
     InvalidDigest,
     InvalidInput,
     InvalidSignature,
+    SignatureConfiguration,
     SignatureConstructionMethod,
     SignatureMethod,
+    SignatureReference,
     VerifyResult,
     XMLSignatureProcessor,
     XMLSigner,
@@ -105,16 +106,15 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         with self.assertRaisesRegex(InvalidInput, "must be an XML element"):
             XMLSigner(signature_algorithm="hmac-sha256").sign("x", key=b"abc")
 
-        digest_algs = {"sha1", "sha224", "sha256", "sha384", "sha512"}
-        sig_algs = {"hmac", "dsa", "rsa", "ecdsa"}
-        hash_algs = {"sha1", "sha256"}
+        digest_algs = list(DigestAlgorithm)
+        sig_algs = list(SignatureMethod)
         c14n_algs = {
             "http://www.w3.org/2001/10/xml-exc-c14n#",
             "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
         }
 
-        all_methods = itertools.product(digest_algs, sig_algs, hash_algs, methods, c14n_algs)
-        for digest_alg, sig_alg, hash_alg, method, c14n_alg in all_methods:
+        all_methods = itertools.product(digest_algs, sig_algs, methods, c14n_algs)
+        for digest_alg, sig_alg, method, c14n_alg in all_methods:
             data = [etree.parse(f).getroot() for f in self.example_xml_files]
             # FIXME: data.extend(stdlibElementTree.parse(f).getroot() for f in (self.example_xml_files)
             data.append(stdlibElementTree.parse(self.example_xml_files[0]).getroot())
@@ -122,19 +122,20 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             for d in data:
                 if isinstance(d, str) and method != methods.enveloping:
                     continue
-                print(digest_alg, sig_alg, hash_alg, c14n_alg, method, type(d))
+                print(digest_alg.name, sig_alg.name, c14n_alg, method, type(d))
                 reset_tree(d, method)
                 signer = XMLSigner(
                     method=method,
-                    signature_algorithm="-".join([sig_alg, hash_alg]),
+                    signature_algorithm=sig_alg,
                     digest_algorithm=digest_alg,
                     c14n_algorithm=c14n_alg,
                 )
+                sig_alg_type = "rsa" if "RSA_MGF1" in sig_alg.name else sig_alg.name.split("_")[0].lower()
                 signed = signer.sign(
-                    d, key=self.keys[sig_alg], reference_uri="URI" if method == methods.detached else None
+                    d, key=self.keys[sig_alg_type], reference_uri="URI" if method == methods.detached else None
                 )
                 # print(etree.tostring(signed))
-                hmac_key = self.keys["hmac"] if sig_alg == "hmac" else None
+                hmac_key = self.keys["hmac"] if sig_alg_type == "hmac" else None
                 verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True)
 
                 if method == methods.detached:
@@ -191,7 +192,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 with self.assertRaises(etree.XMLSyntaxError):
                     XMLVerifier().verify("", hmac_key=hmac_key, require_x509=False)
 
-                if sig_alg == "hmac":
+                if sig_alg_type == "hmac":
                     with self.assertRaisesRegex(InvalidSignature, "Signature mismatch"):
                         verify_kwargs["hmac_key"] = b"SECRET"
                         XMLVerifier().verify(signed_data, **verify_kwargs)
@@ -516,7 +517,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             "2Sk3E2SZwQCqX2STDkplw5JJp1ATAB5wsdRdQBAe/7o=",
         )
         # Test different c14n methods for signature and payload
-        ref = XMLSignatureReference(
+        ref = SignatureReference(
             URI=reference_uri, c14n_method=CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0
         )
         sign_args = dict(data=data, reference_uri=[ref], key=b"secret")
@@ -525,7 +526,9 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             signed.find(".//ds:SignatureValue", namespaces=namespaces).text,
             "2Sk3E2SZwQCqX2STDkplw5JJp1ATAB5wsdRdQBAe/7o=",
         )
-        sign_args["reference_uri"][0].c14n_method = CanonicalizationMethod.CANONICAL_XML_1_0
+        sign_args["reference_uri"][0] = replace(
+            sign_args["reference_uri"][0], c14n_method=CanonicalizationMethod.CANONICAL_XML_1_0
+        )
         signed2 = signer.sign(**sign_args)
         self.assertEqual(
             signed2.find(".//ds:SignatureValue", namespaces=namespaces).text,
@@ -599,6 +602,23 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             XMLSignatureProcessor()._c14n(doc, algorithm=CanonicalizationMethod.CANONICAL_XML_1_1),
             b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>',
         )
+
+    def test_verify_config(self):
+        data = etree.parse(self.example_xml_files[0]).getroot()
+        cert, key = self.load_example_keys()
+        signer = XMLSigner()
+        signed = signer.sign(data, cert=cert, key=key)
+        verifier = XMLVerifier()
+        verifier.verify(signed, x509_cert=cert)
+        config = SignatureConfiguration(location="./foo/bar/")
+        with self.assertRaisesRegex(InvalidInput, "Expected to find XML element Signature in data"):
+            verifier.verify(signed, x509_cert=cert, expect_config=config)
+        config = SignatureConfiguration(signature_methods=[SignatureMethod.ECDSA_SHA384])
+        with self.assertRaisesRegex(InvalidInput, "Signature method RSA_SHA256 forbidden by configuration"):
+            verifier.verify(signed, x509_cert=cert, expect_config=config)
+        config = SignatureConfiguration(digest_algorithms=[DigestAlgorithm.SHA3_512])
+        with self.assertRaisesRegex(InvalidInput, "Digest algorithm SHA256 forbidden by configuration"):
+            verifier.verify(signed, x509_cert=cert, expect_config=config)
 
 
 class TestXAdES(unittest.TestCase, LoadExampleKeys):
