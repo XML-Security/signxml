@@ -1,3 +1,29 @@
+Changes for v3.0.1 (2022-11-27)
+===============================
+
+-  Mark SHA1 as deprecated
+
+-  Aggregate verification settings in SignatureConfiguration dataclass
+
+-  Mark all dataclasses in API as frozen
+
+-  Add ability to assert expected signature location
+
+-  Add ability to assert expected signature algorithms
+
+-  Add ability to assert expected digest algorithms
+
+-  Add MGF1 (“RSASSA-PSS without parameters”) algorithm identifiers
+
+-  Remove PSS (“RSASSA-PSS with parameters”) and EdDSA algorithm
+   identifiers (given low usage and no interop examples, we will not be
+   implementing PSS parameters for now; EdDSA key info additionally has
+   no standardized way to serialize it)
+
+-  Add debug logging of canonicalization outputs
+
+-  Documentation and formatting improvements
+
 Changes for v3.0.0 (2022-11-13)
 ===============================
 
