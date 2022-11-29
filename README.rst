@@ -58,8 +58,8 @@ SignXML uses the `lxml ElementTree API <https://lxml.de/tutorial.html>`_ to work
     from signxml import XMLSigner, XMLVerifier
 
     data_to_sign = "<Test/>"
-    cert = open("example.pem").read()
-    key = open("example.key").read()
+    cert = open("cert.pem").read()
+    key = open("privkey.pem").read()
     root = etree.fromstring(data_to_sign)
     signed_root = XMLSigner().sign(root, key=key, cert=cert)
     verified_data = XMLVerifier().verify(signed_root).signed_xml
@@ -67,7 +67,7 @@ SignXML uses the `lxml ElementTree API <https://lxml.de/tutorial.html>`_ to work
 To make this example self-sufficient for test purposes:
 
 - Generate a test certificate and key using
-  ``openssl req -x509 -sha256 -nodes -subj "/CN=test" -days 1 -newkey rsa:2048 -keyout example.key -out example.pem``
+  ``openssl req -x509 -nodes -subj "/CN=test" -days 1 -newkey rsa:2048 > cert.pem``
   (run ``yum install openssl`` on Red Hat).
 - Pass the ``x509_cert=cert`` keyword argument to ``XMLVerifier.verify()``. (In production, ensure this is replaced with
   the correct configuration for the trusted CA or certificate - this determines which signatures your application trusts.)

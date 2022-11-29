@@ -151,9 +151,8 @@ class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
 
     CANONICAL_XML_1_0 = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
     CANONICAL_XML_1_0_WITH_COMMENTS = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments"
-    CANONICAL_XML_1_1 = "http://www.w3.org/2006/12/xmlc14n11#"
-    CANONICAL_XML_1_1_DEPRECATED_URI = "http://www.w3.org/2006/12/xml-c14n11"
-    CANONICAL_XML_1_1_WITH_COMMENTS = "http://www.w3.org/2006/12/xmlc14n11#WithComments"
+    CANONICAL_XML_1_1 = "http://www.w3.org/2006/12/xml-c14n11"
+    CANONICAL_XML_1_1_WITH_COMMENTS = "http://www.w3.org/2006/12/xml-c14n11#WithComments"
     EXCLUSIVE_XML_CANONICALIZATION_1_0 = "http://www.w3.org/2001/10/xml-exc-c14n#"
     EXCLUSIVE_XML_CANONICALIZATION_1_0_WITH_COMMENTS = "http://www.w3.org/2001/10/xml-exc-c14n#WithComments"
 

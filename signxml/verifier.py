@@ -294,8 +294,10 @@ class XMLVerifier(XMLSignatureProcessor):
             ``resolve_entities=False``. See https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint.
         :type parser: :class:`lxml.etree.XMLParser` compatible parser
         :param uri_resolver:
-            Function to use to resolve reference URIs that don't start with "#". The function is called with a single
-            string argument containing the URI to be resolved, and is expected to return a lxml.etree node or string.
+            Function to use to resolve reference URIs that are not empty and don't start with "#" (such references are
+            only expected in detached signatures; if you don't expect such signatures, leave this unset to prevent them
+            from validating). The function is called with a single string argument containing the URI to be resolved,
+            and is expected to return a :class:`lxml.etree._Element` node or bytes.
         :param id_attribute:
             Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for "Id", then "ID".
         :param expect_config:

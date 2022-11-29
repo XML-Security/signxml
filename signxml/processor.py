@@ -140,7 +140,9 @@ class XMLSignatureProcessor(XMLProcessor):
 
     def _resolve_reference(self, doc_root, reference, uri_resolver=None):
         uri = reference.get("URI")
-        if not uri:
+        if uri is None:
+            raise InvalidInput("References without URIs are not supported")
+        elif uri == "":
             return doc_root
         elif uri.startswith("#xpointer("):
             raise InvalidInput("XPointer references are not supported")
