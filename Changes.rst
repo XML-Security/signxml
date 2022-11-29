@@ -1,3 +1,8 @@
+Changes for v3.0.2 (2022-11-28)
+===============================
+
+-  Remove incorrect deprecation of xml-c14n11 URI
+
 Changes for v3.0.1 (2022-11-27)
 ===============================
 
