@@ -2,14 +2,12 @@ SignXML: XML Signature and XAdES in Python
 ==========================================
 
 *SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard in
-Python. This standard (also known as XMLDSig and `RFC 3275 <http://www.ietf.org/rfc/rfc3275.txt>`_) is used to provide
-payload security in `SAML 2.0 <http://en.wikipedia.org/wiki/SAML_2.0>`_, `XAdES <https://en.wikipedia.org/wiki/XAdES>`_,
-and `WS-Security <https://en.wikipedia.org/wiki/WS-Security>`_, among other uses. Two versions of the standard are in
-use (`Version 1.1 <http://www.w3.org/TR/xmldsig-core1/>`_, a finalized
-`W3C Recommendation <https://www.w3.org/standards/types#REC>`_, and
-`Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_, a draft
-`W3C Working Group Note <https://www.w3.org/standards/types#NOTE>`_). *SignXML* implements all of the required components
-of the Version 1.1 standard, and most recommended ones. Its features are:
+Python. This standard (also known as "XMLDSig") is used to provide payload security in `SAML 2.0
+<http://en.wikipedia.org/wiki/SAML_2.0>`_, `XAdES <https://en.wikipedia.org/wiki/XAdES>`_, and `WS-Security
+<https://en.wikipedia.org/wiki/WS-Security>`_, among other uses. The standard is defined in the `W3C Recommendation
+<https://www.w3.org/standards/types#REC>`_ `XML Signature Syntax and Processing Version 1.1
+<http://www.w3.org/TR/xmldsig-core1/>`_. *SignXML* implements all of the required components of the Version 1.1
+standard, and most recommended ones. Its features are:
 
 * Use of a libxml2-based XML parser configured to defend against
   `common XML attacks <https://docs.python.org/3/library/xml.html#xml-vulnerabilities>`_ when verifying signatures
@@ -229,13 +227,11 @@ Links
 * `Change log <https://github.com/XML-Security/signxml/blob/master/Changes.rst>`_
 * `List of W3C XML Signature standards and drafts <https://www.w3.org/TR/?title=xml%20signature>`_
 * `W3C Recommendation: XML Signature Syntax and Processing Version 1.1 <http://www.w3.org/TR/xmldsig-core1>`_
-* `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
-* `W3C Working Group Note: XML Security 2.0 Requirements and Design Considerations
-  <https://www.w3.org/TR/2013/NOTE-xmlsec-reqs2-20130411/>`_
 * `W3C Working Group Note: XML Signature Best Practices <http://www.w3.org/TR/xmldsig-bestpractices/>`_
 * `XML-Signature Interoperability <http://www.w3.org/Signature/2001/04/05-xmldsig-interop.html>`_
 * `W3C Working Group Note: Test Cases for C14N 1.1 and XMLDSig Interoperability <http://www.w3.org/TR/xmldsig2ed-tests/>`_
-* `RFC 9231: Additional XML Security Uniform Resource Identifiers (URIs) <https://www.rfc-editor.org/rfc/rfc9231.html>`_
+* `W3C Working Group Note: XML Signature Syntax and Processing Version 2.0 <http://www.w3.org/TR/xmldsig-core2>`_
+  (This draft standard proposal was never finalized and is not in general use.)
 * `Intelligence Community Technical Specification: Web Service Security Guidance for Use of XML Signature and XML
   Encryption <https://github.com/XML-Security/signxml/blob/develop/docs/dni-guidance.pdf>`_
 * `XMLSec: Related links <https://www.aleksey.com/xmlsec/related.html>`_
