@@ -52,9 +52,9 @@ class InvalidInputErrorMixin:
 
 class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     """
-    An enumeration of digest algorithms supported by SignXML. See `RFC 9231
-    <https://www.rfc-editor.org/rfc/rfc9231.html>`_ and the `Algorithm Identifiers and Implementation Requirements
-    <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
+    An enumeration of digest algorithms supported by SignXML.  See the
+    `Algorithm Identifiers and Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of
+    the XML Signature 1.1 standard for details.
     """
 
     SHA224 = "http://www.w3.org/2001/04/xmldsig-more#sha224"
@@ -83,9 +83,9 @@ class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 # TODO: check if padding errors are fixed by using padding=MGF1
 class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     """
-    An enumeration of signature methods (also referred to as signature algorithms) supported by SignXML. See `RFC 9231
-    <https://www.rfc-editor.org/rfc/rfc9231.html>`_ and the `Algorithm Identifiers and Implementation Requirements
-    <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
+    An enumeration of signature methods (also referred to as signature algorithms) supported by SignXML. See the
+    `Algorithm Identifiers and Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of
+    the XML Signature 1.1 standard for details.
     """
 
     ECDSA_SHA224 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha224"
@@ -144,9 +144,8 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     """
     An enumeration of XML canonicalization methods (also referred to as canonicalization algorithms) supported by
-    SignXML. See `RFC 9231 <https://www.rfc-editor.org/rfc/rfc9231.html>`_ and the `Algorithm Identifiers and
-    Implementation Requirements <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1
-    standard for details.
+    SignXML. See the `Algorithm Identifiers and Implementation Requirements
+    <http://www.w3.org/TR/xmldsig-core1/#sec-AlgID>`_ section of the XML Signature 1.1 standard for details.
     """
 
     CANONICAL_XML_1_0 = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
@@ -155,6 +154,9 @@ class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     CANONICAL_XML_1_1_WITH_COMMENTS = "http://www.w3.org/2006/12/xml-c14n11#WithComments"
     EXCLUSIVE_XML_CANONICALIZATION_1_0 = "http://www.w3.org/2001/10/xml-exc-c14n#"
     EXCLUSIVE_XML_CANONICALIZATION_1_0_WITH_COMMENTS = "http://www.w3.org/2001/10/xml-exc-c14n#WithComments"
+
+    # The identifier for Canonical XML 2.0 is "http://www.w3.org/2010/xml-c14n2", but it is not a W3C standard.
+    # While it is supported by lxml, it's not in general use and not supported by SignXML as a matter of policy
 
 
 digest_algorithm_implementations = {
