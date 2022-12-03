@@ -90,7 +90,7 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 
     RSA_SHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
     """
-    The RSASSA-PKCS1-v1_5 algorithm described in RFC 3447. This is the default and most widely supported signature method.
+    The RSASSA-PKCS1-v1_5 algorithm described in RFC 3447. This is the default, most widely supported signature method.
     """
 
     RSA_SHA224 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha224"
