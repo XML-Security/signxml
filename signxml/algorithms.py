@@ -70,10 +70,7 @@ class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     SHA3_512 = "http://www.w3.org/2007/05/xmldsig-more#sha3-512"
 
     SHA1 = "http://www.w3.org/2000/09/xmldsig#sha1"
-    """
-    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
-    Support for their algorithm identifiers is deprecated and will be removed in a future release.
-    """
+    "See `SHA1 deprecation`_."
 
     @property
     def implementation(self) -> Callable:
@@ -123,29 +120,24 @@ class SignatureMethod(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
 
     DSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#dsa-sha1"
     """
-    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
-    Support for their algorithm identifiers is deprecated and will be removed in a future release.
+    _`SHA1 deprecation`: SHA1 based algorithms are not secure for use in digital signatures. They are included for
+    legacy compatibility only and disabled by default. To verify SHA1 based signatures, use::
+
+        XMLVerifier().verify(
+            expect_config=SignatureConfiguration(
+                signature_methods=...,
+                digest_algorithms=...
+            )
+        )
     """
     HMAC_SHA1 = "http://www.w3.org/2000/09/xmldsig#hmac-sha1"
-    """
-    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
-    Support for their algorithm identifiers is deprecated and will be removed in a future release.
-    """
+    "See `SHA1 deprecation`_."
     RSA_SHA1 = "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
-    """
-    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
-    Support for their algorithm identifiers is deprecated and will be removed in a future release.
-    """
+    "See `SHA1 deprecation`_."
     ECDSA_SHA1 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1"
-    """
-    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
-    Support for their algorithm identifiers is deprecated and will be removed in a future release.
-    """
+    "See `SHA1 deprecation`_."
     SHA1_RSA_MGF1 = "http://www.w3.org/2007/05/xmldsig-more#sha1-rsa-MGF1"
-    """
-    SHA1 based algorithms are not secure for use in digital signatures. They are included for legacy compatibility only.
-    Support for their algorithm identifiers is deprecated and will be removed in a future release.
-    """
+    "See `SHA1 deprecation`_."
 
 
 class CanonicalizationMethod(InvalidInputErrorMixin, Enum):

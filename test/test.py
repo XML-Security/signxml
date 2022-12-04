@@ -630,10 +630,13 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         config = SignatureConfiguration(location="./foo/bar/")
         with self.assertRaisesRegex(InvalidInput, "Expected to find XML element Signature in data"):
             verifier.verify(signed, x509_cert=cert, expect_config=config)
-        config = SignatureConfiguration(signature_methods=[SignatureMethod.ECDSA_SHA384])
+        config = SignatureConfiguration(signature_methods=[])
         with self.assertRaisesRegex(InvalidInput, "Signature method RSA_SHA256 forbidden by configuration"):
             verifier.verify(signed, x509_cert=cert, expect_config=config)
         config = SignatureConfiguration(digest_algorithms=[DigestAlgorithm.SHA3_512])
+        with self.assertRaisesRegex(InvalidInput, "Digest algorithm SHA256 forbidden by configuration"):
+            verifier.verify(signed, x509_cert=cert, expect_config=config)
+        config = SignatureConfiguration(digest_algorithms=[])
         with self.assertRaisesRegex(InvalidInput, "Digest algorithm SHA256 forbidden by configuration"):
             verifier.verify(signed, x509_cert=cert, expect_config=config)
 

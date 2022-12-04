@@ -63,13 +63,13 @@ class SignatureConfiguration:
     signature_methods: FrozenSet[SignatureMethod] = frozenset(sm for sm in SignatureMethod if "SHA1" not in sm.name)
     """
     Set of acceptable signature methods (signature algorithms). Any signature generated using an algorithm not listed
-    here will fail verification (but if this set is left empty, then all supported algorithms are accepted).
+    here will fail verification.
     """
 
     digest_algorithms: FrozenSet[DigestAlgorithm] = frozenset(da for da in DigestAlgorithm if "SHA1" not in da.name)
     """
     Set of acceptable digest algorithms. Any signature or reference transform generated using an algorithm not listed
-    here will cause verification to fail (but if this set is left empty, then all supported algorithms are accepted).
+    here will cause verification to fail.
     """
 
     ignore_ambiguous_key_info: bool = False
@@ -338,7 +338,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = SignatureMethod(signature_method.get("Algorithm"))
-        if self.config.signature_methods and signature_alg not in self.config.signature_methods:
+        if signature_alg not in self.config.signature_methods:
             raise InvalidInput(f"Signature method {signature_alg.name} forbidden by configuration")
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
@@ -467,7 +467,7 @@ class XMLVerifier(XMLSignatureProcessor):
         # TODO: payload-specific c14n alg
         payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
         digest_alg = DigestAlgorithm(digest_method_alg_name)
-        if self.config.digest_algorithms and digest_alg not in self.config.digest_algorithms:
+        if digest_alg not in self.config.digest_algorithms:
             raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
 
         if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
