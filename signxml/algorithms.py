@@ -50,7 +50,7 @@ class InvalidInputErrorMixin:
         raise InvalidInput(f"Unrecognized {cls.__name__}: {value}")
 
     def __repr__(self):
-        return f"{self.__class__.__name__}.{self.name}"
+        return f"{self.__class__.__name__}.{self.name}"  # type: ignore
 
 
 class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
