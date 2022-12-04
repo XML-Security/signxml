@@ -6,6 +6,7 @@ import re
 import sys
 import unittest
 from base64 import b64decode, b64encode
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from glob import glob
 from xml.etree import ElementTree as stdlibElementTree
@@ -113,7 +114,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         self.assertEqual(SignatureMethod.RSA_SHA256.value, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
         self.assertEqual(SignatureConstructionMethod.enveloped, methods.enveloped)
         with self.assertRaisesRegex(InvalidInput, "Unknown signature construction method"):
-            signer = XMLSignerWithSHA1(method=None)
+            XMLSignerWithSHA1(method=None)
 
         with self.assertRaisesRegex(InvalidInput, "must be an XML element"):
             XMLSigner(signature_algorithm="hmac-sha256").sign("x", key=b"abc")
@@ -125,8 +126,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             "http://www.w3.org/2001/10/xml-exc-c14n#WithComments",
         }
 
-        all_methods = itertools.product(digest_algs, sig_algs, methods, c14n_algs)
-        for digest_alg, sig_alg, method, c14n_alg in all_methods:
+        def test_case(case):
+            digest_alg, sig_alg, method, c14n_alg = case
             data = [etree.parse(f).getroot() for f in self.example_xml_files]
             # FIXME: data.extend(stdlibElementTree.parse(f).getroot() for f in (self.example_xml_files)
             data.append(stdlibElementTree.parse(self.example_xml_files[0]).getroot())
@@ -213,6 +214,10 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     with self.assertRaisesRegex(InvalidSignature, "Signature mismatch"):
                         verify_kwargs["hmac_key"] = b"SECRET"
                         XMLVerifier().verify(signed_data, **verify_kwargs)
+
+        executor = ThreadPoolExecutor()
+        for _ in executor.map(test_case, itertools.product(digest_algs, sig_algs, methods, c14n_algs)):
+            pass
 
     def test_x509_certs(self):
         from OpenSSL.crypto import FILETYPE_PEM
