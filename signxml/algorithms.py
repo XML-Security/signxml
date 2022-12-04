@@ -49,6 +49,9 @@ class InvalidInputErrorMixin:
     def _missing_(cls, value):
         raise InvalidInput(f"Unrecognized {cls.__name__}: {value}")
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}.{self.name}"
+
 
 class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
     """
@@ -160,7 +163,7 @@ class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     EXCLUSIVE_XML_CANONICALIZATION_1_0_WITH_COMMENTS = "http://www.w3.org/2001/10/xml-exc-c14n#WithComments"
 
     # The identifier for Canonical XML 2.0 is "http://www.w3.org/2010/xml-c14n2", but it is not a W3C standard.
-    # While it is supported by lxml, it's not in general use and not supported by SignXML as a matter of policy
+    # While it is supported by lxml, it's not in general use and not supported by SignXML
 
 
 digest_algorithm_implementations = {

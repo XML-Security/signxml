@@ -111,10 +111,16 @@ class XMLSigner(XMLSignatureProcessor):
             self.digest_alg = DigestAlgorithm.from_fragment(digest_algorithm)
         else:
             self.digest_alg = DigestAlgorithm(digest_algorithm)
+        self.check_deprecated_methods()
         self.c14n_alg = CanonicalizationMethod(c14n_algorithm)
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
         self.signature_annotators = [self._add_key_info]
+
+    def check_deprecated_methods(self):
+        if "SHA1" in self.sign_alg.name or "SHA1" in self.digest_alg.name:
+            msg = "SHA1-based algorithms are not supported in the default configuration because they are not secure"
+            raise InvalidInput(msg)
 
     def sign(
         self,

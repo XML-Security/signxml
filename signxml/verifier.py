@@ -60,13 +60,13 @@ class SignatureConfiguration:
     If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
     """
 
-    signature_methods: FrozenSet[SignatureMethod] = frozenset()
+    signature_methods: FrozenSet[SignatureMethod] = frozenset(sm for sm in SignatureMethod if "SHA1" not in sm.name)
     """
     Set of acceptable signature methods (signature algorithms). Any signature generated using an algorithm not listed
     here will fail verification (but if this set is left empty, then all supported algorithms are accepted).
     """
 
-    digest_algorithms: FrozenSet[DigestAlgorithm] = frozenset()
+    digest_algorithms: FrozenSet[DigestAlgorithm] = frozenset(da for da in DigestAlgorithm if "SHA1" not in da.name)
     """
     Set of acceptable digest algorithms. Any signature or reference transform generated using an algorithm not listed
     here will cause verification to fail (but if this set is left empty, then all supported algorithms are accepted).
@@ -384,6 +384,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
             if signature_alg.name.startswith("ECDSA"):
                 raw_signature = self._encode_dss_signature(raw_signature, signing_cert.get_pubkey().bits())
+
             try:
                 digest_alg_name = str(digest_algorithm_implementations[signature_alg].name)
                 openssl_verify(signing_cert, raw_signature, signed_info_c14n, digest_alg_name)

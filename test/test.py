@@ -35,10 +35,22 @@ from signxml import (  # noqa:E402
 )
 from signxml.xades import (  # noqa:E402
     XAdESDataObjectFormat,
+    XAdESSignatureConfiguration,
     XAdESSignaturePolicy,
     XAdESSigner,
     XAdESVerifier,
     XAdESVerifyResult,
+)
+
+
+class XMLSignerWithSHA1(XMLSigner):
+    def check_deprecated_methods(self):
+        pass
+
+
+sha1_ok = SignatureConfiguration(signature_methods=list(SignatureMethod), digest_algorithms=list(DigestAlgorithm))
+xades_sha1_ok = XAdESSignatureConfiguration(
+    signature_methods=list(SignatureMethod), digest_algorithms=list(DigestAlgorithm)
 )
 
 
@@ -101,7 +113,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         self.assertEqual(SignatureMethod.RSA_SHA256.value, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
         self.assertEqual(SignatureConstructionMethod.enveloped, methods.enveloped)
         with self.assertRaisesRegex(InvalidInput, "Unknown signature construction method"):
-            signer = XMLSigner(method=None)
+            signer = XMLSignerWithSHA1(method=None)
 
         with self.assertRaisesRegex(InvalidInput, "must be an XML element"):
             XMLSigner(signature_algorithm="hmac-sha256").sign("x", key=b"abc")
@@ -124,7 +136,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     continue
                 print(digest_alg.name, sig_alg.name, c14n_alg, method, type(d))
                 reset_tree(d, method)
-                signer = XMLSigner(
+                signer = XMLSignerWithSHA1(
                     method=method,
                     signature_algorithm=sig_alg,
                     digest_algorithm=digest_alg,
@@ -136,7 +148,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 )
                 # print(etree.tostring(signed))
                 hmac_key = self.keys["hmac"] if sig_alg_type == "hmac" else None
-                verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True)
+                verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True, expect_config=sha1_ok)
 
                 if method == methods.detached:
 
@@ -169,7 +181,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         XMLVerifier().verify(signed_data, id_attribute="X", **verify_kwargs)
 
                 with self.assertRaisesRegex(InvalidInput, "Expected a X.509 certificate based signature"):
-                    XMLVerifier().verify(signed_data, hmac_key=hmac_key, uri_resolver=verify_kwargs.get("uri_resolver"))
+                    XMLVerifier().verify(
+                        signed_data,
+                        hmac_key=hmac_key,
+                        uri_resolver=verify_kwargs.get("uri_resolver"),
+                        expect_config=sha1_ok,
+                    )
 
                 if method != methods.detached:
                     with self.assertRaisesRegex(InvalidSignature, "Digest mismatch"):
@@ -205,28 +222,26 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         tree = etree.parse(self.example_xml_files[0])
         ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
         crt, key = self.load_example_keys()
-        for hash_alg in "sha1", "sha256":
-            for method in methods.enveloped, methods.enveloping:
-                print(hash_alg, method)
-                data = tree.getroot()
-                reset_tree(data, method)
-                signer = XMLSigner(method=method, signature_algorithm="rsa-" + hash_alg)
-                signed = signer.sign(data, key=key, cert=crt)
-                signed_data = etree.tostring(signed)
-                XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
-                XMLVerifier().verify(signed_data, x509_cert=crt)
-                XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
-                XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
+        for method in methods.enveloped, methods.enveloping:
+            data = tree.getroot()
+            reset_tree(data, method)
+            signer = XMLSigner(method=method, signature_algorithm=SignatureMethod.RSA_SHA256)
+            signed = signer.sign(data, key=key, cert=crt)
+            signed_data = etree.tostring(signed)
+            XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
+            XMLVerifier().verify(signed_data, x509_cert=crt)
+            XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
+            XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
 
-                with self.assertRaises(OpenSSLCryptoError):
-                    XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
+            with self.assertRaises(OpenSSLCryptoError):
+                XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
 
-                with self.assertRaises(InvalidSignature):
-                    XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="test")
+            with self.assertRaises(InvalidSignature):
+                XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="test")
 
-                with self.assertRaisesRegex(InvalidCertificate, "unable to get local issuer certificate"):
-                    XMLVerifier().verify(signed_data)
-                # TODO: negative: verify with wrong cert, wrong CA
+            with self.assertRaisesRegex(InvalidCertificate, "unable to get local issuer certificate"):
+                XMLVerifier().verify(signed_data)
+            # TODO: negative: verify with wrong cert, wrong CA
 
     def test_xmldsig_interop_examples(self):
         ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
@@ -234,7 +249,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
                 with self.assertRaisesRegex(InvalidCertificate, "certificate has expired"):
-                    XMLVerifier().verify(fh.read(), ca_pem_file=ca_pem_file)
+                    XMLVerifier().verify(fh.read(), ca_pem_file=ca_pem_file, expect_config=sha1_ok)
 
     def test_xmldsig_interop_TR2012(self):
         def get_x509_cert(**kwargs):
@@ -256,6 +271,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         hmac_key="testkey",
                         validate_schema=True,
                         cert_resolver=get_x509_cert if "x509digest" in signature_file else None,
+                        expect_config=sha1_ok,
                     )
                     sig.decode("utf-8")
                 except Exception as e:
@@ -325,6 +341,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         x509_cert=get_x509_cert(signature_file),
                         cert_resolver=cert_resolver if "issuer-serial" in signature_file else None,
                         ca_pem_file=get_ca_pem_file(signature_file),
+                        expect_config=sha1_ok,
                     )
                     decoded_sig = sig.decode("utf-8")
                     if "HMACOutputLength" in decoded_sig or "bad" in signature_file or "expired" in signature_file:
@@ -543,13 +560,13 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         with open(os.path.join(wsse_dir, "examples", "server_public.pem"), "rb") as fh:
             crt = fh.read()
         data = etree.parse(os.path.join(wsse_dir, "test", "unit", "client", "files", "valid wss resp.xml"))
-        XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2)
+        XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2, expect_config=sha1_ok)
 
         data = etree.parse(
             os.path.join(wsse_dir, "test", "unit", "client", "files", "invalid wss resp - changed content.xml")
         )
         with self.assertRaisesRegex(InvalidDigest, "Digest mismatch for reference 0"):
-            XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2)
+            XMLVerifier().verify(data, x509_cert=crt, validate_schema=False, expect_references=2, expect_config=sha1_ok)
 
     def test_psha1(self):
         from signxml.util import p_sha1
@@ -620,6 +637,18 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         with self.assertRaisesRegex(InvalidInput, "Digest algorithm SHA256 forbidden by configuration"):
             verifier.verify(signed, x509_cert=cert, expect_config=config)
 
+    def test_sha1_policy(self):
+        data = etree.parse(self.example_xml_files[0]).getroot()
+        cert, key = self.load_example_keys()
+        with self.assertRaisesRegex(InvalidInput, "SHA1-based algorithms are not supported"):
+            XMLSigner(signature_algorithm=SignatureMethod.RSA_SHA1)
+        signer = XMLSignerWithSHA1(signature_algorithm=SignatureMethod.RSA_SHA1, digest_algorithm=DigestAlgorithm.SHA1)
+        signed = signer.sign(data, cert=cert, key=key)
+        verifier = XMLVerifier()
+        with self.assertRaisesRegex(InvalidInput, "Signature method RSA_SHA1 forbidden by configuration"):
+            verifier.verify(signed, x509_cert=cert)
+        verifier.verify(signed, x509_cert=cert, expect_config=sha1_ok)
+
 
 class TestXAdES(unittest.TestCase, LoadExampleKeys):
     expect_references = {
@@ -681,7 +710,11 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             with open(sig_file, "rb") as fh:
                 doc = etree.parse(fh)
             cert = doc.find("//{http://www.w3.org/2000/09/xmldsig#}X509Certificate").text
-            kwargs = dict(x509_cert=cert, expect_references=self.expect_references.get(os.path.basename(sig_file), 2))
+            kwargs = dict(
+                x509_cert=cert,
+                expect_references=self.expect_references.get(os.path.basename(sig_file), 2),
+                expect_config=xades_sha1_ok,
+            )
             if "nonconformant" in sig_file:
                 kwargs.update(validate_schema=False)
             if "sigPolStore" in sig_file:
