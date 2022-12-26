@@ -374,6 +374,17 @@ class XMLSigner(XMLSignatureProcessor):
             references = [SignatureReference(URI="#object")]
         return sig_root, doc_root, c14n_inputs, references
 
+    def _build_transforms_for_reference(self, *, transforms_node: _Element, reference: SignatureReference):
+        if self.construction_method == SignatureConstructionMethod.enveloped:
+            SubElement(transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
+            SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
+        else:
+            c14n_xform = SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
+            if reference.inclusive_ns_prefixes:
+                SubElement(
+                    c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(reference.inclusive_ns_prefixes)
+                )
+
     def _build_sig(self, sig_root, references, c14n_inputs, inclusive_ns_prefixes):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg.value)
@@ -388,16 +399,7 @@ class XMLSigner(XMLSignatureProcessor):
                 reference = replace(reference, inclusive_ns_prefixes=inclusive_ns_prefixes)
             reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
             transforms = SubElement(reference_node, ds_tag("Transforms"))
-            if self.construction_method == SignatureConstructionMethod.enveloped:
-                SubElement(transforms, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
-                SubElement(transforms, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
-            else:
-                c14n_xform = SubElement(transforms, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
-                if reference.inclusive_ns_prefixes:
-                    SubElement(
-                        c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(reference.inclusive_ns_prefixes)
-                    )
-
+            self._build_transforms_for_reference(transforms_node=transforms, reference=reference)
             SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
             digest_value = SubElement(reference_node, ds_tag("DigestValue"))
             payload_c14n = self._c14n(

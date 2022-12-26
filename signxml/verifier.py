@@ -107,6 +107,8 @@ class XMLVerifier(XMLSignatureProcessor):
     Create a new XML Signature Verifier object, which can be used to verify multiple pieces of data.
     """
 
+    _default_reference_c14n_method = CanonicalizationMethod.CANONICAL_XML_1_0
+
     def _get_signature(self, root):
         if root.tag == ds_tag("Signature"):
             return root
@@ -188,7 +190,7 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             return inclusive_namespaces.get("PrefixList").split(" ")
 
-    def _apply_transforms(self, payload, transforms_node, signature, c14n_algorithm: CanonicalizationMethod):
+    def _apply_transforms(self, payload, *, transforms_node: etree._Element, signature: etree._Element):
         transforms, c14n_applied = [], False
         if transforms_node is not None:
             transforms = self._findall(transforms_node, "Transform")
@@ -214,7 +216,7 @@ class XMLVerifier(XMLSignatureProcessor):
             c14n_applied = True
 
         if not c14n_applied and not isinstance(payload, (str, bytes)):
-            payload = self._c14n(payload, algorithm=c14n_algorithm)
+            payload = self._c14n(payload, algorithm=self._default_reference_c14n_method)
 
         return payload
 
@@ -464,8 +466,7 @@ class XMLVerifier(XMLSignatureProcessor):
         digest_method_alg_name = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
         payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
-        # TODO: payload-specific c14n alg
-        payload_c14n = self._apply_transforms(payload, transforms, copied_signature_ref, c14n_algorithm)
+        payload_c14n = self._apply_transforms(payload, transforms_node=transforms, signature=copied_signature_ref)
         digest_alg = DigestAlgorithm(digest_method_alg_name)
         if digest_alg not in self.config.digest_algorithms:
             raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")

@@ -34,6 +34,7 @@ from signxml import (  # noqa:E402
     methods,
     namespaces,
 )
+from signxml.util import ds_tag  # noqa:E402
 from signxml.xades import (  # noqa:E402
     XAdESDataObjectFormat,
     XAdESSignatureConfiguration,
@@ -556,6 +557,20 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             signed2.find(".//ds:SignatureValue", namespaces=namespaces).text,
             "8GPAVJstDxHyuoJqec8C0ssji4zfdXanu1YHGlWbfx0=",
         )
+
+        # Test correct default c14n method for payload when c14n transform metadata is omitted
+        def _build_transforms_for_reference(transforms_node, reference):
+            etree.SubElement(
+                transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value
+            )
+
+        signer._build_transforms_for_reference = _build_transforms_for_reference
+        signed3 = signer.sign(**sign_args)
+        self.assertEqual(
+            signed3.find(".//ds:SignatureValue", namespaces=namespaces).text,
+            "/iezjApGBVMMUspj5WyZwIOEw30qLX3Gv576vwFMAbQ=",
+        )
+        XMLVerifier().verify(signed3, hmac_key=b"secret", require_x509=False, validate_schema=False)
 
     def test_excision_of_untrusted_comments(self):
         pass  # TODO: test comments excision
