@@ -377,9 +377,11 @@ class XMLSigner(XMLSignatureProcessor):
     def _build_transforms_for_reference(self, *, transforms_node: _Element, reference: SignatureReference):
         if self.construction_method == SignatureConstructionMethod.enveloped:
             SubElement(transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
-            SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
+            SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)  # type: ignore
         else:
-            c14n_xform = SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
+            c14n_xform = SubElement(
+                transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value  # type: ignore
+            )
             if reference.inclusive_ns_prefixes:
                 SubElement(
                     c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(reference.inclusive_ns_prefixes)
