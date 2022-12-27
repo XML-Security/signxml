@@ -570,7 +570,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             signed3.find(".//ds:SignatureValue", namespaces=namespaces).text,
             "/iezjApGBVMMUspj5WyZwIOEw30qLX3Gv576vwFMAbQ=",
         )
-        XMLVerifier().verify(signed3, hmac_key=b"secret", require_x509=False, validate_schema=False)
+        XMLVerifier().verify(signed3, hmac_key=b"secret", require_x509=False)
 
     def test_excision_of_untrusted_comments(self):
         pass  # TODO: test comments excision
