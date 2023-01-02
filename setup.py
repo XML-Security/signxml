@@ -19,6 +19,7 @@ setup(
         "cryptography >= 3.4.8",  # Set to the version in Ubuntu 22.04 due to features we need from cryptography 3.1
         "pyOpenSSL >= 17.5.0",
         "certifi >= 2018.1.18",
+        "tsp-client >= 0.1.3",
     ],
     extras_require={
         "tests": [

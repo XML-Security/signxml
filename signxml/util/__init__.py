@@ -12,8 +12,11 @@ from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from typing import Any, List, Optional
 
+import certifi
 from cryptography.hazmat.primitives import hashes, hmac
 from lxml.etree import QName
+from OpenSSL.crypto import Error as OpenSSLCryptoError
+from OpenSSL.crypto import X509Store, X509StoreContext, X509StoreContextError
 
 from ..exceptions import InvalidCertificate, RedundantCert, SignXMLException
 
@@ -207,9 +210,6 @@ def p_sha1(client_b64_bytes, server_b64_bytes):
 
 
 def _add_cert_to_store(store, cert):
-    from OpenSSL.crypto import Error as OpenSSLCryptoError
-    from OpenSSL.crypto import X509StoreContext, X509StoreContextError
-
     try:
         X509StoreContext(store, cert).verify_certificate()
     except X509StoreContextError as e:
@@ -233,22 +233,21 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     No ordering is implied by the above constraints"
     """
     # TODO: migrate to Cryptography (pending cert validation support) or https://github.com/wbond/certvalidator
-    from OpenSSL import SSL
-
-    context = SSL.Context(SSL.TLSv1_METHOD)
+    x509_store = X509Store()
     if ca_pem_file is None and ca_path is None:
-        import certifi
-
         ca_pem_file = certifi.where()
-    context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
-    store = context.get_cert_store()
+    x509_store.load_locations(cafile=ca_pem_file, capath=ca_path)
+
+    # FIXME: use X509StoreContext(store=x509_store, certificate=cert, chain=cert_chain).get_verified_chain()
+    # This requires identifying the signing cert out-of-band
+
     certs = list(reversed(cert_chain))
     end_of_chain = None
     last_error: Exception = SignXMLException("Invalid certificate chain")
     while len(certs) > 0:
         for cert in certs:
             try:
-                end_of_chain = _add_cert_to_store(store, cert)
+                end_of_chain = _add_cert_to_store(x509_store, cert)
                 certs.remove(cert)
                 break
             except RedundantCert:
