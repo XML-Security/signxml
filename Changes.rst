@@ -1,3 +1,12 @@
+Changes for v3.1.0 (2023-01-04)
+===============================
+
+-  Use distinct default for payload c14n. Fixes #217
+
+-  Deprecate SHA1
+
+-  Test and documentation improvements
+
 Changes for v3.0.2 (2022-11-28)
 ===============================
 
