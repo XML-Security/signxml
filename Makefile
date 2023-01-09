@@ -1,12 +1,11 @@
-test_deps:
-	pip install coverage flake8 wheel mypy types-certifi types-pyOpenSSL lxml-stubs
+SHELL=/bin/bash
 
-lint: test_deps
-	flake8 $$(python setup.py --name) test
-	mypy $$(python setup.py --name) --check-untyped-defs
+lint:
+	flake8
+	mypy --install-types --non-interactive --check-untyped-defs $$(dirname */__init__.py)
 
-test: test_deps lint
-	coverage run --source=$$(python setup.py --name) ./test/test.py
+test:
+	python ./test/test.py -v
 
 init_docs:
 	cd docs; sphinx-quickstart
@@ -14,15 +13,12 @@ init_docs:
 docs:
 	sphinx-build docs docs/html
 
-install: clean
-	pip install wheel
-	python setup.py bdist_wheel
-	pip install --upgrade dist/*.whl
+install:
+	-rm -rf dist
+	python -m pip install build
+	python -m build
+	python -m pip install --upgrade $$(echo dist/*.whl)[tests]
 
-clean:
-	-rm -rf build dist
-	-rm -rf *.egg-info
-
-.PHONY: lint test test_deps docs install clean
+.PHONY: test lint release docs
 
 include common.mk

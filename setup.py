@@ -20,6 +20,16 @@ setup(
         "pyOpenSSL >= 17.5.0",
         "certifi >= 2018.1.18",
     ],
+    extras_require={
+        "tests": [
+            "flake8",
+            "coverage",
+            "build",
+            "wheel",
+            "mypy",
+            "lxml-stubs",
+        ]
+    },
     packages=find_packages(exclude=["test"]),
     platforms=["MacOS X", "Posix"],
     package_data={"signxml": ["schemas/*.xsd", "py.typed"]},
