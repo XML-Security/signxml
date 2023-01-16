@@ -65,7 +65,7 @@ SignXML uses the `lxml ElementTree API <https://lxml.de/tutorial.html>`_ to work
 To make this example self-sufficient for test purposes:
 
 - Generate a test certificate and key using
-  ``openssl req -x509 -nodes -subj "/CN=test" -days 1 -newkey rsa:2048 > cert.pem``
+  ``openssl req -x509 -nodes -subj "/CN=test" -days 1 -newkey rsa -keyout privkey.pem -out cert.pem``
   (run ``yum install openssl`` on Red Hat).
 - Pass the ``x509_cert=cert`` keyword argument to ``XMLVerifier.verify()``. (In production, ensure this is replaced with
   the correct configuration for the trusted CA or certificate - this determines which signatures your application trusts.)
