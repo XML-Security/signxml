@@ -29,6 +29,7 @@ from typing import Dict, List, Optional, Union
 
 from lxml.etree import SubElement, _Element
 from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, load_certificate
+from tsp_client import TSPVerifier
 
 from .. import SignatureConfiguration, VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
 from ..algorithms import DigestAlgorithm
@@ -264,9 +265,31 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     """
 
     # TODO: document/support SignatureTimeStamp / timestamp attestation
+    # TODO: allow setting required attributes, including timestamp
     # SignatureTimeStamp is required by certain profiles but is an unsigned property
-    def _verify_signing_time(self, verify_result: VerifyResult):
-        pass
+
+    def _verify_signing_time(self, verify_result: VerifyResult, all_verify_results: List[VerifyResult]):
+        """
+        The Implicit mechanism (see clause 5.1.4.4.1) shall be used for generating this qualifying property.
+        The input to the computation of the message imprint shall be the result of processing all the ds:Reference
+        elements within the ds:SignedInfo except the one referencing the SignedProperties element, in their order of
+        appearance, as follows:
+        1) process the retrieved ds:Reference element according to the reference-processing model of XMLDSIG [1]
+        clause 4.4.3.2;
+        2) if the result is a XML node set, canonicalize it as specified in clause 4.5; and
+        3) concatenate the resulting octets to those resulting from previously processed ds:Reference elements in
+        ds:SignedInfo.
+        """
+        ts_path = "xades:SignedDataObjectProperties/xades:AllDataObjectsTimeStamp/xades:EncapsulatedTimeStamp"
+        if verify_result.signed_xml is None:
+            return
+        all_data_objs_ts = verify_result.signed_xml.find(ts_path, namespaces=namespaces)
+        if all_data_objs_ts is None:
+            return
+        print("Will verify", all_data_objs_ts.text)
+        ts = b64decode(all_data_objs_ts.text)  # type: ignore
+        tsp_message = b"".join(r.signed_data for r in all_verify_results if r != verify_result)
+        TSPVerifier().verify(ts, message=tsp_message)
 
     def _verify_cert_digest(self, signing_cert_node, expect_cert):
         for cert in self._findall(signing_cert_node, "xades:Cert"):
@@ -320,8 +343,8 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             if b64decode(digest_value.text) != b64decode(expect_signature_policy.DigestValue):
                 raise InvalidInput("Digest mismatch for signature policy hash")
 
-    def _verify_signed_properties(self, verify_result):
-        self._verify_signing_time(verify_result)
+    def _verify_signed_properties(self, verify_result, *, all_verify_results):
+        self._verify_signing_time(verify_result, all_verify_results=all_verify_results)
         self._verify_cert_digests(verify_result)
         if self.expect_signature_policy:
             self._verify_signature_policy(
@@ -364,7 +387,8 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                 continue
             if verify_result.signed_xml.tag == xades_tag("SignedProperties"):
                 verify_results[i] = XAdESVerifyResult(  # type: ignore
-                    *astuple(verify_result), signed_properties=self._verify_signed_properties(verify_result)
+                    *astuple(verify_result),
+                    signed_properties=self._verify_signed_properties(verify_result, all_verify_results=verify_results),
                 )
                 break
         else:

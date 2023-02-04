@@ -375,6 +375,7 @@ class XMLVerifier(XMLSignatureProcessor):
                         raise InvalidInput(msg)
                 else:
                     cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
+                # FIXME: switch to wbondcrypto cert chain verify
                 signing_cert = verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
             elif isinstance(self.x509_cert, X509):
                 signing_cert = self.x509_cert
@@ -389,6 +390,8 @@ class XMLVerifier(XMLSignatureProcessor):
 
             try:
                 digest_alg_name = str(digest_algorithm_implementations[signature_alg].name)
+                # FIXME: confirm the specified signature algorithm matches the certificate's public key
+                # FIXME: switch to cryptography verify
                 openssl_verify(signing_cert, raw_signature, signed_info_c14n, digest_alg_name)
             except OpenSSLCryptoError as e:
                 try:
