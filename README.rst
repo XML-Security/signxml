@@ -242,6 +242,13 @@ Bugs
 ~~~~
 Please report bugs, issues, feature requests, etc. on `GitHub <https://github.com/XML-Security/signxml/issues>`_.
 
+Versioning
+~~~~~~~~~~
+This package follows the `Semantic Versioning 2.0.0 <http://semver.org/>`_ standard. To control changes, it is
+recommended that application developers pin the package version and manage it using `pip-tools
+<https://github.com/jazzband/pip-tools>`_ or similar. For library developers, pinning the major version is
+recommended.
+
 License
 -------
 Copyright 2014-2023, Andrey Kislyuk and SignXML contributors. Licensed under the terms of the
