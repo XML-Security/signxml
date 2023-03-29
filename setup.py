@@ -22,7 +22,7 @@ setup(
     ],
     extras_require={
         "tests": [
-            "flake8",
+            "ruff",
             "coverage",
             "build",
             "wheel",
