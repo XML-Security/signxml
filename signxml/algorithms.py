@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Callable
+from typing import Callable, Dict, Type, Union
 
 from cryptography.hazmat.primitives import hashes
 
@@ -158,7 +158,7 @@ class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     # While it is supported by lxml, it's not in general use and not supported by SignXML
 
 
-digest_algorithm_implementations = {
+digest_algorithm_implementations: Dict[Union[DigestAlgorithm, SignatureMethod], Type[hashes.HashAlgorithm]] = {
     DigestAlgorithm.SHA1: hashes.SHA1,
     DigestAlgorithm.SHA224: hashes.SHA224,
     DigestAlgorithm.SHA384: hashes.SHA384,
