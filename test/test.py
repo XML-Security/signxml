@@ -710,6 +710,11 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             data_object_format=self.data_object_format,
         )
         signed_doc = signer.sign(doc, key=key, cert=cert)
+
+        for ref in signed_doc.findall(".//{http://www.w3.org/2000/09/xmldsig#}Reference"):
+            if "SignedProperties" in ref.get("URI"):
+                self.assertEqual(ref.get("Type"), "http://uri.etsi.org/01903#SignedProperties")
+
         verifier = XAdESVerifier()
         verify_results = verifier.verify(
             signed_doc, x509_cert=cert, expect_references=3, expect_signature_policy=self.signature_policy
