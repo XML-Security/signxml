@@ -1,3 +1,8 @@
+Changes for v3.1.1 (2023-04-08)
+===============================
+
+-  Add type attribute to XAdES signed properties reference (#224)
+
 Changes for v3.1.0 (2023-01-04)
 ===============================
 
