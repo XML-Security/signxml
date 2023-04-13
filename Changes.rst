@@ -1,3 +1,9 @@
+Changes for v3.2.0 (2023-04-12)
+===============================
+
+-  Roundtrip referenced XML nodes before c14n to detach them from parent
+   document when verifying (#225)
+
 Changes for v3.1.1 (2023-04-08)
 ===============================
 
