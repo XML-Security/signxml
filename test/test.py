@@ -640,6 +640,16 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>',
         )
 
+    def test_xmlns_insulation_of_reference_c14n(self):
+        cert, key = self.load_example_keys()
+        doc = etree.fromstring(
+            '<rDE xmlns="http://example.com/ns1">'
+            '<DE Id="target"><dDVId>9</dDVId><gOpeDE><iTipEmi>1</iTipEmi></gOpeDE></DE>'
+            "</rDE>"
+        )
+        root = XMLSigner().sign(doc, cert=cert, key=key, reference_uri="#target")
+        XMLVerifier().verify(root, x509_cert=cert)
+
     def test_verify_config(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         cert, key = self.load_example_keys()

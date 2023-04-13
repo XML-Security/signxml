@@ -1,6 +1,5 @@
 import logging
 import os
-import warnings
 from typing import Any, List, Tuple
 from xml.etree import ElementTree as stdlibElementTree
 
@@ -53,10 +52,10 @@ class XMLProcessor:
             # TODO: add debug level logging statement re: performance impact here
             return self._fromstring(stdlibElementTree.tostring(data, encoding="utf-8"))
         else:
-            # HACK: deep copy won't keep root's namespaces resulting in an invalid digest
-            # We use a copy so we can modify the tree
-            # TODO: turn this off for xmlenc
-            return self._fromstring(etree.tostring(data))
+            # Create a separate copy of the node so we can modify the tree and avoid any c14n inconsistencies from
+            # namespaces propagating from parent nodes. The lxml docs recommend using copy.deepcopy for this, but it
+            # doesn't seem to preserve namespaces. It would be nice to find a less heavy-handed way of doing this.
+            return self._fromstring(self._tostring(data))
 
 
 class XMLSignatureProcessor(XMLProcessor):
@@ -126,10 +125,6 @@ class XMLSignatureProcessor(XMLProcessor):
                 inclusive_ns_prefixes=inclusive_ns_prefixes,
             )
         if exclusive is False and self.excise_empty_xmlns_declarations is True:
-            warnings.warn(
-                "excise_empty_xmlns_declarations is deprecated and will be removed in a future SignXML release",
-                DeprecationWarning,
-            )
             # Incorrect legacy behavior. See also:
             # - https://github.com/XML-Security/signxml/issues/193
             # - http://www.w3.org/TR/xml-c14n, "namespace axis"

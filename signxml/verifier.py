@@ -210,6 +210,12 @@ class XMLVerifier(XMLSignatureProcessor):
             except ValueError:
                 continue
             inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(transform)
+
+            # Create a separate copy of the node so we can modify the tree and avoid any c14n inconsistencies from
+            # namespaces propagating from parent nodes. The lxml docs recommend using copy.deepcopy for this, but it
+            # doesn't seem to preserve namespaces. It would be nice to find a less heavy-handed way of doing this.
+            payload = self._fromstring(self._tostring(payload))
+
             payload = self._c14n(
                 payload, algorithm=c14n_algorithm_from_transform, inclusive_ns_prefixes=inclusive_ns_prefixes
             )
