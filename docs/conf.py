@@ -7,7 +7,13 @@ version = ""
 release = ""
 language = "en"
 master_doc = "index"
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.viewcode", "sphinx.ext.intersphinx", "sphinx_copybutton"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
+    "sphinxext.opengraph",
+]
 source_suffix = [".rst", ".md"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
@@ -21,6 +27,7 @@ intersphinx_mapping = {
     "https://www.pyopenssl.org/en/stable": "https://www.pyopenssl.org/en/stable/objects.inv",
 }
 templates_path = [""]
+ogp_site_url = "https://xml-security.github.io/" + project
 
 if "readthedocs.org" in os.getcwd().split("/"):
     with open("index.rst", "w") as fh:
