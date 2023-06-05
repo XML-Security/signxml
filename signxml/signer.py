@@ -75,6 +75,10 @@ class XMLSigner(XMLSignatureProcessor):
     :param c14n_algorithm:
         Algorithm that will be used to canonicalize (serialize in a reproducible way) the XML that is signed. See
         :class:`CanonicalizationMethod` for the list of algorithm IDs supported.
+    :param include_c14n_transform: If this parameter equal ``True`` c14n transformation will be included in ``Transform``
+        XML node. This parameter is needed, because some software can uses hard restrictions on Transform XML node,
+        that prohibit include c14n transformation into Transform XML node.
+    :type include_c14n_transform: Boolean
     """
 
     signature_annotators: List
@@ -99,10 +103,12 @@ class XMLSigner(XMLSignatureProcessor):
         signature_algorithm: Union[SignatureMethod, str] = SignatureMethod.RSA_SHA256,
         digest_algorithm: Union[DigestAlgorithm, str] = DigestAlgorithm.SHA256,
         c14n_algorithm: Union[CanonicalizationMethod, str] = CanonicalizationMethod.CANONICAL_XML_1_1,
+        include_c14n_transform=True
     ):
         if method is None or method not in SignatureConstructionMethod:
             raise InvalidInput(f"Unknown signature construction method {method}")
         self.construction_method = method
+        self.include_c14n_transform = include_c14n_transform
         if isinstance(signature_algorithm, str) and "#" not in signature_algorithm:
             self.sign_alg = SignatureMethod.from_fragment(signature_algorithm)
         else:
@@ -400,8 +406,10 @@ class XMLSigner(XMLSignatureProcessor):
             if reference.inclusive_ns_prefixes is None:
                 reference = replace(reference, inclusive_ns_prefixes=inclusive_ns_prefixes)
             reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
-            transforms = SubElement(reference_node, ds_tag("Transforms"))
-            self._build_transforms_for_reference(transforms_node=transforms, reference=reference)
+            if self.include_c14n_transform:
+                transforms = SubElement(reference_node, ds_tag("Transforms"))
+                self._build_transforms_for_reference(transforms_node=transforms, reference=reference)
+
             SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
             digest_value = SubElement(reference_node, ds_tag("DigestValue"))
             payload_c14n = self._c14n(
