@@ -230,6 +230,7 @@ class XMLVerifier(XMLSignatureProcessor):
         self,
         data,
         *,
+        include_c14n_transform_in_verifier =True,
         x509_cert: Optional[Union[str, X509]] = None,
         cert_subject_name: Optional[str] = None,
         cert_resolver: Optional[Callable] = None,
@@ -272,7 +273,7 @@ class XMLVerifier(XMLSignatureProcessor):
          shown in :ref:`Verifying SAML assertions <verifying-saml-assertions>`), or ``cert_subject_name`` to specify a
          subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
          domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
-
+        :param include_c14n_transform_in_verifier:
         :param data: Signature data to verify
         :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param x509_cert:
@@ -457,7 +458,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         verify_results: List[VerifyResult] = []
         for idx, reference in enumerate(self._findall(signed_info, "Reference")):
-            verify_results.append(self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature))
+            verify_results.append(self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature, include_c14n_transform_in_verifier))
 
         if type(self.config.expect_references) is int and len(verify_results) != self.config.expect_references:
             msg = "Expected to find {} references, but found {}"
@@ -465,7 +466,7 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return verify_results if self.config.expect_references > 1 else verify_results[0]
 
-    def _verify_reference(self, reference, index, root, uri_resolver, c14n_algorithm, signature):
+    def _verify_reference(self, reference, index, root, uri_resolver, c14n_algorithm, signature,include_c14n_transform_in_verifier = True):
         copied_root = self._fromstring(self._tostring(root))
         copied_signature_ref = self._get_signature(copied_root)
         transforms = self._find(reference, "Transforms", require=False)
@@ -476,13 +477,15 @@ class XMLVerifier(XMLSignatureProcessor):
         digest_alg = DigestAlgorithm(digest_method_alg_name)
         if digest_alg not in self.config.digest_algorithms:
             raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
-
-        if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
-            raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
+        if include_c14n_transform_in_verifier:
+            if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
+                raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
 
         # We return the signed XML (and only that) to ensure no access to unsigned data happens
         try:
-            payload_c14n_xml = self._fromstring(payload_c14n)
+            payload_c14n_xml = self._tostring(payload)
+            if include_c14n_transform_in_verifier:
+                payload_c14n_xml = self._fromstring(payload_c14n)
         except etree.XMLSyntaxError:
             payload_c14n_xml = None
         return VerifyResult(payload_c14n, payload_c14n_xml, signature)
