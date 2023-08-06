@@ -1,3 +1,8 @@
+Changes for v3.2.1 (2023-08-06)
+===============================
+
+-  Use dataclass.replace in SignatureReference construction. Fixes #231
+
 Changes for v3.2.0 (2023-04-12)
 ===============================
 

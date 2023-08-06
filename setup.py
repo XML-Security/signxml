@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="signxml",
-    version="3.2.0",
+    version="3.2.1",
     url="https://github.com/kislyuk/signxml",
     license="Apache Software License",
     author="Andrey Kislyuk",
