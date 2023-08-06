@@ -319,7 +319,7 @@ class XMLSigner(XMLSignatureProcessor):
         for reference in references:
             uri = reference.URI if reference.URI.startswith("#") else "#" + reference.URI
             c14n_inputs.append(self.get_root(self._resolve_reference(doc_root, {"URI": uri})))
-            new_references.append(SignatureReference(URI=uri, c14n_method=reference.c14n_method))
+            new_references.append(replace(reference, URI=uri))
         return c14n_inputs, new_references
 
     def _unpack(self, data, references: List[SignatureReference]):
