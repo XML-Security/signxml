@@ -459,7 +459,7 @@ class XMLVerifier(XMLSignatureProcessor):
         for idx, reference in enumerate(self._findall(signed_info, "Reference")):
             verify_results.append(self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature))
 
-        if type(self.config.expect_references) is int and len(verify_results) != self.config.expect_references:
+        if isinstance(self.config.expect_references, int) and len(verify_results) != self.config.expect_references:
             msg = "Expected to find {} references, but found {}"
             raise InvalidSignature(msg.format(self.config.expect_references, len(verify_results)))
 
