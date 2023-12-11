@@ -166,7 +166,9 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         )
         for dop_annotator in self.signed_data_object_properties_annotators:
             dop_annotator(signed_data_object_properties, sig_root=sig_root, signing_settings=signing_settings)
-        self._add_reference_to_signed_info(sig_root, signed_properties, Type="http://uri.etsi.org/01903#SignedProperties")
+        self._add_reference_to_signed_info(
+            sig_root, signed_properties, Type="http://uri.etsi.org/01903#SignedProperties"
+        )
         self._add_reference_to_signed_info(sig_root, key_info)
 
     def _add_reference_to_signed_info(self, sig_root, node_to_reference, **attrs):
