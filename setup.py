@@ -14,11 +14,11 @@ setup(
     python_requires=">=3.7",
     install_requires=[
         # Dependencies are restricted by major version range according to semver.
-        # By default, version minimums are set to be compatible with the oldest supported Ubuntu LTS (currently 18.04).
-        "lxml >= 4.2.1, < 5",
+        # By default, version minimums are set to be compatible with the oldest supported Ubuntu LTS (currently 20.04).
+        "lxml >= 4.5.0, < 6",
         "cryptography >= 3.4.8",  # Set to the version in Ubuntu 22.04 due to features we need from cryptography 3.1
-        "pyOpenSSL >= 17.5.0",
-        "certifi >= 2018.1.18",
+        "pyOpenSSL >= 19.0.0",
+        "certifi >= 2019.11.28",
         # "tsp-client >= 0.1.3",
     ],
     extras_require={
@@ -47,6 +47,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
 )
