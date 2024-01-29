@@ -21,10 +21,10 @@ autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_typehints_description_target = "documented_params"
 intersphinx_mapping = {
-    "https://docs.python.org/3": None,
-    "https://lxml.de/apidoc": "https://lxml.de/apidoc/objects.inv",
-    "https://cryptography.io/en/latest": "https://cryptography.io/en/latest/objects.inv",
-    "https://www.pyopenssl.org/en/stable": "https://www.pyopenssl.org/en/stable/objects.inv",
+    "python": ("https://docs.python.org/3", None),
+    "lxml": ("https://lxml.de/apidoc", "https://lxml.de/apidoc/objects.inv"),
+    "Cryptography": ("https://cryptography.io/en/latest", "https://cryptography.io/en/latest/objects.inv"),
+    "pyOpenSSL": ("https://www.pyopenssl.org/en/stable", "https://www.pyopenssl.org/en/stable/objects.inv"),
 }
 templates_path = [""]
 ogp_site_url = "https://xml-security.github.io/" + project
