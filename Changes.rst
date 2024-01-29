@@ -1,3 +1,12 @@
+Changes for v3.2.2 (2024-01-28)
+===============================
+
+-  Update upper bound on lxml dependency to allow lxml 5
+
+-  Bump minimum dependency versions to align with Ubuntu 20.04
+
+-  Test and release infrastructure improvements
+
 Changes for v3.2.1 (2023-08-06)
 ===============================
 
