@@ -1,4 +1,4 @@
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from dataclasses import dataclass, replace
 from typing import Callable, FrozenSet, List, Optional, Union
 
@@ -478,6 +478,9 @@ class XMLVerifier(XMLSignatureProcessor):
             raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
 
         if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
+            print("payload: ", payload_c14n)
+            print("presented digest: ", digest_value.text)
+            print("calculated digest: ", b64encode(self._get_digest(payload_c14n, digest_alg)))
             raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
 
         # We return the signed XML (and only that) to ensure no access to unsigned data happens
