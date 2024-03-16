@@ -503,8 +503,8 @@ class XMLVerifier(XMLSignatureProcessor):
         ):
             ec_key_value = self._find(key_value, "dsig11:ECKeyValue")
             named_curve = self._find(ec_key_value, "dsig11:NamedCurve")
-            public_key = self._find(ec_key_value, "dsig11:PublicKey")
-            key_data = b64decode(public_key.text)[1:]
+            pub_key = self._find(ec_key_value, "dsig11:PublicKey")
+            key_data = b64decode(pub_key.text)[1:]
             x = bytes_to_long(key_data[: len(key_data) // 2])
             y = bytes_to_long(key_data[len(key_data) // 2 :])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
