@@ -273,7 +273,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         pass
 
     def _verify_cert_digest(self, signing_cert_node, expect_cert,idx):
-        cert = self._find(signing_cert_node, "xades:Cert[{0}]".format(idx):
+        cert = self._find(signing_cert_node, "xades:Cert[{0}]".format(idx))
         cert_digest = self._find(cert, "xades:CertDigest")
         digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
         digest_value = self._find(cert_digest, "DigestValue")
