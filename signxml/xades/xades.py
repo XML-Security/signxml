@@ -272,33 +272,34 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _verify_signing_time(self, verify_result: VerifyResult):
         pass
 
-    def _verify_cert_digest(self, signing_cert_node, expect_cert):
-        for cert in self._findall(signing_cert_node, "xades:Cert"):
-            cert_digest = self._find(cert, "xades:CertDigest")
-            digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
-            digest_value = self._find(cert_digest, "DigestValue")
-            # check spec for specific method of retrieving cert
-            der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
+    def _verify_cert_digest(self, signing_cert_node, expect_cert,idx):
+        cert = self._find(signing_cert_node, "xades:Cert[{0}]".format(idx):
+        cert_digest = self._find(cert, "xades:CertDigest")
+        digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
+        digest_value = self._find(cert_digest, "DigestValue")
+        # check spec for specific method of retrieving cert
+        der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
 
-            if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, algorithm=digest_alg):
-                raise InvalidDigest("Digest mismatch for certificate digest")
+        if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, algorithm=digest_alg):
+            raise InvalidDigest("Digest mismatch for certificate digest")
 
     def _verify_cert_digests(self, verify_result: VerifyResult):
         x509_data = verify_result.signature_xml.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
-        cert_from_key_info = load_certificate(
-            FILETYPE_PEM, add_pem_header(self._find(x509_data, "X509Certificate").text)
-        )
-        signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
-        signing_cert = self._find(signed_signature_props, "xades:SigningCertificate", require=False)
-        signing_cert_v2 = self._find(signed_signature_props, "xades:SigningCertificateV2", require=False)
-        if signing_cert is None and signing_cert_v2 is None:
-            raise InvalidInput("Expected to find XML element xades:SigningCertificate or xades:SigningCertificateV2")
-        if signing_cert is not None and signing_cert_v2 is not None:
-            raise InvalidInput("Expected to find exactly one of xades:SigningCertificate or xades:SigningCertificateV2")
-        if signing_cert is not None:
-            self._verify_cert_digest(signing_cert, expect_cert=cert_from_key_info)
-        elif signing_cert_v2 is not None:
-            self._verify_cert_digest(signing_cert_v2, expect_cert=cert_from_key_info)
+        for idx,x_cert in enumerate(self._findall(x509_data, "X509Certificate")):
+            cert_from_key_info = load_certificate(
+                FILETYPE_PEM, add_pem_header(x_cert.text)
+            )
+            signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
+            signing_cert = self._find(signed_signature_props, "xades:SigningCertificate", require=False)
+            signing_cert_v2 = self._find(signed_signature_props, "xades:SigningCertificateV2", require=False)
+            if signing_cert is None and signing_cert_v2 is None:
+                raise InvalidInput("Expected to find XML element xades:SigningCertificate or xades:SigningCertificateV2")
+            if signing_cert is not None and signing_cert_v2 is not None:
+                raise InvalidInput("Expected to find exactly one of xades:SigningCertificate or xades:SigningCertificateV2")
+            if signing_cert is not None:
+                self._verify_cert_digest(signing_cert, expect_cert=cert_from_key_info,idx=idx)
+            elif signing_cert_v2 is not None:
+                self._verify_cert_digest(signing_cert_v2, expect_cert=cert_from_key_info,idx=idx)
 
     def _verify_signature_policy(self, verify_result: VerifyResult, expect_signature_policy: XAdESSignaturePolicy):
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
