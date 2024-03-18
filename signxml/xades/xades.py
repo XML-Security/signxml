@@ -273,15 +273,16 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         pass
 
     def _verify_cert_digest(self, signing_cert_node, expect_cert, idx):
-        cert = self._find(signing_cert_node, "xades:Cert[{0}]".format(idx))
-        cert_digest = self._find(cert, "xades:CertDigest")
-        digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
-        digest_value = self._find(cert_digest, "DigestValue")
-        # check spec for specific method of retrieving cert
-        der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
+        cert = self._find(signing_cert_node, "xades:Cert[{0}]".format(idx), False)
+        if cert != None:
+            cert_digest = self._find(cert, "xades:CertDigest")
+            digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
+            digest_value = self._find(cert_digest, "DigestValue")
+            # check spec for specific method of retrieving cert
+            der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
 
-        if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, algorithm=digest_alg):
-            raise InvalidDigest("Digest mismatch for certificate digest")
+            if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, algorithm=digest_alg):
+                raise InvalidDigest("Digest mismatch for certificate digest")
 
     def _verify_cert_digests(self, verify_result: VerifyResult):
         x509_data = verify_result.signature_xml.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
