@@ -299,9 +299,9 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                     "Expected to find exactly one of xades:SigningCertificate or xades:SigningCertificateV2"
                 )
             if signing_cert is not None:
-                self._verify_cert_digest(signing_cert, expect_cert=cert_from_key_info, idx=(idx+1))
+                self._verify_cert_digest(signing_cert, expect_cert=cert_from_key_info, idx=(idx + 1))
             elif signing_cert_v2 is not None:
-                self._verify_cert_digest(signing_cert_v2, expect_cert=cert_from_key_info, idx=(idx+1))
+                self._verify_cert_digest(signing_cert_v2, expect_cert=cert_from_key_info, idx=(idx + 1))
 
     def _verify_signature_policy(self, verify_result: VerifyResult, expect_signature_policy: XAdESSignaturePolicy):
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
