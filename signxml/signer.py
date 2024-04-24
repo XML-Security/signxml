@@ -306,6 +306,7 @@ class XMLSigner(XMLSignatureProcessor):
                 self._serialize_key_value(signing_settings.key, key_info)
 
             if signing_settings.cert_chain is not None:
+                assert len(signing_settings.cert_chain) > 0
                 x509_data = SubElement(key_info, ds_tag("X509Data"))
                 for cert in signing_settings.cert_chain:
                     x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
