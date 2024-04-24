@@ -198,6 +198,8 @@ class XMLSigner(XMLSignatureProcessor):
 
         if isinstance(cert, (str, bytes)):
             cert_chain = list(iterate_pem(cert))
+            if len(cert_chain) == 0:
+                raise InvalidInput("No PEM-encoded certificates found in string cert input data")
         else:
             cert_chain = cert  # type: ignore
 
