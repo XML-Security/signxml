@@ -27,11 +27,12 @@ from dataclasses import astuple, dataclass
 from functools import wraps
 from typing import Dict, List, Optional, Union
 
+from cryptography import x509
+from cryptography.hazmat.primitives.serialization import Encoding
 from lxml.etree import SubElement, _Element
-from OpenSSL.crypto import FILETYPE_ASN1, FILETYPE_PEM, X509, dump_certificate, load_certificate
 
 from .. import SignatureConfiguration, VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
-from ..algorithms import DigestAlgorithm
+from ..algorithms import DigestAlgorithm, digest_algorithm_implementations
 from ..exceptions import InvalidDigest, InvalidInput
 from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
 
@@ -195,11 +196,11 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
             signed_signature_properties, xades_tag("SigningCertificateV2"), nsmap=self.namespaces
         )
         for cert in signing_settings.cert_chain:  # type: ignore
-            if isinstance(cert, X509):
+            if isinstance(cert, x509.Certificate):
                 loaded_cert = cert
             else:
-                loaded_cert = load_certificate(FILETYPE_PEM, add_pem_header(cert))
-            der_encoded_cert = dump_certificate(FILETYPE_ASN1, loaded_cert)
+                loaded_cert = x509.load_pem_x509_certificate(add_pem_header(cert))
+            der_encoded_cert = loaded_cert.public_bytes(Encoding.DER)
             cert_digest_bytes = self._get_digest(der_encoded_cert, algorithm=self.digest_alg)
             cert_node = SubElement(signing_cert_v2, xades_tag("Cert"), nsmap=self.namespaces)
             cert_digest = SubElement(cert_node, xades_tag("CertDigest"), nsmap=self.namespaces)
@@ -278,16 +279,13 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
             digest_value = self._find(cert_digest, "DigestValue")
             # check spec for specific method of retrieving cert
-            der_encoded_cert = dump_certificate(FILETYPE_ASN1, expect_cert)
-
-            if b64decode(digest_value.text) != self._get_digest(der_encoded_cert, algorithm=digest_alg):
+            digest_alg_impl = digest_algorithm_implementations[digest_alg]()
+            if b64decode(digest_value.text) != expect_cert.fingerprint(digest_alg_impl):
                 raise InvalidDigest("Digest mismatch for certificate digest")
 
     def _verify_cert_digests(self, verify_result: VerifyResult):
         x509_data = verify_result.signature_xml.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
-        cert_from_key_info = load_certificate(
-            FILETYPE_PEM, add_pem_header(self._find(x509_data, "X509Certificate").text)
-        )
+        cert_from_key_info = load_pem_x509_certificate(add_pem_header(self._find(x509_data, "X509Certificate").text))
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
         signing_cert = self._find(signed_signature_props, "xades:SigningCertificate", require=False)
         signing_cert_v2 = self._find(signed_signature_props, "xades:SigningCertificateV2", require=False)

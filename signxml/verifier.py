@@ -2,15 +2,12 @@ from base64 import b64decode
 from dataclasses import dataclass, replace
 from typing import Callable, FrozenSet, List, Optional, Union
 
+from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, AsymmetricPadding, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from lxml import etree
-from OpenSSL.crypto import FILETYPE_PEM, X509
-from OpenSSL.crypto import Error as OpenSSLCryptoError
-from OpenSSL.crypto import load_certificate
-from OpenSSL.crypto import verify as openssl_verify
 
 from .algorithms import (
     CanonicalizationMethod,
@@ -22,6 +19,7 @@ from .algorithms import (
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
 from .processor import XMLSignatureProcessor
 from .util import (
+    X509CertChainVerifier,
     _remove_sig,
     add_pem_header,
     bits_to_bytes_unit,
@@ -29,7 +27,6 @@ from .util import (
     ds_tag,
     ensure_bytes,
     namespaces,
-    verify_x509_cert_chain,
 )
 
 
@@ -226,11 +223,14 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return payload
 
+    def get_cert_chain_verifier(self, ca_pem_file, ca_path):
+        return X509CertChainVerifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+
     def verify(
         self,
         data,
         *,
-        x509_cert: Optional[Union[str, X509]] = None,
+        x509_cert: Optional[Union[str, x509.Certificate]] = None,
         cert_subject_name: Optional[str] = None,
         cert_resolver: Optional[Callable] = None,
         ca_pem_file: Optional[Union[str, bytes]] = None,
@@ -276,10 +276,10 @@ class XMLVerifier(XMLSignatureProcessor):
         :param data: Signature data to verify
         :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param x509_cert:
-            A trusted external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use
-            for verification. Overrides any X.509 certificate information supplied by the signature. If left set to
-            ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the
-            known certificate authorities. Implies **require_x509=True**.
+            A trusted external X.509 certificate, given as a PEM-formatted string or cryptography.x509.Certificate
+            object, to use for verification. Overrides any X.509 certificate information supplied by the signature. If
+            left set to ``None``, requires that the signature supply a valid X.509 certificate chain that validates
+            against the known certificate authorities. Implies **require_x509=True**.
         :param cert_subject_name:
             Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.
         :param cert_resolver:
@@ -373,40 +373,53 @@ class XMLVerifier(XMLSignatureProcessor):
                         )
                         if len(cert_chain) == 0:
                             raise InvalidCertificate("No certificate found for given X509 data")
-                        if not all(isinstance(c, X509) for c in cert_chain):
-                            cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in cert_chain]
+                        if not all(isinstance(c, x509.Certificate) for c in cert_chain):
+                            cert_chain = [x509.load_pem_x509_certificate(add_pem_header(cert)) for cert in cert_chain]
                     else:
                         msg = "Expected to find an X509Certificate element in the signature"
                         msg += " (X509SubjectName, X509SKI are not supported)"
                         raise InvalidInput(msg)
                 else:
-                    cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
-                signing_cert = verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
-            elif isinstance(self.x509_cert, X509):
+                    cert_chain = [x509.load_pem_x509_certificate(add_pem_header(cert)) for cert in certs]
+
+                cert_verifier = self.get_cert_chain_verifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+
+                signing_cert = cert_verifier.verify(cert_chain)
+            elif isinstance(self.x509_cert, x509.Certificate):
                 signing_cert = self.x509_cert
             else:
-                signing_cert = load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))
+                signing_cert = x509.load_pem_x509_certificate(add_pem_header(self.x509_cert))
 
-            if cert_subject_name and signing_cert.get_subject().commonName != cert_subject_name:
-                raise InvalidSignature("Certificate subject common name mismatch")
+            if cert_subject_name is not None:
+                cn_oid = x509.oid.NameOID.COMMON_NAME
+                subject_cn_from_signing_cert = signing_cert.subject.get_attributes_for_oid(cn_oid)[0].value
+                if subject_cn_from_signing_cert != cert_subject_name:
+                    raise InvalidSignature("Certificate subject common name mismatch")
 
             if signature_alg.name.startswith("ECDSA"):
-                raw_signature = self._encode_dss_signature(raw_signature, signing_cert.get_pubkey().bits())
+                # FIXME: test coverage and replace public_key().bits() with public_key().public_bytes()
+                raw_signature = self._encode_dss_signature(raw_signature, signing_cert.public_key().bits())
 
-            try:
-                digest_alg_name = str(digest_algorithm_implementations[signature_alg].name)
-                openssl_verify(signing_cert, raw_signature, signed_info_c14n, digest_alg_name)
-            except OpenSSLCryptoError as e:
-                try:
-                    lib, func, reason = e.args[0][0]
-                except Exception:
-                    reason = e
-                raise InvalidSignature(f"Signature verification failed: {reason}")
+            cert_public_key = signing_cert.public_key()
+            signature_alg_impl = digest_algorithm_implementations[signature_alg]()
+            # FIXME: this is for RSA only; use listing below to make compatible with other public key types
+            cert_public_key.verify(
+                signature=raw_signature, data=signed_info_c14n, padding=PKCS1v15(), algorithm=signature_alg_impl
+            )
+            """
+            RSAPublicKey.verify(signature, data, padding, algorithm)
+            DSAPublicKey.verify(signature, data, algorithm)
+            EllipticCurvePublicKey.verify(signature, data, signature_algorithm)
+            Ed25519PublicKey.verify(signature, data)
+            Ed448PublicKey.verify(signature, data)
+            X25519PublicKey - no verify - DO NOT SUPPORT
+            X448PublicKey - no verify - DO NOT SUPPORT
+            """
 
             # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
             if key_value is not None:
                 if (
-                    self._check_key_value_matches_cert_public_key(key_value, signing_cert.get_pubkey(), signature_alg)
+                    self._check_key_value_matches_cert_public_key(key_value, signing_cert.public_key(), signature_alg)
                     is False
                 ):
                     if self.config.ignore_ambiguous_key_info is False:
@@ -421,7 +434,7 @@ class XMLVerifier(XMLSignatureProcessor):
             if der_encoded_key_value is not None:
                 if (
                     self._check_der_key_value_matches_cert_public_key(
-                        der_encoded_key_value, signing_cert.get_pubkey(), signature_alg
+                        der_encoded_key_value, signing_cert.public_key(), signature_alg
                     )
                     is False
                 ):
@@ -498,9 +511,7 @@ class XMLVerifier(XMLSignatureProcessor):
         raise last_exception  # type: ignore
 
     def _check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: SignatureMethod):
-        if signature_alg.name.startswith("ECDSA_") and isinstance(
-            public_key.to_cryptography_key(), ec.EllipticCurvePublicKey
-        ):
+        if signature_alg.name.startswith("ECDSA_") and isinstance(public_key, ec.EllipticCurvePublicKey):
             ec_key_value = self._find(key_value, "dsig11:ECKeyValue")
             named_curve = self._find(ec_key_value, "dsig11:NamedCurve")
             pub_key = self._find(ec_key_value, "dsig11:PublicKey")
@@ -509,31 +520,31 @@ class XMLVerifier(XMLSignatureProcessor):
             y = bytes_to_long(key_data[len(key_data) // 2 :])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
 
-            pubk_curve = public_key.to_cryptography_key().public_numbers().curve
-            pubk_x = public_key.to_cryptography_key().public_numbers().x
-            pubk_y = public_key.to_cryptography_key().public_numbers().y
+            pubk_curve = public_key.public_numbers().curve
+            pubk_x = public_key.public_numbers().x
+            pubk_y = public_key.public_numbers().y
 
             return curve_class == pubk_curve and x == pubk_x and y == pubk_y
 
-        elif signature_alg.name.startswith("DSA_") and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey):
+        elif signature_alg.name.startswith("DSA_") and isinstance(public_key, dsa.DSAPublicKey):
             dsa_key_value = self._find(key_value, "DSAKeyValue")
             p = self._get_long(dsa_key_value, "P")
             q = self._get_long(dsa_key_value, "Q")
             g = self._get_long(dsa_key_value, "G", require=False)
 
-            pubk_p = public_key.to_cryptography_key().public_numbers().p
-            pubk_q = public_key.to_cryptography_key().public_numbers().q
-            pubk_g = public_key.to_cryptography_key().public_numbers().g
+            pubk_p = public_key.public_numbers().p
+            pubk_q = public_key.public_numbers().q
+            pubk_g = public_key.public_numbers().g
 
             return p == pubk_p and q == pubk_q and g == pubk_g
 
-        elif signature_alg.name.startswith("RSA_") and isinstance(public_key.to_cryptography_key(), rsa.RSAPublicKey):
+        elif signature_alg.name.startswith("RSA_") and isinstance(public_key, rsa.RSAPublicKey):
             rsa_key_value = self._find(key_value, "RSAKeyValue")
             n = self._get_long(rsa_key_value, "Modulus")
             e = self._get_long(rsa_key_value, "Exponent")
 
-            pubk_n = public_key.to_cryptography_key().public_numbers().n
-            pubk_e = public_key.to_cryptography_key().public_numbers().e
+            pubk_n = public_key.public_numbers().n
+            pubk_e = public_key.public_numbers().e
 
             return n == pubk_n and e == pubk_e
 
@@ -546,43 +557,43 @@ class XMLVerifier(XMLSignatureProcessor):
         if (
             signature_alg.name.startswith("ECDSA_")
             and isinstance(der_public_key, ec.EllipticCurvePublicKey)
-            and isinstance(public_key.to_cryptography_key(), ec.EllipticCurvePublicKey)
+            and isinstance(public_key, ec.EllipticCurvePublicKey)
         ):
             curve_class = der_public_key.public_numbers().curve
             x = der_public_key.public_numbers().x
             y = der_public_key.public_numbers().y
 
-            pubk_curve = public_key.to_cryptography_key().public_numbers().curve
-            pubk_x = public_key.to_cryptography_key().public_numbers().x
-            pubk_y = public_key.to_cryptography_key().public_numbers().y
+            pubk_curve = public_key.public_numbers().curve
+            pubk_x = public_key.public_numbers().x
+            pubk_y = public_key.public_numbers().y
 
             return curve_class == pubk_curve and x == pubk_x and y == pubk_y
 
         elif (
             signature_alg.name.startswith("DSA_")
             and isinstance(der_public_key, dsa.DSAPublicKey)
-            and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey)
+            and isinstance(public_key, dsa.DSAPublicKey)
         ):
             p = der_public_key.public_numbers().parameter_numbers().p  # type: ignore
             q = der_public_key.public_numbers().parameter_numbers().q  # type: ignore
             g = der_public_key.public_numbers().parameter_numbers().g  # type: ignore
 
-            pubk_p = public_key.to_cryptography_key().public_numbers().p
-            pubk_q = public_key.to_cryptography_key().public_numbers().q
-            pubk_g = public_key.to_cryptography_key().public_numbers().g
+            pubk_p = public_key.public_numbers().p
+            pubk_q = public_key.public_numbers().q
+            pubk_g = public_key.public_numbers().g
 
             return p == pubk_p and q == pubk_q and g == pubk_g
 
         elif (
             signature_alg.name.startswith("RSA_")
             and isinstance(der_public_key, rsa.RSAPublicKey)
-            and isinstance(public_key.to_cryptography_key(), rsa.RSAPublicKey)
+            and isinstance(public_key, rsa.RSAPublicKey)
         ):
             n = der_public_key.public_numbers().n
             e = der_public_key.public_numbers().e
 
-            pubk_n = public_key.to_cryptography_key().public_numbers().n
-            pubk_e = public_key.to_cryptography_key().public_numbers().e
+            pubk_n = public_key.public_numbers().n
+            pubk_e = public_key.public_numbers().e
 
             return n == pubk_n and e == pubk_e
 

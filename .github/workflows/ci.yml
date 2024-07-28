@@ -16,7 +16,7 @@ jobs:
       with:
         python-version: ${{matrix.python-version}}
     - run: |
-        if [[ $(uname) == Linux ]]; then sudo apt-get install --no-install-recommends python3-openssl python3-lxml python3-certifi; fi
+        if [[ $(uname) == Linux ]]; then sudo apt-get install --no-install-recommends python3-lxml python3-certifi; fi
     - run: make install
     - if: ${{matrix.python-version == '3.12'}}
       run: make lint

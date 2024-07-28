@@ -12,10 +12,12 @@ from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from typing import Any, List, Optional
 
+import certifi
+from cryptography import x509
 from cryptography.hazmat.primitives import hashes, hmac
 from lxml.etree import QName
 
-from ..exceptions import InvalidCertificate, RedundantCert, SignXMLException
+from ..exceptions import InvalidCertificate
 
 PEM_HEADER = "-----BEGIN CERTIFICATE-----"
 PEM_FOOTER = "-----END CERTIFICATE-----"
@@ -159,8 +161,9 @@ def strip_pem_header(cert):
 def add_pem_header(bare_base64_cert):
     bare_base64_cert = ensure_str(bare_base64_cert)
     if bare_base64_cert.startswith(PEM_HEADER):
-        return bare_base64_cert
-    return PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
+        return bare_base64_cert.encode()
+    cert_with_header = PEM_HEADER + "\n" + textwrap.fill(bare_base64_cert, 64) + "\n" + PEM_FOOTER
+    return cert_with_header.encode()
 
 
 def iterate_pem(certs):
@@ -206,24 +209,7 @@ def p_sha1(client_b64_bytes, server_b64_bytes):
     return b64encode(raw_p_sha1(client_bytes, server_bytes, (len(client_bytes), len(server_bytes)))[0]).decode()
 
 
-def _add_cert_to_store(store, cert):
-    from OpenSSL.crypto import Error as OpenSSLCryptoError
-    from OpenSSL.crypto import X509StoreContext, X509StoreContextError
-
-    try:
-        X509StoreContext(store, cert).verify_certificate()
-    except X509StoreContextError as e:
-        raise InvalidCertificate(e)
-    try:
-        store.add_cert(cert)
-        return cert
-    except OpenSSLCryptoError as e:
-        if e.args == ([("x509 certificate routines", "X509_STORE_add_cert", "cert already in hash table")],):
-            raise RedundantCert(e)
-        raise
-
-
-def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
+class X509CertChainVerifier:
     """
     Look at certs in the cert chain and add them to the store one by one.
     Return the cert at the end of the chain. That is the cert to be used by the caller for verifying.
@@ -232,35 +218,58 @@ def verify_x509_cert_chain(cert_chain, ca_pem_file=None, ca_path=None):
     or being part of a certification chain that terminates in a certificate containing the validation key.
     No ordering is implied by the above constraints"
     """
-    # TODO: migrate to Cryptography (pending cert validation support) or https://github.com/wbond/certvalidator
-    from OpenSSL import SSL
 
-    context = SSL.Context(SSL.TLSv1_METHOD)
-    if ca_pem_file is None and ca_path is None:
-        import certifi
+    def __init__(self, ca_pem_file=None, ca_path=None, verification_time=None):
+        if ca_pem_file is None:
+            ca_pem_file = certifi.where()
+        self.ca_pem_file = ca_pem_file
+        self.ca_path = ca_path  # FIXME: determine and replicate openssl capath semantics
+        self.verification_time = verification_time
 
-        ca_pem_file = certifi.where()
-    context.load_verify_locations(ensure_bytes(ca_pem_file, none_ok=True), capath=ca_path)
-    store = context.get_cert_store()
-    certs = list(reversed(cert_chain))
-    end_of_chain = None
-    last_error: Exception = SignXMLException("Invalid certificate chain")
-    while len(certs) > 0:
-        for cert in certs:
+    @property
+    def store(self):
+        with open(self.ca_pem_file, "rb") as pems:
+            certs = x509.load_pem_x509_certificates(pems.read())
+        return x509.verification.Store(certs)
+
+    @property
+    def builder(self):
+        builder = x509.verification.PolicyBuilder()
+        builder = builder.store(self.store)
+        if self.verification_time is not None:
+            builder = builder.time(self.verification_time)
+        # builder.extended_key_usage
+        return builder
+
+    @property
+    def verifier(self):
+        v = self.builder.build_client_verifier()
+        # print("CLIENT VERIFIER EKU:", v.extended_key_usage)
+        print(dir(self.builder))
+        return self.builder.build_client_verifier()
+
+    def _do_verify(self, cert_chain):
+        leaf, intermediates = cert_chain[0], cert_chain[1:]
+        result = self.verifier.verify(leaf=leaf, intermediates=intermediates)
+        return result.chain[0]
+
+    def verify(self, cert_chain):
+        # [*] leaf, intermediates
+        # [*] reversed(intermediates), leaf
+        # if len(cert_chain) > 2:
+        # [ ] leaf, reversed(intermediates)
+        # [ ] intermediates, leaf
+        for cert in cert_chain:
+            print("***", cert.issuer, cert.subject, cert.not_valid_before_utc, cert.not_valid_after_utc)
+            eku_oid = x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
+            print("*** EKUS", cert.subject.get_attributes_for_oid(eku_oid))
+        try:
+            return self._do_verify(cert_chain)
+        except x509.verification.VerificationError:
             try:
-                end_of_chain = _add_cert_to_store(store, cert)
-                certs.remove(cert)
-                break
-            except RedundantCert:
-                certs.remove(cert)
-                if end_of_chain is None:
-                    end_of_chain = cert
-                break
-            except Exception as e:
-                last_error = e
-        else:
-            raise last_error
-    return end_of_chain
+                return self._do_verify(list(reversed(cert_chain)))
+            except x509.verification.VerificationError as e:
+                raise InvalidCertificate(e)
 
 
 def _remove_sig(signature, idempotent=False):
