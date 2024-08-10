@@ -187,7 +187,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
     def add_signing_time(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
         signing_time = SubElement(signed_signature_properties, xades_tag("SigningTime"), nsmap=self.namespaces)
         # TODO: make configurable
-        utc_iso_ts = datetime.datetime.utcnow().isoformat(timespec="seconds")
+        utc_iso_ts = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")
         signing_time.text = f"{utc_iso_ts}+00:00"
 
     def add_signing_certificate(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
