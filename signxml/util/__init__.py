@@ -238,14 +238,10 @@ class X509CertChainVerifier:
         builder = builder.store(self.store)
         if self.verification_time is not None:
             builder = builder.time(self.verification_time)
-        # builder.extended_key_usage
         return builder
 
     @property
     def verifier(self):
-        v = self.builder.build_client_verifier()
-        # print("CLIENT VERIFIER EKU:", v.extended_key_usage)
-        print(dir(self.builder))
         return self.builder.build_client_verifier()
 
     def _do_verify(self, cert_chain):
@@ -260,9 +256,7 @@ class X509CertChainVerifier:
         # [ ] leaf, reversed(intermediates)
         # [ ] intermediates, leaf
         for cert in cert_chain:
-            print("***", cert.issuer, cert.subject, cert.not_valid_before_utc, cert.not_valid_after_utc)
             eku_oid = x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
-            print("*** EKUS", cert.subject.get_attributes_for_oid(eku_oid))
         try:
             return self._do_verify(cert_chain)
         except x509.verification.VerificationError:
