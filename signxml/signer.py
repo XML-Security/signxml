@@ -201,7 +201,7 @@ class XMLSigner(XMLSignatureProcessor):
             if len(cert_chain) == 0:
                 raise InvalidInput("No PEM-encoded certificates found in string cert input data")
         else:
-            cert_chain = cert  # type: ignore
+            cert_chain = cert  # type:ignore[assignment]
 
         input_references = self._preprocess_reference_uri(reference_uri)
 
@@ -244,7 +244,7 @@ class XMLSigner(XMLSignatureProcessor):
             signed_info_node, algorithm=self.c14n_alg, inclusive_ns_prefixes=inclusive_ns_prefixes
         )
         if self.sign_alg.name.startswith("HMAC_"):
-            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())  # type: ignore
+            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())  # type:ignore[arg-type]
             signer.update(signed_info_c14n)
             signature_value_node.text = b64encode(signer.finalize()).decode()
             sig_root.append(signature_value_node)
@@ -378,14 +378,15 @@ class XMLSigner(XMLSignatureProcessor):
         return sig_root, doc_root, c14n_inputs, references
 
     def _build_transforms_for_reference(self, *, transforms_node: _Element, reference: SignatureReference):
+        assert reference.c14n_method is not None
         if self.construction_method == SignatureConstructionMethod.enveloped:
             SubElement(transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
-            SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)  # type: ignore
+            SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
         else:
             c14n_xform = SubElement(
                 transforms_node,
                 ds_tag("Transform"),
-                Algorithm=reference.c14n_method.value,  # type: ignore
+                Algorithm=reference.c14n_method.value,
             )
             if reference.inclusive_ns_prefixes:
                 SubElement(

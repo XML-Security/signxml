@@ -17,7 +17,7 @@ from .algorithms import (
     SignatureMethod,
     digest_algorithm_implementations,
 )
-from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
+from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature, SignXMLException
 from .processor import XMLSignatureProcessor
 from .util import (
     X509CertChainVerifier,
@@ -124,7 +124,8 @@ class XMLVerifier(XMLSignatureProcessor):
         signing_certificate: Optional[x509.Certificate] = None,
     ) -> None:
         if der_encoded_key_value is not None:
-            key = load_der_public_key(b64decode(der_encoded_key_value.text))  # type: ignore
+            assert der_encoded_key_value.text is not None
+            key = load_der_public_key(b64decode(der_encoded_key_value.text))
         elif signing_certificate is not None:
             key = signing_certificate.public_key()
         elif key_value is None:
@@ -140,7 +141,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 x = bytes_to_long(key_data[: len(key_data) // 2])
                 y = bytes_to_long(key_data[len(key_data) // 2 :])
                 curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
-                ecpn = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class())  # type: ignore
+                ecpn = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class())  # type: ignore[abstract]
                 key = ecpn.public_key()
             elif not isinstance(key, ec.EllipticCurvePublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
@@ -154,7 +155,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
                 dsapn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
-                key = dsapn.public_key()  # type: ignore
+                key = dsapn.public_key()
             elif not isinstance(key, dsa.DSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
@@ -505,7 +506,9 @@ class XMLVerifier(XMLSignatureProcessor):
                 return
             except Exception as e:
                 last_exception = e
-        raise last_exception  # type: ignore
+        if last_exception is not None:
+            raise last_exception
+        raise SignXMLException("Invalid state")
 
     def _check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: SignatureMethod):
         if signature_alg.name.startswith("ECDSA_") and isinstance(public_key, ec.EllipticCurvePublicKey):
@@ -529,9 +532,9 @@ class XMLVerifier(XMLSignatureProcessor):
             q = self._get_long(dsa_key_value, "Q")
             g = self._get_long(dsa_key_value, "G", require=False)
 
-            pubk_p = public_key.public_numbers().p
-            pubk_q = public_key.public_numbers().q
-            pubk_g = public_key.public_numbers().g
+            pubk_p = public_key.public_numbers().parameter_numbers.p
+            pubk_q = public_key.public_numbers().parameter_numbers.q
+            pubk_g = public_key.public_numbers().parameter_numbers.g
 
             return p == pubk_p and q == pubk_q and g == pubk_g
 
@@ -571,13 +574,13 @@ class XMLVerifier(XMLSignatureProcessor):
             and isinstance(der_public_key, dsa.DSAPublicKey)
             and isinstance(public_key, dsa.DSAPublicKey)
         ):
-            p = der_public_key.public_numbers().parameter_numbers().p  # type: ignore
-            q = der_public_key.public_numbers().parameter_numbers().q  # type: ignore
-            g = der_public_key.public_numbers().parameter_numbers().g  # type: ignore
+            p = der_public_key.public_numbers().parameter_numbers.p
+            q = der_public_key.public_numbers().parameter_numbers.q
+            g = der_public_key.public_numbers().parameter_numbers.g
 
-            pubk_p = public_key.public_numbers().p
-            pubk_q = public_key.public_numbers().q
-            pubk_g = public_key.public_numbers().g
+            pubk_p = public_key.public_numbers().parameter_numbers.p
+            pubk_q = public_key.public_numbers().parameter_numbers.q
+            pubk_g = public_key.public_numbers().parameter_numbers.g
 
             return p == pubk_p and q == pubk_q and g == pubk_g
 

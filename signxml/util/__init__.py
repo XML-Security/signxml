@@ -152,10 +152,10 @@ pem_regexp = re.compile(
 
 
 def strip_pem_header(cert):
-    try:
-        return re.search(pem_regexp, ensure_str(cert)).group(1).replace("\r", "")  # type: ignore
-    except Exception:
-        return ensure_str(cert).replace("\r", "")
+    search_res = re.search(pem_regexp, ensure_str(cert))
+    if search_res:
+        return search_res.group(1).replace("\r", "")
+    return ensure_str(cert).replace("\r", "")
 
 
 def add_pem_header(bare_base64_cert):

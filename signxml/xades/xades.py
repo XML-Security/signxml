@@ -128,7 +128,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         self.namespaces.update(xades=namespaces.xades)
 
     @wraps(XMLSigner.sign)
-    def sign(self, data, always_add_key_value: bool = True, **kwargs) -> _Element:  # type: ignore
+    def sign(self, data, always_add_key_value: bool = True, **kwargs) -> _Element:  # type: ignore[override]
         return super().sign(data=data, always_add_key_value=always_add_key_value, **kwargs)
 
     def _get_token(self, length=4):
@@ -195,7 +195,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         signing_cert_v2 = SubElement(
             signed_signature_properties, xades_tag("SigningCertificateV2"), nsmap=self.namespaces
         )
-        for cert in signing_settings.cert_chain:  # type: ignore
+        assert signing_settings.cert_chain is not None
+        for cert in signing_settings.cert_chain:
             if isinstance(cert, x509.Certificate):
                 loaded_cert = cert
             else:
@@ -333,7 +334,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             )
         return self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
 
-    def verify(  # type: ignore
+    def verify(  # type: ignore[override]
         self,
         data,
         *,
@@ -367,7 +368,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             if verify_result.signed_xml is None:
                 continue
             if verify_result.signed_xml.tag == xades_tag("SignedProperties"):
-                verify_results[i] = XAdESVerifyResult(  # type: ignore
+                verify_results[i] = XAdESVerifyResult(  # type: ignore[misc]
                     *astuple(verify_result), signed_properties=self._verify_signed_properties(verify_result)
                 )
                 break
@@ -375,4 +376,4 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             raise InvalidInput("Expected to find a xades:SignedProperties element")
 
         # TODO: assert all mandatory signed properties are set
-        return verify_results  # type: ignore
+        return verify_results  # type: ignore[return-value]
