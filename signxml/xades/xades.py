@@ -285,7 +285,9 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
 
     def _verify_cert_digests(self, verify_result: VerifyResult):
         x509_data = verify_result.signature_xml.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
-        cert_from_key_info = load_pem_x509_certificate(add_pem_header(self._find(x509_data, "X509Certificate").text))
+        cert_from_key_info = x509.load_pem_x509_certificate(
+            add_pem_header(self._find(x509_data, "X509Certificate").text)
+        )
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
         signing_cert = self._find(signed_signature_props, "xades:SigningCertificate", require=False)
         signing_cert_v2 = self._find(signed_signature_props, "xades:SigningCertificateV2", require=False)

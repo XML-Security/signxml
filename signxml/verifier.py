@@ -226,6 +226,16 @@ class XMLVerifier(XMLSignatureProcessor):
     def get_cert_chain_verifier(self, ca_pem_file, ca_path):
         return X509CertChainVerifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
 
+    def _verify_signature_with_public_key_impl(self, *, signature, data, public_key, signature_alg_impl):
+        verify_args = dict(signature=signature, data=data)
+        if isinstance(public_key, rsa.RSAPublicKey):
+            verify_args.update(padding=PKCS1v15(), algorithm=signature_alg_impl)
+        elif isinstance(public_key, dsa.DSAPublicKey):
+            verify_args.update(algorithm=signature_alg_impl)
+        elif isinstance(public_key, ec.EllipticCurvePublicKey):
+            verify_args.update(signature_algorithm=ec.ECDSA(signature_alg_impl))
+        public_key.verify(**verify_args)
+
     def verify(
         self,
         data,
@@ -397,24 +407,16 @@ class XMLVerifier(XMLSignatureProcessor):
                     raise InvalidSignature("Certificate subject common name mismatch")
 
             if signature_alg.name.startswith("ECDSA"):
-                # FIXME: test coverage and replace public_key().bits() with public_key().public_bytes()
-                raw_signature = self._encode_dss_signature(raw_signature, signing_cert.public_key().bits())
+                raw_signature = self._encode_dss_signature(raw_signature, signing_cert.public_key().key_size)
 
             cert_public_key = signing_cert.public_key()
             signature_alg_impl = digest_algorithm_implementations[signature_alg]()
-            # FIXME: this is for RSA only; use listing below to make compatible with other public key types
-            cert_public_key.verify(
-                signature=raw_signature, data=signed_info_c14n, padding=PKCS1v15(), algorithm=signature_alg_impl
+            self._verify_signature_with_public_key_impl(
+                signature=raw_signature,
+                data=signed_info_c14n,
+                public_key=cert_public_key,
+                signature_alg_impl=signature_alg_impl,
             )
-            """
-            RSAPublicKey.verify(signature, data, padding, algorithm)
-            DSAPublicKey.verify(signature, data, algorithm)
-            EllipticCurvePublicKey.verify(signature, data, signature_algorithm)
-            Ed25519PublicKey.verify(signature, data)
-            Ed448PublicKey.verify(signature, data)
-            X25519PublicKey - no verify - DO NOT SUPPORT
-            X448PublicKey - no verify - DO NOT SUPPORT
-            """
 
             # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
             if key_value is not None:
