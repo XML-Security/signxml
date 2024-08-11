@@ -8,11 +8,13 @@ import unittest
 from base64 import b64decode, b64encode
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from datetime import datetime
 from glob import glob
 from xml.etree import ElementTree as stdlibElementTree
 
 import cryptography.exceptions
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
+from cryptography.x509 import load_der_x509_certificate, load_pem_x509_certificate
 from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -62,6 +64,16 @@ def reset_tree(t, method):
             if method == methods.enveloped and s.get("Id") == "placeholder":
                 continue
             s.getparent().remove(s)
+
+
+def get_verifier_for_year(year: int):
+    class _Verifier(XMLVerifier):
+        def get_cert_chain_verifier(self, ca_pem_file, ca_path):
+            verifier = super().get_cert_chain_verifier(ca_pem_file, ca_path)
+            verifier.verification_time = datetime(year, 1, 1)
+            return verifier
+
+    return _Verifier()
 
 
 class URIResolver(etree.Resolver):
@@ -221,10 +233,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             pass
 
     def test_x509_certs(self):
-        from OpenSSL.crypto import FILETYPE_PEM
-        from OpenSSL.crypto import Error as OpenSSLCryptoError
-        from OpenSSL.crypto import load_certificate
-
+        verifier = get_verifier_for_year(2015)
         tree = etree.parse(self.example_xml_files[0])
         ca_pem_file = os.path.join(os.path.dirname(__file__), "example-ca.pem").encode("utf-8")
         crt, key = self.load_example_keys()
@@ -234,36 +243,40 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             signer = XMLSigner(method=method, signature_algorithm=SignatureMethod.RSA_SHA256)
             signed = signer.sign(data, key=key, cert=crt)
             signed_data = etree.tostring(signed)
-            XMLVerifier().verify(signed_data, ca_pem_file=ca_pem_file)
-            XMLVerifier().verify(signed_data, x509_cert=crt)
-            XMLVerifier().verify(signed_data, x509_cert=load_certificate(FILETYPE_PEM, crt))
-            XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
+            verifier.verify(signed_data, x509_cert=crt)
+            verifier.verify(signed_data, x509_cert=load_pem_x509_certificate(crt))
+            verifier.verify(signed_data, x509_cert=crt, cert_subject_name="*.example.com")
 
-            with self.assertRaises(OpenSSLCryptoError):
-                XMLVerifier().verify(signed_data, x509_cert=crt[::-1])
+            with self.assertRaises(ValueError):
+                verifier.verify(signed_data, x509_cert=crt[::-1])
 
             with self.assertRaises(InvalidSignature):
-                XMLVerifier().verify(signed_data, x509_cert=crt, cert_subject_name="test")
+                verifier.verify(signed_data, x509_cert=crt, cert_subject_name="test")
 
-            with self.assertRaisesRegex(InvalidCertificate, "unable to get local issuer certificate"):
-                XMLVerifier().verify(signed_data)
+            # FIXME: create new test case with reconfigured CA/EKU
+            with self.assertRaisesRegex(InvalidCertificate, "required EKU not found"):
+                verifier.verify(signed_data, ca_pem_file=ca_pem_file)
+
+            with self.assertRaisesRegex(InvalidCertificate, "required EKU not found"):
+                verifier.verify(signed_data)
+
             # TODO: negative: verify with wrong cert, wrong CA
 
     def test_xmldsig_interop_examples(self):
         ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
+
+        verifier = get_verifier_for_year(2015)
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
-                with self.assertRaisesRegex(InvalidCertificate, "certificate has expired"):
-                    XMLVerifier().verify(fh.read(), ca_pem_file=ca_pem_file, expect_config=sha1_ok)
+                msg = "basicConstraints.cA must not be asserted in an EE certificate"
+                with self.assertRaisesRegex(InvalidCertificate, msg):
+                    verifier.verify(fh.read(), ca_pem_file=ca_pem_file, expect_config=sha1_ok)
 
     def test_xmldsig_interop_TR2012(self):
         def get_x509_cert(**kwargs):
-            from cryptography.x509 import load_der_x509_certificate
-            from OpenSSL.crypto import X509
-
             with open(os.path.join(interop_dir, "TR2012", "rsa-cert.der"), "rb") as fh:
-                return [X509.from_cryptography(load_der_x509_certificate(fh.read()))]
+                return [load_der_x509_certificate(fh.read())]
 
         signature_files = glob(os.path.join(interop_dir, "TR2012", "signature*.xml"))
         for signature_file in signature_files:
@@ -336,7 +349,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
-                    verifier = XMLVerifier()
+                    verifier = get_verifier_for_year(2010 if "phaos" in signature_file else 2014)
                     verifier.excise_empty_xmlns_declarations = True
                     verifier.verify(
                         sig,
@@ -377,7 +390,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     if signature_file.endswith("expired-cert.xml") or signature_file.endswith(
                         "wsfederation_metadata.xml"
                     ):  # noqa
-                        with self.assertRaisesRegex(InvalidCertificate, "certificate has expired"):
+                        with self.assertRaisesRegex(InvalidCertificate, "cert is not valid at validation time"):
                             raise
                     elif signature_file.endswith("invalid_enveloped_transform.xml"):
                         self.assertIsInstance(e, InvalidSignature)
@@ -412,9 +425,11 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         print("Unsupported test case:", type(e), e)
                     elif any(x in signature_file for x in bad_interop_cases) or "Unable to resolve reference" in str(e):
                         print("Bad interop test case:", type(e), e)
-                    elif "certificate has expired" in str(e) and (
-                        "signature-dsa" in signature_file or "signature-rsa" in signature_file
-                    ):  # noqa
+                    elif "Certificate is missing required extension" in str(e):
+                        print("IGNORED:", type(e), e)
+                    elif "certificate must be an X509v3 certificate" in str(e):
+                        print("IGNORED:", type(e), e)
+                    elif "basicConstraints.cA must not be asserted in an EE certificate" in str(e):
                         print("IGNORED:", type(e), e)
                     elif "TR2012" not in signature_file:
                         raise
@@ -747,7 +762,7 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             print("Verifying", sig_file)
             with open(sig_file, "rb") as fh:
                 doc = etree.parse(fh)
-            cert = doc.find("//{http://www.w3.org/2000/09/xmldsig#}X509Certificate").text
+            cert = doc.find(".//{http://www.w3.org/2000/09/xmldsig#}X509Certificate").text
             kwargs = dict(
                 x509_cert=cert,
                 expect_references=self.expect_references.get(os.path.basename(sig_file), 2),
