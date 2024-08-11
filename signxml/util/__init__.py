@@ -255,8 +255,8 @@ class X509CertChainVerifier:
         # if len(cert_chain) > 2:
         # [ ] leaf, reversed(intermediates)
         # [ ] intermediates, leaf
-        for cert in cert_chain:
-            eku_oid = x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
+        # for cert in cert_chain:
+        #    eku_oid = x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
         try:
             return self._do_verify(cert_chain)
         except x509.verification.VerificationError:
