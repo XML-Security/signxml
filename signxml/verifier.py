@@ -122,7 +122,7 @@ class XMLVerifier(XMLSignatureProcessor):
         key_value: Optional[etree._Element] = None,
         der_encoded_key_value: Optional[etree._Element] = None,
         signing_certificate: Optional[x509.Certificate] = None,
-    ) -> None:
+    ) -> bytes:
         if der_encoded_key_value is not None:
             assert der_encoded_key_value.text is not None
             key = load_der_public_key(b64decode(der_encoded_key_value.text))
@@ -176,6 +176,7 @@ class XMLVerifier(XMLSignatureProcessor):
             key.verify(raw_signature, data=signed_info_c14n, padding=padding, algorithm=digest_alg_impl)
         else:
             raise InvalidInput(f"Unsupported signature algorithm {signature_alg}")
+        return signed_info_c14n
 
     def _encode_dss_signature(self, raw_signature: bytes, key_size_bits: int) -> bytes:
         want_raw_signature_len = bits_to_bytes_unit(key_size_bits) * 2
@@ -233,6 +234,33 @@ class XMLVerifier(XMLSignatureProcessor):
 
     def get_cert_chain_verifier(self, ca_pem_file, ca_path):
         return X509CertChainVerifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+
+    def _match_key_values(self, key_value, der_encoded_key_value, signing_cert, signature_alg):
+        if self.config.ignore_ambiguous_key_info is False:
+            return
+        cert_pub_key = signing_cert.public_key()
+        # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
+        if key_value is not None:
+            match_result = self._check_key_value_matches_cert_public_key(key_value, cert_pub_key, signature_alg)
+            if match_result is False:
+                raise InvalidInput(
+                    "Both X509Data and KeyValue found and they represent different public keys. "
+                    "Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate "
+                    "using X509Data only."
+                )
+
+        # If both X509Data and DEREncodedKeyValue are present, match one against the other and raise an error on
+        # mismatch
+        if der_encoded_key_value is not None:
+            match_result = self._check_der_key_value_matches_cert_public_key(
+                der_encoded_key_value, signing_cert.public_key(), signature_alg
+            )
+            if match_result is False:
+                raise InvalidInput(
+                    "Both X509Data and DEREncodedKeyValue found and they represent different "
+                    "public keys. Use verify(ignore_ambiguous_key_info=True) to ignore "
+                    "DEREncodedKeyValue and validate using X509Data only."
+                )
 
     def verify(
         self,
@@ -405,7 +433,7 @@ class XMLVerifier(XMLSignatureProcessor):
                     raise InvalidSignature("Certificate subject common name mismatch")
 
             try:
-                self._verify_signature_with_pubkey(
+                verified_signed_info_c14n = self._verify_signature_with_pubkey(
                     signed_info_c14n=signed_info_c14n,
                     raw_signature=raw_signature,
                     signing_certificate=signing_cert,
@@ -414,51 +442,27 @@ class XMLVerifier(XMLSignatureProcessor):
             except cryptography.exceptions.InvalidSignature as e:
                 raise InvalidSignature(f"Signature verification failed: {e}")
 
-            # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
-            if key_value is not None:
-                if (
-                    self._check_key_value_matches_cert_public_key(key_value, signing_cert.public_key(), signature_alg)
-                    is False
-                ):
-                    if self.config.ignore_ambiguous_key_info is False:
-                        raise InvalidInput(
-                            "Both X509Data and KeyValue found and they represent different public keys. "
-                            "Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate "
-                            "using X509Data only."
-                        )
-
-            # If both X509Data and DEREncodedKeyValue are present, match one against the other and raise an error on
-            # mismatch
-            if der_encoded_key_value is not None:
-                if (
-                    self._check_der_key_value_matches_cert_public_key(
-                        der_encoded_key_value, signing_cert.public_key(), signature_alg
-                    )
-                    is False
-                ):
-                    if self.config.ignore_ambiguous_key_info is False:
-                        raise InvalidInput(
-                            "Both X509Data and DEREncodedKeyValue found and they represent different "
-                            "public keys. Use verify(ignore_ambiguous_key_info=True) to ignore "
-                            "DEREncodedKeyValue and validate using X509Data only."
-                        )
-
-            # TODO: CN verification goes here
-            # TODO: require one of the following to be set: either x509_cert or (ca_pem_file or ca_path) or common_name
-            # Use ssl.match_hostname or code from it to perform match
+            self._match_key_values(
+                key_value=key_value,
+                der_encoded_key_value=der_encoded_key_value,
+                signing_cert=signing_cert,
+                signature_alg=signature_alg,
+            )
         elif signature_alg.name.startswith("HMAC_"):
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
             signer = HMAC(key=ensure_bytes(self.hmac_key), algorithm=digest_algorithm_implementations[signature_alg]())
             signer.update(signed_info_c14n)
-            if raw_signature != signer.finalize():
+            if raw_signature == signer.finalize():
+                verified_signed_info_c14n = signed_info_c14n
+            else:
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
             if key_value is None and der_encoded_key_value is None:
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
-            self._verify_signature_with_pubkey(
+            verified_signed_info_c14n = self._verify_signature_with_pubkey(
                 signed_info_c14n=signed_info_c14n,
                 raw_signature=raw_signature,
                 key_value=key_value,
@@ -466,8 +470,9 @@ class XMLVerifier(XMLSignatureProcessor):
                 signature_alg=signature_alg,
             )
 
+        verified_signed_info = self._fromstring(verified_signed_info_c14n)
         verify_results: List[VerifyResult] = []
-        for idx, reference in enumerate(self._findall(signed_info, "Reference")):
+        for idx, reference in enumerate(self._findall(verified_signed_info, "Reference")):
             verify_results.append(self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature))
 
         if type(self.config.expect_references) is int and len(verify_results) != self.config.expect_references:

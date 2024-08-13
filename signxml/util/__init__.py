@@ -217,13 +217,22 @@ class X509CertChainVerifier:
     "All certificates appearing in an X509Data element must relate to the validation key by either containing it
     or being part of a certification chain that terminates in a certificate containing the validation key.
     No ordering is implied by the above constraints"
+
+    Note: SignXML no longer uses OpenSSL for certificate chain verificaiton. The CApath parameter supported by OpenSSL
+    is not supported by cryptography. The CApath parameter is used to specify a directory containing CA certificates in
+    PEM format. The files each contain one CA certificate. The files are looked up by the CA subject name hash value.
+    See https://docs.openssl.org/master/man3/SSL_CTX_load_verify_locations/#notes. If you need CApath support, please
+    contact SignXML maintainers.
     """
 
     def __init__(self, ca_pem_file=None, ca_path=None, verification_time=None):
         if ca_pem_file is None:
             ca_pem_file = certifi.where()
         self.ca_pem_file = ca_pem_file
-        self.ca_path = ca_path  # FIXME: determine and replicate openssl capath semantics
+        if ca_path is not None:
+            msg = "CApath is not supported. If you need this feature, please contact SignXML maintainers."
+            raise NotImplementedError(msg)
+
         self.verification_time = verification_time
 
     @property
