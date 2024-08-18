@@ -262,6 +262,14 @@ class XMLVerifier(XMLSignatureProcessor):
                     "DEREncodedKeyValue and validate using X509Data only."
                 )
 
+    def check_digest_alg_expected(self, digest_alg):
+        if digest_alg not in self.config.digest_algorithms:
+            raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
+
+    def check_signature_alg_expected(self, signature_alg):
+        if signature_alg not in self.config.signature_methods:
+            raise InvalidInput(f"Signature method {signature_alg.name} forbidden by configuration")
+
     def verify(
         self,
         data,
@@ -382,8 +390,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = SignatureMethod(signature_method.get("Algorithm"))
-        if signature_alg not in self.config.signature_methods:
-            raise InvalidInput(f"Signature method {signature_alg.name} forbidden by configuration")
+        self.check_signature_alg_expected(signature_alg)
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
@@ -490,8 +497,7 @@ class XMLVerifier(XMLSignatureProcessor):
         payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
         payload_c14n = self._apply_transforms(payload, transforms_node=transforms, signature=copied_signature_ref)
         digest_alg = DigestAlgorithm(digest_method_alg_name)
-        if digest_alg not in self.config.digest_algorithms:
-            raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
+        self.check_digest_alg_expected(digest_alg)
 
         if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
             raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
