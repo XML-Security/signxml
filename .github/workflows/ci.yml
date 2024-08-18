@@ -8,20 +8,21 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12]
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
+        os: [ubuntu-20.04, ubuntu-24.04, macos-12]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{matrix.python-version}}
     - run: |
-        if [[ $(uname) == Linux ]]; then sudo apt-get install --no-install-recommends python3-openssl python3-lxml python3-certifi; fi
+        if [[ $(uname) == Linux ]]; then sudo apt-get install --no-install-recommends python3-lxml python3-certifi; fi
     - run: make install
     - if: ${{matrix.python-version == '3.12'}}
       run: make lint
     - run: make test
     - uses: codecov/codecov-action@v3
+      if: ${{matrix.python-version == '3.12' && matrix.os == 'ubuntu-24.04'}}
   black:
     runs-on: ubuntu-22.04
     steps:

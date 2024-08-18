@@ -2,15 +2,13 @@ from base64 import b64decode
 from dataclasses import dataclass, replace
 from typing import Callable, FrozenSet, List, Optional, Union
 
+import cryptography.exceptions
+from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, AsymmetricPadding, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from lxml import etree
-from OpenSSL.crypto import FILETYPE_PEM, X509
-from OpenSSL.crypto import Error as OpenSSLCryptoError
-from OpenSSL.crypto import load_certificate
-from OpenSSL.crypto import verify as openssl_verify
 
 from .algorithms import (
     CanonicalizationMethod,
@@ -19,9 +17,10 @@ from .algorithms import (
     SignatureMethod,
     digest_algorithm_implementations,
 )
-from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
+from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature, SignXMLException
 from .processor import XMLSignatureProcessor
 from .util import (
+    X509CertChainVerifier,
     _remove_sig,
     add_pem_header,
     bits_to_bytes_unit,
@@ -29,7 +28,6 @@ from .util import (
     ds_tag,
     ensure_bytes,
     namespaces,
-    verify_x509_cert_chain,
 )
 
 
@@ -117,14 +115,21 @@ class XMLVerifier(XMLSignatureProcessor):
 
     def _verify_signature_with_pubkey(
         self,
+        *,
         signed_info_c14n: bytes,
         raw_signature: bytes,
-        key_value: etree._Element,
-        der_encoded_key_value: Optional[etree._Element],
         signature_alg: SignatureMethod,
-    ) -> None:
+        key_value: Optional[etree._Element] = None,
+        der_encoded_key_value: Optional[etree._Element] = None,
+        signing_certificate: Optional[x509.Certificate] = None,
+    ) -> bytes:
         if der_encoded_key_value is not None:
-            key = load_der_public_key(b64decode(der_encoded_key_value.text))  # type: ignore
+            assert der_encoded_key_value.text is not None
+            key = load_der_public_key(b64decode(der_encoded_key_value.text))
+        elif signing_certificate is not None:
+            key = signing_certificate.public_key()
+        elif key_value is None:
+            raise InvalidInput("Expected one of key_value, der_encoded_key_value, or signing_certificate to be set")
 
         digest_alg_impl = digest_algorithm_implementations[signature_alg]()
         if signature_alg.name.startswith("ECDSA_"):
@@ -136,12 +141,12 @@ class XMLVerifier(XMLSignatureProcessor):
                 x = bytes_to_long(key_data[: len(key_data) // 2])
                 y = bytes_to_long(key_data[len(key_data) // 2 :])
                 curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
-                ecpn = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class())  # type: ignore
+                ecpn = ec.EllipticCurvePublicNumbers(x=x, y=y, curve=curve_class())  # type: ignore[abstract]
                 key = ecpn.public_key()
             elif not isinstance(key, ec.EllipticCurvePublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
-            dss_signature = self._encode_dss_signature(raw_signature, key.key_size)
-            key.verify(dss_signature, data=signed_info_c14n, signature_algorithm=ec.ECDSA(digest_alg_impl))
+            signature_for_ecdsa = self._encode_dss_signature(raw_signature, key.key_size)
+            key.verify(signature_for_ecdsa, data=signed_info_c14n, signature_algorithm=ec.ECDSA(digest_alg_impl))
         elif signature_alg.name.startswith("DSA_"):
             if key_value is not None:
                 dsa_key_value = self._find(key_value, "DSAKeyValue")
@@ -150,7 +155,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 g = self._get_long(dsa_key_value, "G", require=False)
                 y = self._get_long(dsa_key_value, "Y")
                 dsapn = dsa.DSAPublicNumbers(y=y, parameter_numbers=dsa.DSAParameterNumbers(p=p, q=q, g=g))
-                key = dsapn.public_key()  # type: ignore
+                key = dsapn.public_key()
             elif not isinstance(key, dsa.DSAPublicKey):
                 raise InvalidInput("DER encoded key value does not match specified signature algorithm")
             # TODO: supply meaningful key_size_bits for signature length assertion
@@ -170,7 +175,8 @@ class XMLVerifier(XMLSignatureProcessor):
                 padding = PSS(mgf=MGF1(algorithm=digest_alg_impl), salt_length=digest_alg_impl.digest_size)
             key.verify(raw_signature, data=signed_info_c14n, padding=padding, algorithm=digest_alg_impl)
         else:
-            raise NotImplementedError()
+            raise InvalidInput(f"Unsupported signature algorithm {signature_alg}")
+        return signed_info_c14n
 
     def _encode_dss_signature(self, raw_signature: bytes, key_size_bits: int) -> bytes:
         want_raw_signature_len = bits_to_bytes_unit(key_size_bits) * 2
@@ -226,11 +232,49 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return payload
 
+    def get_cert_chain_verifier(self, ca_pem_file, ca_path):
+        return X509CertChainVerifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+
+    def _match_key_values(self, key_value, der_encoded_key_value, signing_cert, signature_alg):
+        if self.config.ignore_ambiguous_key_info is False:
+            return
+        cert_pub_key = signing_cert.public_key()
+        # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
+        if key_value is not None:
+            match_result = self._check_key_value_matches_cert_public_key(key_value, cert_pub_key, signature_alg)
+            if match_result is False:
+                raise InvalidInput(
+                    "Both X509Data and KeyValue found and they represent different public keys. "
+                    "Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate "
+                    "using X509Data only."
+                )
+
+        # If both X509Data and DEREncodedKeyValue are present, match one against the other and raise an error on
+        # mismatch
+        if der_encoded_key_value is not None:
+            match_result = self._check_der_key_value_matches_cert_public_key(
+                der_encoded_key_value, signing_cert.public_key(), signature_alg
+            )
+            if match_result is False:
+                raise InvalidInput(
+                    "Both X509Data and DEREncodedKeyValue found and they represent different "
+                    "public keys. Use verify(ignore_ambiguous_key_info=True) to ignore "
+                    "DEREncodedKeyValue and validate using X509Data only."
+                )
+
+    def check_digest_alg_expected(self, digest_alg):
+        if digest_alg not in self.config.digest_algorithms:
+            raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
+
+    def check_signature_alg_expected(self, signature_alg):
+        if signature_alg not in self.config.signature_methods:
+            raise InvalidInput(f"Signature method {signature_alg.name} forbidden by configuration")
+
     def verify(
         self,
         data,
         *,
-        x509_cert: Optional[Union[str, X509]] = None,
+        x509_cert: Optional[Union[str, x509.Certificate]] = None,
         cert_subject_name: Optional[str] = None,
         cert_resolver: Optional[Callable] = None,
         ca_pem_file: Optional[Union[str, bytes]] = None,
@@ -276,10 +320,10 @@ class XMLVerifier(XMLSignatureProcessor):
         :param data: Signature data to verify
         :type data: String, file-like object, or XML ElementTree Element API compatible object
         :param x509_cert:
-            A trusted external X.509 certificate, given as a PEM-formatted string or OpenSSL.crypto.X509 object, to use
-            for verification. Overrides any X.509 certificate information supplied by the signature. If left set to
-            ``None``, requires that the signature supply a valid X.509 certificate chain that validates against the
-            known certificate authorities. Implies **require_x509=True**.
+            A trusted external X.509 certificate, given as a PEM-formatted string or cryptography.x509.Certificate
+            object, to use for verification. Overrides any X.509 certificate information supplied by the signature. If
+            left set to ``None``, requires that the signature supply a valid X.509 certificate chain that validates
+            against the known certificate authorities. Implies **require_x509=True**.
         :param cert_subject_name:
             Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.
         :param cert_resolver:
@@ -346,8 +390,7 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_method = self._find(signed_info, "SignatureMethod")
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = SignatureMethod(signature_method.get("Algorithm"))
-        if signature_alg not in self.config.signature_methods:
-            raise InvalidInput(f"Signature method {signature_alg.name} forbidden by configuration")
+        self.check_signature_alg_expected(signature_alg)
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
@@ -373,81 +416,60 @@ class XMLVerifier(XMLSignatureProcessor):
                         )
                         if len(cert_chain) == 0:
                             raise InvalidCertificate("No certificate found for given X509 data")
-                        if not all(isinstance(c, X509) for c in cert_chain):
-                            cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in cert_chain]
+                        if not all(isinstance(c, x509.Certificate) for c in cert_chain):
+                            cert_chain = [x509.load_pem_x509_certificate(add_pem_header(cert)) for cert in cert_chain]
                     else:
                         msg = "Expected to find an X509Certificate element in the signature"
                         msg += " (X509SubjectName, X509SKI are not supported)"
                         raise InvalidInput(msg)
                 else:
-                    cert_chain = [load_certificate(FILETYPE_PEM, add_pem_header(cert)) for cert in certs]
-                signing_cert = verify_x509_cert_chain(cert_chain, ca_pem_file=ca_pem_file, ca_path=ca_path)
-            elif isinstance(self.x509_cert, X509):
+                    cert_chain = [x509.load_pem_x509_certificate(add_pem_header(cert)) for cert in certs]
+
+                cert_verifier = self.get_cert_chain_verifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+
+                signing_cert = cert_verifier.verify(cert_chain)
+            elif isinstance(self.x509_cert, x509.Certificate):
                 signing_cert = self.x509_cert
             else:
-                signing_cert = load_certificate(FILETYPE_PEM, add_pem_header(self.x509_cert))
+                signing_cert = x509.load_pem_x509_certificate(add_pem_header(self.x509_cert))
 
-            if cert_subject_name and signing_cert.get_subject().commonName != cert_subject_name:
-                raise InvalidSignature("Certificate subject common name mismatch")
-
-            if signature_alg.name.startswith("ECDSA"):
-                raw_signature = self._encode_dss_signature(raw_signature, signing_cert.get_pubkey().bits())
+            if cert_subject_name is not None:
+                cn_oid = x509.oid.NameOID.COMMON_NAME
+                subject_cn_from_signing_cert = signing_cert.subject.get_attributes_for_oid(cn_oid)[0].value
+                if subject_cn_from_signing_cert != cert_subject_name:
+                    raise InvalidSignature("Certificate subject common name mismatch")
 
             try:
-                digest_alg_name = str(digest_algorithm_implementations[signature_alg].name)
-                openssl_verify(signing_cert, raw_signature, signed_info_c14n, digest_alg_name)
-            except OpenSSLCryptoError as e:
-                try:
-                    lib, func, reason = e.args[0][0]
-                except Exception:
-                    reason = e
-                raise InvalidSignature(f"Signature verification failed: {reason}")
+                verified_signed_info_c14n = self._verify_signature_with_pubkey(
+                    signed_info_c14n=signed_info_c14n,
+                    raw_signature=raw_signature,
+                    signing_certificate=signing_cert,
+                    signature_alg=signature_alg,
+                )
+            except cryptography.exceptions.InvalidSignature as e:
+                raise InvalidSignature(f"Signature verification failed: {e}")
 
-            # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
-            if key_value is not None:
-                if (
-                    self._check_key_value_matches_cert_public_key(key_value, signing_cert.get_pubkey(), signature_alg)
-                    is False
-                ):
-                    if self.config.ignore_ambiguous_key_info is False:
-                        raise InvalidInput(
-                            "Both X509Data and KeyValue found and they represent different public keys. "
-                            "Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate "
-                            "using X509Data only."
-                        )
-
-            # If both X509Data and DEREncodedKeyValue are present, match one against the other and raise an error on
-            # mismatch
-            if der_encoded_key_value is not None:
-                if (
-                    self._check_der_key_value_matches_cert_public_key(
-                        der_encoded_key_value, signing_cert.get_pubkey(), signature_alg
-                    )
-                    is False
-                ):
-                    if self.config.ignore_ambiguous_key_info is False:
-                        raise InvalidInput(
-                            "Both X509Data and DEREncodedKeyValue found and they represent different "
-                            "public keys. Use verify(ignore_ambiguous_key_info=True) to ignore "
-                            "DEREncodedKeyValue and validate using X509Data only."
-                        )
-
-            # TODO: CN verification goes here
-            # TODO: require one of the following to be set: either x509_cert or (ca_pem_file or ca_path) or common_name
-            # Use ssl.match_hostname or code from it to perform match
+            self._match_key_values(
+                key_value=key_value,
+                der_encoded_key_value=der_encoded_key_value,
+                signing_cert=signing_cert,
+                signature_alg=signature_alg,
+            )
         elif signature_alg.name.startswith("HMAC_"):
             if self.hmac_key is None:
                 raise InvalidInput('Parameter "hmac_key" is required when verifying a HMAC signature')
 
             signer = HMAC(key=ensure_bytes(self.hmac_key), algorithm=digest_algorithm_implementations[signature_alg]())
             signer.update(signed_info_c14n)
-            if raw_signature != signer.finalize():
+            if raw_signature == signer.finalize():
+                verified_signed_info_c14n = signed_info_c14n
+            else:
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
             if key_value is None and der_encoded_key_value is None:
                 raise InvalidInput("Expected to find either KeyValue or X509Data XML element in KeyInfo")
 
-            self._verify_signature_with_pubkey(
+            verified_signed_info_c14n = self._verify_signature_with_pubkey(
                 signed_info_c14n=signed_info_c14n,
                 raw_signature=raw_signature,
                 key_value=key_value,
@@ -455,8 +477,9 @@ class XMLVerifier(XMLSignatureProcessor):
                 signature_alg=signature_alg,
             )
 
+        verified_signed_info = self._fromstring(verified_signed_info_c14n)
         verify_results: List[VerifyResult] = []
-        for idx, reference in enumerate(self._findall(signed_info, "Reference")):
+        for idx, reference in enumerate(self._findall(verified_signed_info, "Reference")):
             verify_results.append(self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature))
 
         if type(self.config.expect_references) is int and len(verify_results) != self.config.expect_references:
@@ -474,8 +497,7 @@ class XMLVerifier(XMLSignatureProcessor):
         payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
         payload_c14n = self._apply_transforms(payload, transforms_node=transforms, signature=copied_signature_ref)
         digest_alg = DigestAlgorithm(digest_method_alg_name)
-        if digest_alg not in self.config.digest_algorithms:
-            raise InvalidInput(f"Digest algorithm {digest_alg.name} forbidden by configuration")
+        self.check_digest_alg_expected(digest_alg)
 
         if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
             raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
@@ -495,12 +517,12 @@ class XMLVerifier(XMLSignatureProcessor):
                 return
             except Exception as e:
                 last_exception = e
-        raise last_exception  # type: ignore
+        if last_exception is not None:
+            raise last_exception
+        raise SignXMLException("Invalid state")
 
     def _check_key_value_matches_cert_public_key(self, key_value, public_key, signature_alg: SignatureMethod):
-        if signature_alg.name.startswith("ECDSA_") and isinstance(
-            public_key.to_cryptography_key(), ec.EllipticCurvePublicKey
-        ):
+        if signature_alg.name.startswith("ECDSA_") and isinstance(public_key, ec.EllipticCurvePublicKey):
             ec_key_value = self._find(key_value, "dsig11:ECKeyValue")
             named_curve = self._find(ec_key_value, "dsig11:NamedCurve")
             pub_key = self._find(ec_key_value, "dsig11:PublicKey")
@@ -509,31 +531,31 @@ class XMLVerifier(XMLSignatureProcessor):
             y = bytes_to_long(key_data[len(key_data) // 2 :])
             curve_class = self.known_ecdsa_curves[named_curve.get("URI")]
 
-            pubk_curve = public_key.to_cryptography_key().public_numbers().curve
-            pubk_x = public_key.to_cryptography_key().public_numbers().x
-            pubk_y = public_key.to_cryptography_key().public_numbers().y
+            pubk_curve = public_key.public_numbers().curve
+            pubk_x = public_key.public_numbers().x
+            pubk_y = public_key.public_numbers().y
 
             return curve_class == pubk_curve and x == pubk_x and y == pubk_y
 
-        elif signature_alg.name.startswith("DSA_") and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey):
+        elif signature_alg.name.startswith("DSA_") and isinstance(public_key, dsa.DSAPublicKey):
             dsa_key_value = self._find(key_value, "DSAKeyValue")
             p = self._get_long(dsa_key_value, "P")
             q = self._get_long(dsa_key_value, "Q")
             g = self._get_long(dsa_key_value, "G", require=False)
 
-            pubk_p = public_key.to_cryptography_key().public_numbers().p
-            pubk_q = public_key.to_cryptography_key().public_numbers().q
-            pubk_g = public_key.to_cryptography_key().public_numbers().g
+            pubk_p = public_key.public_numbers().parameter_numbers.p
+            pubk_q = public_key.public_numbers().parameter_numbers.q
+            pubk_g = public_key.public_numbers().parameter_numbers.g
 
             return p == pubk_p and q == pubk_q and g == pubk_g
 
-        elif signature_alg.name.startswith("RSA_") and isinstance(public_key.to_cryptography_key(), rsa.RSAPublicKey):
+        elif signature_alg.name.startswith("RSA_") and isinstance(public_key, rsa.RSAPublicKey):
             rsa_key_value = self._find(key_value, "RSAKeyValue")
             n = self._get_long(rsa_key_value, "Modulus")
             e = self._get_long(rsa_key_value, "Exponent")
 
-            pubk_n = public_key.to_cryptography_key().public_numbers().n
-            pubk_e = public_key.to_cryptography_key().public_numbers().e
+            pubk_n = public_key.public_numbers().n
+            pubk_e = public_key.public_numbers().e
 
             return n == pubk_n and e == pubk_e
 
@@ -546,43 +568,43 @@ class XMLVerifier(XMLSignatureProcessor):
         if (
             signature_alg.name.startswith("ECDSA_")
             and isinstance(der_public_key, ec.EllipticCurvePublicKey)
-            and isinstance(public_key.to_cryptography_key(), ec.EllipticCurvePublicKey)
+            and isinstance(public_key, ec.EllipticCurvePublicKey)
         ):
             curve_class = der_public_key.public_numbers().curve
             x = der_public_key.public_numbers().x
             y = der_public_key.public_numbers().y
 
-            pubk_curve = public_key.to_cryptography_key().public_numbers().curve
-            pubk_x = public_key.to_cryptography_key().public_numbers().x
-            pubk_y = public_key.to_cryptography_key().public_numbers().y
+            pubk_curve = public_key.public_numbers().curve
+            pubk_x = public_key.public_numbers().x
+            pubk_y = public_key.public_numbers().y
 
             return curve_class == pubk_curve and x == pubk_x and y == pubk_y
 
         elif (
             signature_alg.name.startswith("DSA_")
             and isinstance(der_public_key, dsa.DSAPublicKey)
-            and isinstance(public_key.to_cryptography_key(), dsa.DSAPublicKey)
+            and isinstance(public_key, dsa.DSAPublicKey)
         ):
-            p = der_public_key.public_numbers().parameter_numbers().p  # type: ignore
-            q = der_public_key.public_numbers().parameter_numbers().q  # type: ignore
-            g = der_public_key.public_numbers().parameter_numbers().g  # type: ignore
+            p = der_public_key.public_numbers().parameter_numbers.p
+            q = der_public_key.public_numbers().parameter_numbers.q
+            g = der_public_key.public_numbers().parameter_numbers.g
 
-            pubk_p = public_key.to_cryptography_key().public_numbers().p
-            pubk_q = public_key.to_cryptography_key().public_numbers().q
-            pubk_g = public_key.to_cryptography_key().public_numbers().g
+            pubk_p = public_key.public_numbers().parameter_numbers.p
+            pubk_q = public_key.public_numbers().parameter_numbers.q
+            pubk_g = public_key.public_numbers().parameter_numbers.g
 
             return p == pubk_p and q == pubk_q and g == pubk_g
 
         elif (
             signature_alg.name.startswith("RSA_")
             and isinstance(der_public_key, rsa.RSAPublicKey)
-            and isinstance(public_key.to_cryptography_key(), rsa.RSAPublicKey)
+            and isinstance(public_key, rsa.RSAPublicKey)
         ):
             n = der_public_key.public_numbers().n
             e = der_public_key.public_numbers().e
 
-            pubk_n = public_key.to_cryptography_key().public_numbers().n
-            pubk_e = public_key.to_cryptography_key().public_numbers().e
+            pubk_n = public_key.public_numbers().n
+            pubk_e = public_key.public_numbers().e
 
             return n == pubk_n and e == pubk_e
 

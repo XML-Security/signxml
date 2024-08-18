@@ -13,12 +13,9 @@ setup(
     long_description=open("README.rst").read(),
     python_requires=">=3.7",
     install_requires=[
-        # Dependencies are restricted by major version range according to semver.
-        # By default, version minimums are set to be compatible with the oldest supported Ubuntu LTS (currently 20.04).
-        "lxml >= 4.5.0, < 6",
-        "cryptography >= 3.4.8",  # Set to the version in Ubuntu 22.04 due to features we need from cryptography 3.1
-        "pyOpenSSL >= 19.0.0",
-        "certifi >= 2019.11.28",
+        "lxml >= 5.2.1, < 6",  # Ubuntu 24.04 LTS
+        "cryptography >= 43",  # Required to support client certificate validation
+        "certifi >= 2023.11.17",  # Ubuntu 24.04 LTS
         # "tsp-client >= 0.1.3",
     ],
     extras_require={

@@ -9,4 +9,6 @@ skip_gitignore = true
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
 per-file-ignores = {"signxml/__init__.py" = ["F401"], "signxml/xades/__init__.py" = ["F401"], "signxml/verifier.py" = ["E721"]}

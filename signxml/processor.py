@@ -76,7 +76,7 @@ class XMLSignatureProcessor(XMLProcessor):
         "urn:oid:1.3.132.0.37": ec.SECT409R1,
         "urn:oid:1.3.132.0.38": ec.SECT571K1,
     }
-    known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.items()}  # type: ignore
+    known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.items()}  # type: ignore[abstract]
 
     excise_empty_xmlns_declarations = False
 

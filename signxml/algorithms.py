@@ -37,7 +37,7 @@ class SignatureConstructionMethod(Enum):
 class FragmentLookupMixin:
     @classmethod
     def from_fragment(cls, fragment):
-        for i in cls:  # type: ignore
+        for i in cls:  # type: ignore[attr-defined]
             if i.value.endswith("#" + fragment):
                 return i
         else:
@@ -50,7 +50,7 @@ class InvalidInputErrorMixin:
         raise InvalidInput(f"Unrecognized {cls.__name__}: {value}")
 
     def __repr__(self):
-        return f"{self.__class__.__name__}.{self.name}"  # type: ignore
+        return f"{self.__class__.__name__}.{self.name}"  # type: ignore[attr-defined]
 
 
 class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):
