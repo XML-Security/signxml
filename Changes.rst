@@ -1,3 +1,26 @@
+Changes for v4.0.0 (2024-08-21)
+===============================
+
+-  Replace PyOpenSSL with Cryptography (#260)
+
+   -  This is a major infrastructure change that replaces core
+      certificate parsing, key processing, signature validation, and
+      certificate chain validation functions previously provided by
+      PyOpenSSL with those provided by Cryptography. Care was taken to
+      preserve the exisitng API, including exception types, but many
+      error messages raised in various error conditions have changed. If
+      you see unexpected behavior and you have reason to believe it is
+      incorrect, please file an issue.
+
+   -  Breaking change: the ca_path parameter, previously used to specify
+      CA certificate stores, is no longer supported. Use the ca_pem_file
+      parameter instead.
+
+-  Raise error when invalid certificate string is passed as input to
+   signer
+
+-  Fix public key matching for ECDSA (#245)
+
 Changes for v3.2.2 (2024-01-28)
 ===============================
 
