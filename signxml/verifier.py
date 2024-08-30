@@ -375,7 +375,7 @@ class XMLVerifier(XMLSignatureProcessor):
         if x509_cert and str(type(x509_cert)) == "<class 'OpenSSL.crypto.X509'>":
             warn(
                 "SignXML received a PyOpenSSL object as x509_cert input. Please pass a Cryptography.X509 object instead.",
-                DeprecationWarning
+                DeprecationWarning,
             )
             x509_cert = x509_cert.to_cryptography()  # type: ignore[union-attr]
 
