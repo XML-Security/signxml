@@ -1,3 +1,8 @@
+Changes for v4.0.1 (2024-08-30)
+===============================
+
+-  Verifier: Accept PyOpenSSL cert input, add deprecation warning
+
 Changes for v4.0.0 (2024-08-21)
 ===============================
 
