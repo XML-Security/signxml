@@ -377,7 +377,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 "SignXML received a PyOpenSSL object as x509_cert input. Please pass a Cryptography.X509 object instead.",
                 DeprecationWarning
             )
-            x509_cert = x509_cert.to_cryptography()
+            x509_cert = x509_cert.to_cryptography()  # type: ignore[union-attr]
 
         if id_attribute is not None:
             self.id_attributes = (id_attribute,)
