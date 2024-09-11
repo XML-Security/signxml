@@ -1,3 +1,9 @@
+Changes for v4.0.2 (2024-09-10)
+===============================
+
+-  XAdES signing: remove duplicate timezone information from
+   ``SigningTime`` (#266)
+
 Changes for v4.0.1 (2024-08-30)
 ===============================
 
