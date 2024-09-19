@@ -3,7 +3,8 @@ SignXML: XML Signature and XAdES in Python
 
 *SignXML* is an implementation of the W3C `XML Signature <http://en.wikipedia.org/wiki/XML_Signature>`_ standard in
 Python. This standard (also known as "XMLDSig") is used to provide payload security in `SAML 2.0
-<http://en.wikipedia.org/wiki/SAML_2.0>`_, `XAdES <https://en.wikipedia.org/wiki/XAdES>`_, and `WS-Security
+<http://en.wikipedia.org/wiki/SAML_2.0>`_, `XAdES <https://en.wikipedia.org/wiki/XAdES>`_, `EBICS
+<https://en.wikipedia.org/wiki/Electronic_Banking_Internet_Communication_Standard>`_, and `WS-Security
 <https://en.wikipedia.org/wiki/WS-Security>`_, among other uses. The standard is defined in the `W3C Recommendation
 <https://www.w3.org/standards/types#REC>`_ `XML Signature Syntax and Processing Version 1.1
 <http://www.w3.org/TR/xmldsig-core1/>`_. *SignXML* implements all of the required components of the Version 1.1
