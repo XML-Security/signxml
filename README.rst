@@ -90,8 +90,14 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  `SAML signature wrapping <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_.
 
  In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
- data returned by the ``verify()`` method. The ``signed_xml`` attribute of the return value is the XML node or string that
- was signed.
+ data returned by ``XMLVerifier.verify()``. The ``signed_xml`` attribute of the return value is the XML node or string
+ that was signed. We also recommend that you assert the expected location for the signature within the document:
+
+ .. code-block:: python
+
+    from signxml import XMLVerifier, SignatureConfiguration
+    config = SignatureConfiguration(location="./")
+    XMLVerifier(...).verify(..., expect_config=config)
 
  **Recommended reading:** `W3C XML Signature Best Practices for Applications
  <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `On Breaking SAML: Be Whoever You Want to Be
@@ -106,7 +112,7 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  ``x509_cert`` argument to specify a certificate that was pre-shared out-of-band (e.g. via SAML metadata, as
  shown in *Verifying SAML assertions*), or ``cert_subject_name`` to specify a
  subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
- domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
+ domain name), or ``ca_pem_file`` to give a custom CA.
 
 XML signature construction methods: enveloped, detached, enveloping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

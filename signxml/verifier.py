@@ -233,8 +233,8 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return payload
 
-    def get_cert_chain_verifier(self, ca_pem_file, ca_path):
-        return X509CertChainVerifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+    def get_cert_chain_verifier(self, ca_pem_file):
+        return X509CertChainVerifier(ca_pem_file=ca_pem_file)
 
     def _match_key_values(self, key_value, der_encoded_key_value, signing_cert, signature_alg):
         if self.config.ignore_ambiguous_key_info is False:
@@ -279,7 +279,6 @@ class XMLVerifier(XMLSignatureProcessor):
         cert_subject_name: Optional[str] = None,
         cert_resolver: Optional[Callable] = None,
         ca_pem_file: Optional[Union[str, bytes]] = None,
-        ca_path: Optional[str] = None,
         hmac_key: Optional[str] = None,
         validate_schema: bool = True,
         parser=None,
@@ -302,8 +301,16 @@ class XMLVerifier(XMLSignatureProcessor):
          signed by that signature.
 
          In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
-         data returned by the ``verify()`` method. The return value is the XML node or string that was signed. Also,
-         depending on the canonicalization method used by the signature, comments in the XML data may not be subject to
+         data returned by ``XMLVerifier.verify()``. The ``signed_xml`` attribute of the return value is the XML node or string
+         that was signed. We also recommend that you assert the expected location for the signature within the document:
+
+         .. code-block:: python
+
+             from signxml import XMLVerifier, SignatureConfiguration
+             config = SignatureConfiguration(location="./")
+             XMLVerifier(...).verify(..., expect_config=config)
+        
+         Depending on the canonicalization method used by the signature, comments in the XML data may not be subject to
          signing, so may need to be untrusted. If so, they are excised from the return value of ``verify()``.
 
          **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications
@@ -316,7 +323,7 @@ class XMLVerifier(XMLSignatureProcessor):
          ``x509_cert`` argument to specify a certificate that was pre-shared out-of-band (e.g. via SAML metadata, as
          shown in :ref:`Verifying SAML assertions <verifying-saml-assertions>`), or ``cert_subject_name`` to specify a
          subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
-         domain name), or ``ca_pem_file``/``ca_path`` to give a custom CA.
+         domain name), or ``ca_pem_file`` to give a custom CA.
 
         :param data: Signature data to verify
         :type data: String, file-like object, or XML ElementTree Element API compatible object
@@ -336,10 +343,6 @@ class XMLVerifier(XMLSignatureProcessor):
         :param ca_pem_file:
             Filename of a PEM file containing certificate authority information to use when verifying certificate-based
             signatures.
-        :param ca_path:
-            Path to a directory containing PEM-formatted certificate authority files to use when verifying
-            certificate-based signatures. If neither **ca_pem_file** nor **ca_path** is given, the Mozilla CA bundle
-            provided by :py:mod:`certifi` will be loaded.
         :param hmac_key: If using HMAC, a string containing the shared secret.
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :param parser:
@@ -433,7 +436,7 @@ class XMLVerifier(XMLSignatureProcessor):
                 else:
                     cert_chain = [x509.load_pem_x509_certificate(add_pem_header(cert)) for cert in certs]
 
-                cert_verifier = self.get_cert_chain_verifier(ca_pem_file=ca_pem_file, ca_path=ca_path)
+                cert_verifier = self.get_cert_chain_verifier(ca_pem_file=ca_pem_file)
 
                 signing_cert = cert_verifier.verify(cert_chain)
             elif isinstance(self.x509_cert, x509.Certificate):

@@ -225,14 +225,10 @@ class X509CertChainVerifier:
     contact SignXML maintainers.
     """
 
-    def __init__(self, ca_pem_file=None, ca_path=None, verification_time=None):
+    def __init__(self, ca_pem_file=None, verification_time=None):
         if ca_pem_file is None:
             ca_pem_file = certifi.where()
         self.ca_pem_file = ca_pem_file
-        if ca_path is not None:
-            msg = "CApath is not supported. If you need this feature, please contact SignXML maintainers."
-            raise NotImplementedError(msg)
-
         self.verification_time = verification_time
 
     @property
