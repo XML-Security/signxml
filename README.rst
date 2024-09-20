@@ -244,7 +244,7 @@ recommended.
 
 License
 -------
-Copyright 2014-2023, Andrey Kislyuk and SignXML contributors. Licensed under the terms of the
+Copyright 2014-2024, Andrey Kislyuk and SignXML contributors. Licensed under the terms of the
 `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_. Distribution of the LICENSE and NOTICE
 files with source copies of this package and derivative works is **REQUIRED** as specified by the Apache License.
 
