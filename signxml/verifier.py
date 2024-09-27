@@ -309,7 +309,7 @@ class XMLVerifier(XMLSignatureProcessor):
              from signxml import XMLVerifier, SignatureConfiguration
              config = SignatureConfiguration(location="./")
              XMLVerifier(...).verify(..., expect_config=config)
-        
+
          Depending on the canonicalization method used by the signature, comments in the XML data may not be subject to
          signing, so may need to be untrusted. If so, they are excised from the return value of ``verify()``.
 
