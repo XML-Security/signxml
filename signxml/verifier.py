@@ -369,7 +369,6 @@ class XMLVerifier(XMLSignatureProcessor):
         self.config = expect_config
         if deprecated_kwargs:
             self.config = replace(expect_config, **deprecated_kwargs)
-        self.x509_cert = x509_cert
         self._parser = parser
 
         if x509_cert or cert_resolver:
@@ -381,6 +380,8 @@ class XMLVerifier(XMLSignatureProcessor):
                 DeprecationWarning,
             )
             x509_cert = x509_cert.to_cryptography()  # type: ignore[union-attr]
+
+        self.x509_cert = x509_cert
 
         if id_attribute is not None:
             self.id_attributes = (id_attribute,)
