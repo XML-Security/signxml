@@ -1,3 +1,11 @@
+Changes for v4.0.3 (2024-11-23)
+===============================
+
+-  Fix issue with support for deprecated PyOpenSSL certificates
+
+-  Fully remove the ca_path parameter; add docs for signature location
+   pinning
+
 Changes for v4.0.2 (2024-09-10)
 ===============================
 
