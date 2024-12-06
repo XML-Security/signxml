@@ -25,7 +25,10 @@ PEM_FOOTER = "-----END CERTIFICATE-----"
 
 class Namespace(dict):
     def __getattr__(self, a):
-        return dict.__getitem__(self, a)
+        try:
+            return dict.__getitem__(self, a)
+        except KeyError:
+            raise AttributeError(a) from None
 
 
 namespaces = Namespace(
