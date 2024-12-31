@@ -44,11 +44,11 @@ test = [
 ]
 
 [project.urls]
-"Homepage"= "https://github.com/kislyuk/signxml"
+"Homepage"= "https://github.com/XML-Security/signxml"
 "Documentation"= "https://xml-security.github.io/signxml/"
-"Source Code"= "https://github.com/kislyuk/signxml"
-"Issue Tracker"= "https://github.com/kislyuk/signxml/issues"
-"Change Log"= "https://github.com/kislyuk/signxml/blob/main/Changes.rst"
+"Source Code"= "https://github.com/XML-Security/signxml"
+"Issue Tracker"= "https://github.com/XML-Security/signxml/issues"
+"Change Log"= "https://github.com/XML-Security/signxml/blob/main/Changes.rst"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
