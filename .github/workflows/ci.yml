@@ -9,13 +9,12 @@ jobs:
       max-parallel: 8
       matrix:
         os: [ubuntu-20.04, ubuntu-latest, macos-13, macos-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
         python-version: ${{matrix.python-version}}
-        allow-prereleases: true
     - run: |
         if [[ $(uname) == Linux ]]; then sudo apt-get install --no-install-recommends python3-lxml python3-certifi; fi
     - run: make install
