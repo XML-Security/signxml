@@ -36,10 +36,18 @@ class XMLProcessor:
             return self._default_parser
         return self._parser
 
-    def _fromstring(self, xml_string, **kwargs):
-        xml_node = etree.fromstring(xml_string, parser=self.parser, **kwargs)
-        for entity in xml_node.iter(etree.Entity):
-            raise InvalidInput("Entities are not supported in XML input")
+    def _fromstring(self, data, **kwargs):
+        try:
+            xml_node = etree.fromstring(data, parser=self.parser, **kwargs)
+            for entity in xml_node.iter(etree.Entity):
+                raise InvalidInput("Entities are not supported in XML input")
+        except etree.XMLSyntaxError as e:
+            logger.debug("Data to be signed is not well-formed XML: %s", data)
+            if isinstance(data, str):
+                # We have to convert string to bytes
+                data = data.encode("utf-8")
+            return data
+
         return xml_node
 
     def _tostring(self, xml_node, **kwargs):
@@ -117,13 +125,16 @@ class XMLSignatureProcessor(XMLProcessor):
 
         c14n = b""
         for node in nodes:
-            c14n += etree.tostring(
-                node,
-                method="c14n",
-                exclusive=exclusive,
-                with_comments=with_comments,
-                inclusive_ns_prefixes=inclusive_ns_prefixes,
-            )
+            if isinstance(node, bytes):
+                c14n += node
+            else:
+                c14n += etree.tostring(
+                    node,
+                    method="c14n",
+                    exclusive=exclusive,
+                    with_comments=with_comments,
+                    inclusive_ns_prefixes=inclusive_ns_prefixes,
+                )
         if exclusive is False and self.excise_empty_xmlns_declarations is True:
             # Incorrect legacy behavior. See also:
             # - https://github.com/XML-Security/signxml/issues/193
