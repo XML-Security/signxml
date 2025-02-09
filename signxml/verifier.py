@@ -389,7 +389,7 @@ class XMLVerifier(XMLSignatureProcessor):
         root = self.get_root(data)
         signature_ref = self._get_signature(root)
 
-        # HACK: deep copy won't keep root's namespaces
+        # We could do a deep copy here, but it wouldn't preserve root level namespaces
         signature = self._fromstring(self._tostring(signature_ref))
 
         if validate_schema:
@@ -514,7 +514,9 @@ class XMLVerifier(XMLSignatureProcessor):
         if b64decode(digest_value.text) != self._get_digest(payload_c14n, digest_alg):
             raise InvalidDigest(f"Digest mismatch for reference {index} ({reference.get('URI')})")
 
-        # We return the signed XML (and only that) to ensure no access to unsigned data happens
+        # We return the signed XML (and only that) to ensure no access to unsigned data happens.
+        # Note it is essential to roundtrip the payload and render it from canonicalized XML, to avoid returning
+        # untrusted comments, avoid text nodes being broken up even after comments are excised, etc.
         try:
             payload_c14n_xml = self._fromstring(payload_c14n)
         except etree.XMLSyntaxError:

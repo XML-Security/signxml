@@ -86,8 +86,9 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  It is important to understand and follow the best practice rule of "See what is signed" when verifying XML
  signatures. The gist of this rule is: if your application neglects to verify that the information it trusts is
  what was actually signed, the attacker can supply a valid signature but point you to malicious data that wasn't signed
- by that signature. Failure to follow this rule can lead to vulnerability against attacks like
- `SAML signature wrapping <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_.
+ by that signature. Failure to follow this rule can lead to vulnerabilities against attacks like
+ `SAML signature wrapping <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_ and
+ `XML comment canonicalization induced text element truncation <https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations>`_.
 
  In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the
  data returned by ``XMLVerifier.verify()``. The ``signed_xml`` attribute of the return value is the XML node or string
