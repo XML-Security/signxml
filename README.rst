@@ -103,7 +103,9 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  **Recommended reading:** `W3C XML Signature Best Practices for Applications
  <http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications>`_, `On Breaking SAML: Be Whoever You Want to Be
  <https://www.usenix.org/system/files/conference/usenixsecurity12/sec12-final91.pdf>`_, `Duo Finds SAML Vulnerabilities
- Affecting Multiple Implementations <https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations>`_
+ Affecting Multiple Implementations <https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations>`_,
+ `Sign in as anyone: Bypassing SAML SSO authentication with parser differentials
+ <https://github.blog/security/sign-in-as-anyone-bypassing-saml-sso-authentication-with-parser-differentials/>`_
 
 .. admonition:: Establish trust
 
