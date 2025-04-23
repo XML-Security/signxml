@@ -241,8 +241,8 @@ Please report bugs, issues, feature requests, etc. on `GitHub <https://github.co
 Versioning
 ~~~~~~~~~~
 This package follows the `Semantic Versioning 2.0.0 <http://semver.org/>`_ standard. To control changes, it is
-recommended that application developers pin the package version and manage it using `pip-tools
-<https://github.com/jazzband/pip-tools>`_ or similar. For library developers, pinning the major version is
+recommended that application developers pin the package version and manage it using `uv
+<https://github.com/astral-sh/uv>`_ or similar. For library developers, pinning the major version is
 recommended.
 
 License
