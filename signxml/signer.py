@@ -327,6 +327,13 @@ class XMLSigner(XMLSignatureProcessor):
 
     def _unpack(self, data, references: List[SignatureReference]):
         sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+            data_is_not_xml = True
+        elif isinstance(data, bytes):
+            data_is_not_xml = True
+        else:
+            data_is_not_xml = False
         if self.construction_method == SignatureConstructionMethod.enveloped:
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
@@ -360,11 +367,16 @@ class XMLSigner(XMLSignatureProcessor):
         elif self.construction_method == SignatureConstructionMethod.detached:
             doc_root = self.get_root(data)
             if references is None:
+                if data_is_not_xml:
+                    raise InvalidInput("When using detached signature and data is not XML, **reference** has to be provided")
                 uri = "#{}".format(data.get("Id", data.get("ID", "object")))
                 references = [SignatureReference(URI=uri)]
                 c14n_inputs = [self.get_root(data)]
-            try:
-                c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
+            try:                
+                if data_is_not_xml:                    
+                    c14n_inputs = [doc_root]
+                else:
+                    c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
             except InvalidInput:  # Dummy reference URI
                 c14n_inputs = [self.get_root(data)]
         elif self.construction_method == SignatureConstructionMethod.enveloping:
@@ -406,13 +418,17 @@ class XMLSigner(XMLSignatureProcessor):
             if reference.inclusive_ns_prefixes is None:
                 reference = replace(reference, inclusive_ns_prefixes=inclusive_ns_prefixes)
             reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
-            transforms = SubElement(reference_node, ds_tag("Transforms"))
-            self._build_transforms_for_reference(transforms_node=transforms, reference=reference)
-            SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
+            if not isinstance(c14n_inputs[i], bytes):            
+                transforms = SubElement(reference_node, ds_tag("Transforms"))
+                self._build_transforms_for_reference(transforms_node=transforms, reference=reference)                
+            SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)            
             digest_value = SubElement(reference_node, ds_tag("DigestValue"))
-            payload_c14n = self._c14n(
-                c14n_inputs[i], algorithm=reference.c14n_method, inclusive_ns_prefixes=reference.inclusive_ns_prefixes
-            )
+            if not isinstance(c14n_inputs[i], bytes):            
+                payload_c14n = self._c14n(
+                    c14n_inputs[i], algorithm=reference.c14n_method, inclusive_ns_prefixes=reference.inclusive_ns_prefixes
+                )
+            else:
+                payload_c14n = c14n_inputs[i]
             digest = self._get_digest(payload_c14n, algorithm=self.digest_alg)
             digest_value.text = b64encode(digest).decode()
         signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
