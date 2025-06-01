@@ -1,6 +1,6 @@
 from base64 import b64decode
 from dataclasses import dataclass, replace
-from typing import Callable, FrozenSet, List, Optional, Union, Tuple
+from typing import Callable, FrozenSet, List, Optional, Tuple, Union
 from warnings import warn
 
 import cryptography.exceptions
@@ -8,8 +8,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, AsymmetricPadding, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
-from cryptography.hazmat.primitives.serialization import load_der_public_key, Encoding, PublicFormat
-
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
 from lxml import etree
 
 from .algorithms import (
