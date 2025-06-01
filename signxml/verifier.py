@@ -473,9 +473,10 @@ class XMLVerifier(XMLSignatureProcessor):
 
             signer = HMAC(key=ensure_bytes(self.hmac_key), algorithm=digest_algorithm_implementations[signature_alg]())
             signer.update(signed_info_c14n)
-            if raw_signature == signer.finalize():
+            try:
+                signer.verify(raw_signature)
                 verified_signed_info_c14n = signed_info_c14n
-            else:
+            except cryptography.exceptions.InvalidSignature:
                 raise InvalidSignature("Signature mismatch (HMAC)")
         else:
             if key_value is None and der_encoded_key_value is None:
