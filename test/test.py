@@ -53,6 +53,9 @@ class XMLSignerWithSHA1(XMLSigner):
 
 
 sha1_ok = SignatureConfiguration(signature_methods=list(SignatureMethod), digest_algorithms=list(DigestAlgorithm))
+hmac_only = SignatureConfiguration(
+    signature_methods=[sm for sm in SignatureMethod if "HMAC" in sm.name], digest_algorithms=list(DigestAlgorithm)
+)
 xades_sha1_ok = XAdESSignatureConfiguration(
     signature_methods=list(SignatureMethod), digest_algorithms=list(DigestAlgorithm)
 )
@@ -162,7 +165,10 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 )
                 # print(etree.tostring(signed))
                 hmac_key = self.keys["hmac"] if sig_alg_type == "hmac" else None
-                verify_kwargs = dict(require_x509=False, hmac_key=hmac_key, validate_schema=True, expect_config=sha1_ok)
+                expect_config = hmac_only if sig_alg_type == "hmac" else sha1_ok
+                verify_kwargs = dict(
+                    require_x509=False, hmac_key=hmac_key, validate_schema=True, expect_config=expect_config
+                )
 
                 if method == methods.detached:
 
@@ -199,7 +205,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         signed_data,
                         hmac_key=hmac_key,
                         uri_resolver=verify_kwargs.get("uri_resolver"),
-                        expect_config=sha1_ok,
+                        expect_config=expect_config,
                     )
 
                 if method != methods.detached:
@@ -287,10 +293,10 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     XMLVerifier().verify(
                         sig,
                         require_x509=False,
-                        hmac_key="testkey",
+                        hmac_key=b"testkey" if "hmac" in signature_file else None,
                         validate_schema=True,
                         cert_resolver=get_x509_cert if "x509digest" in signature_file else None,
-                        expect_config=sha1_ok,
+                        expect_config=hmac_only if "hmac" in signature_file else sha1_ok,
                     )
                     sig.decode("utf-8")
                 except Exception as e:
@@ -346,6 +352,11 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         signature_files += glob(os.path.join(interop_dir, "pyXMLSecurity", "*.xml"))
         for signature_file in signature_files:
             print("Verifying", signature_file)
+            hmac_key = None
+            expect_config = sha1_ok
+            if "hmac" in signature_file:
+                hmac_key = b"test" if "phaos" in signature_file else b"secret"
+                expect_config = hmac_only
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
@@ -354,13 +365,13 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     verifier.verify(
                         sig,
                         require_x509=False,
-                        hmac_key="test" if "phaos" in signature_file else "secret",
+                        hmac_key=hmac_key,
                         validate_schema=True,
                         uri_resolver=resolver,
                         x509_cert=get_x509_cert(signature_file),
                         cert_resolver=cert_resolver if "issuer-serial" in signature_file else None,
                         ca_pem_file=get_ca_pem_file(signature_file),
-                        expect_config=sha1_ok,
+                        expect_config=expect_config,
                     )
                     decoded_sig = sig.decode("utf-8")
                     if "HMACOutputLength" in decoded_sig or "bad" in signature_file or "expired" in signature_file:
