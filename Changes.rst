@@ -1,3 +1,15 @@
+Changes for v4.0.4 (2025-06-01)
+===============================
+
+This release contains security fixes for two security advisories:
+
+-  Signature verification with HMAC is vulnerable to an algorithm
+   confusion attack
+   (https://github.com/XML-Security/signxml/security/advisories/GHSA-6vx8-pcwv-xhf4)
+
+-  Signature verification with HMAC is vulnerable to a timing attack
+   (https://github.com/XML-Security/signxml/security/advisories/GHSA-gmhf-gg8w-jw42)
+
 Changes for v4.0.3 (2024-11-23)
 ===============================
 
