@@ -1,3 +1,8 @@
+Changes for v4.0.5 (2025-06-02)
+===============================
+
+-  Use Python 3.9 compatible typing expression
+
 Changes for v4.0.4 (2025-06-01)
 ===============================
 
