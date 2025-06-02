@@ -133,7 +133,7 @@ class XMLVerifier(XMLSignatureProcessor):
         key_value: Optional[etree._Element] = None,
         der_encoded_key_value: Optional[etree._Element] = None,
         signing_certificate: Optional[x509.Certificate] = None,
-    ) -> Tuple[bytes, bytes | dsa.DSAPublicKey | rsa.RSAPublicKey | ec.EllipticCurvePublicKey]:
+    ) -> Tuple[bytes, Union[bytes, dsa.DSAPublicKey, rsa.RSAPublicKey, ec.EllipticCurvePublicKey]]:
         if der_encoded_key_value is not None:
             assert der_encoded_key_value.text is not None
             key = load_der_public_key(b64decode(der_encoded_key_value.text))
