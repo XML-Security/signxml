@@ -136,7 +136,7 @@ class XMLSigner(XMLSignatureProcessor):
         always_add_key_value: bool = False,
         inclusive_ns_prefixes: Optional[List[str]] = None,
         signature_properties: Optional[Union[_Element, List[_Element]]] = None,
-        exclude_c14n_transform_element: bool = False
+        exclude_c14n_transform_element: bool = False,
     ) -> _Element:
         """
         Sign the data and return the root element of the resulting XML tree.
@@ -241,7 +241,7 @@ class XMLSigner(XMLSignatureProcessor):
             references=references,
             c14n_inputs=c14n_inputs,
             inclusive_ns_prefixes=inclusive_ns_prefixes,
-            exclude_c14n_transform_element=exclude_c14n_transform_element
+            exclude_c14n_transform_element=exclude_c14n_transform_element,
         )
 
         for signature_annotator in self.signature_annotators:
@@ -384,7 +384,9 @@ class XMLSigner(XMLSignatureProcessor):
             references = [SignatureReference(URI="#object")]
         return sig_root, doc_root, c14n_inputs, references
 
-    def _build_transforms_for_reference(self, *, transforms_node: _Element, reference: SignatureReference, exclude_c14n_transform_element: bool = True):
+    def _build_transforms_for_reference(
+        self, *, transforms_node: _Element, reference: SignatureReference, exclude_c14n_transform_element: bool = True
+    ):
         assert reference.c14n_method is not None
         if self.construction_method == SignatureConstructionMethod.enveloped:
             SubElement(transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
@@ -402,7 +404,9 @@ class XMLSigner(XMLSignatureProcessor):
                     c14n_xform, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(reference.inclusive_ns_prefixes)
                 )
 
-    def _build_sig(self, sig_root, references, c14n_inputs, inclusive_ns_prefixes, exclude_c14n_transform_element=False):
+    def _build_sig(
+        self, sig_root, references, c14n_inputs, inclusive_ns_prefixes, exclude_c14n_transform_element=False
+    ):
         signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
         sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg.value)
         if inclusive_ns_prefixes:
@@ -416,7 +420,11 @@ class XMLSigner(XMLSignatureProcessor):
                 reference = replace(reference, inclusive_ns_prefixes=inclusive_ns_prefixes)
             reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
             transforms = SubElement(reference_node, ds_tag("Transforms"))
-            self._build_transforms_for_reference(transforms_node=transforms, reference=reference, exclude_c14n_transform_element=exclude_c14n_transform_element)
+            self._build_transforms_for_reference(
+                transforms_node=transforms,
+                reference=reference,
+                exclude_c14n_transform_element=exclude_c14n_transform_element,
+            )
             SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
             digest_value = SubElement(reference_node, ds_tag("DigestValue"))
             payload_c14n = self._c14n(
