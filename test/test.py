@@ -585,7 +585,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         )
 
         # Test correct default c14n method for payload when c14n transform metadata is omitted
-        def _build_transforms_for_reference(transforms_node, reference):
+        def _build_transforms_for_reference(transforms_node, reference, exclude_c14n_transform_element=False):
             etree.SubElement(
                 transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value
             )
@@ -675,6 +675,56 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         )
         root = XMLSigner().sign(doc, cert=cert, key=key, reference_uri="#target")
         XMLVerifier().verify(root, x509_cert=cert)
+
+    def test_include_c14n_transform_element_by_default(self):
+        cert, key = self.load_example_keys()
+        doc = etree.fromstring(
+            '<rDE xmlns="http://example.com/ns1">'
+            '<DE Id="target"><dDVId>9</dDVId><gOpeDE><!-- comment --><iTipEmi>1</iTipEmi></gOpeDE></DE>'
+            "</rDE>"
+        )
+        root = XMLSigner().sign(doc, cert=cert, key=key, reference_uri="#target")
+        XMLVerifier().verify(root, x509_cert=cert)
+        transform_elements = root.findall(
+            "ds:Signature/ds:SignedInfo/ds:Reference/ds:Transforms/ds:Transform", namespaces=namespaces
+        )
+        transform_algorithms = [el.attrib["Algorithm"] for el in transform_elements]
+        self.assertEqual(len(transform_elements), 2)
+        self.assertIn("http://www.w3.org/2000/09/xmldsig#enveloped-signature", transform_algorithms)
+        self.assertIn("http://www.w3.org/2006/12/xml-c14n11", transform_algorithms)
+
+    def test_exclude_c14n_transform_element_option(self):
+        cert, key = self.load_example_keys()
+        doc = etree.fromstring(
+            '<rDE xmlns="http://example.com/ns1">'
+            '<DE Id="target"><dDVId>9</dDVId><gOpeDE><!-- comment --><iTipEmi>1</iTipEmi></gOpeDE></DE>'
+            "</rDE>"
+        )
+        root = XMLSigner(c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_0_WITH_COMMENTS).sign(
+            doc, cert=cert, key=key, reference_uri="#target", exclude_c14n_transform_element=True
+        )
+
+        # The default to use is CANONICAL_XML_1_1 (no comments), and since it's not specified in Transforms,
+        # verification without specifying the reference canonicalization algorithm should fail.
+        self.assertRaises(
+            InvalidDigest,
+            XMLVerifier().verify,
+            root,
+            x509_cert=cert,
+        )
+
+        # However, if we use the right configuration, it should verify correctly
+        config = SignatureConfiguration(
+            default_reference_c14n_method=CanonicalizationMethod.CANONICAL_XML_1_0_WITH_COMMENTS
+        )
+        XMLVerifier().verify(root, x509_cert=cert, expect_config=config)
+        transform_elements = root.findall(
+            "ds:Signature/ds:SignedInfo/ds:Reference/ds:Transforms/ds:Transform", namespaces=namespaces
+        )
+        transform_algorithms = [el.attrib["Algorithm"] for el in transform_elements]
+        self.assertEqual(len(transform_elements), 1)
+        self.assertIn("http://www.w3.org/2000/09/xmldsig#enveloped-signature", transform_algorithms)
+        self.assertNotIn("http://www.w3.org/2006/12/xml-c14n11", transform_algorithms)
 
     def test_verify_config(self):
         data = etree.parse(self.example_xml_files[0]).getroot()

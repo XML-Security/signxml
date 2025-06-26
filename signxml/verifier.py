@@ -87,6 +87,15 @@ class SignatureConfiguration:
     and validate the signature using X509Data only.
     """
 
+    default_reference_c14n_method: CanonicalizationMethod = CanonicalizationMethod.CANONICAL_XML_1_1
+    """
+    The default canonicalization method to use for referenced data structures, if there is no canonicalization
+    algorithm specified in the Transforms element. In most cases, it should not be necessary to override this
+    setting; SignedInfo should include every transformation that were applied to the reference before creating
+    the digests and signature, but there are some uses of XML Signatures where the canonicalization method is
+    fixed, and not added to the Transforms. This setting can be used to validate signatures in those use-cases.
+    """
+
 
 @dataclass(frozen=True)
 class VerifyResult:
@@ -115,8 +124,6 @@ class XMLVerifier(XMLSignatureProcessor):
     """
     Create a new XML Signature Verifier object, which can be used to verify multiple pieces of data.
     """
-
-    _default_reference_c14n_method = CanonicalizationMethod.CANONICAL_XML_1_0
 
     def _get_signature(self, root):
         if root.tag == ds_tag("Signature"):
@@ -207,7 +214,13 @@ class XMLVerifier(XMLSignatureProcessor):
         else:
             return inclusive_namespaces.get("PrefixList").split(" ")
 
-    def _apply_transforms(self, payload, *, transforms_node: etree._Element, signature: etree._Element):
+    def _apply_transforms(
+        self,
+        payload,
+        *,
+        transforms_node: etree._Element,
+        signature: etree._Element,
+    ):
         transforms, c14n_applied = [], False
         if transforms_node is not None:
             transforms = self._findall(transforms_node, "Transform")
@@ -239,8 +252,9 @@ class XMLVerifier(XMLSignatureProcessor):
             c14n_applied = True
 
         if not c14n_applied and not isinstance(payload, (str, bytes)):
-            payload = self._c14n(payload, algorithm=self._default_reference_c14n_method)
-
+            # Create a separate copy of the node, see above
+            payload = self._fromstring(self._tostring(payload))
+            payload = self._c14n(payload, algorithm=self.config.default_reference_c14n_method)
         return payload
 
     def get_cert_chain_verifier(self, ca_pem_file):
@@ -523,14 +537,27 @@ class XMLVerifier(XMLSignatureProcessor):
 
         return verify_results if self.config.expect_references > 1 else verify_results[0]
 
-    def _verify_reference(self, reference, index, root, uri_resolver, c14n_algorithm, signature, signature_key_used):
+    def _verify_reference(
+        self,
+        reference,
+        index,
+        root,
+        uri_resolver,
+        c14n_algorithm,
+        signature,
+        signature_key_used,
+    ):
         copied_root = self._fromstring(self._tostring(root))
         copied_signature_ref = self._get_signature(copied_root)
         transforms = self._find(reference, "Transforms", require=False)
         digest_method_alg_name = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
         payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
-        payload_c14n = self._apply_transforms(payload, transforms_node=transforms, signature=copied_signature_ref)
+        payload_c14n = self._apply_transforms(
+            payload,
+            transforms_node=transforms,
+            signature=copied_signature_ref,
+        )
         digest_alg = DigestAlgorithm(digest_method_alg_name)
         self.check_digest_alg_expected(digest_alg)
 
