@@ -1,3 +1,9 @@
+Changes for v4.1.0 (2025-06-28)
+===============================
+
+-  Add options to exclude the C14N Transform element in signatures
+   (#274)
+
 Changes for v4.0.5 (2025-06-02)
 ===============================
 
