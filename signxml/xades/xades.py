@@ -20,6 +20,7 @@ The main difference with plain XML Signature is that HMAC algorithms are not sup
 """
 
 import datetime
+import logging
 import os
 import secrets
 from base64 import b64decode, b64encode
@@ -35,6 +36,8 @@ from .. import SignatureConfiguration, VerifyResult, XMLSignatureProcessor, XMLS
 from ..algorithms import DigestAlgorithm, digest_algorithm_implementations
 from ..exceptions import InvalidDigest, InvalidInput
 from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -273,21 +276,164 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _verify_signing_time(self, verify_result: VerifyResult):
         pass
 
-    def _verify_cert_digest(self, signing_cert_node, expect_cert):
+    def _verify_cert_digestV1(self, signing_cert_node, cert_dict,key_map):
         for cert in self._findall(signing_cert_node, "xades:Cert"):
+            # Correctly find the nested ds:IssuerSerial element
+            key = None
+            alt_key = None
+            issuer_serial_element = self._find(cert, ".//xades:IssuerSerial")
+            if issuer_serial_element is not None:
+                issuer_name_xml = self._find(issuer_serial_element, ".//ds:X509IssuerName")
+                serial_number_xml = self._find(issuer_serial_element, ".//ds:X509SerialNumber")
+                ser_num_str = serial_number_xml.text.strip()
+                issuer_name = None
+                try:
+                    issuer_nm = issuer_name_xml.text.strip()
+                    issuer_name = x509.Name.from_rfc4514_string(issuer_nm)
+                except ValueError as ve:
+                    logger.debug(f"Issuer name {issuer_nm} can not be parsed per RFC4514")
+                if issuer_name is not None:
+                    if ser_num_str.isdigit():                    
+                        ser_num = int(ser_num_str)
+                        key = (issuer_name,ser_num)                        
+                    else:
+                        logger.debug(f"Serial number {ser_num_str} is not an integer")
+                else:
+                    alt_key = (issuer_name_xml.text.strip(), int(ser_num_str))
+            else:
+                raise InvalidInput(f"IssuerSerial not found in Cert.")
+
             cert_digest = self._find(cert, "xades:CertDigest")
             digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
             digest_value = self._find(cert_digest, "DigestValue")
+            b64_digest_value = b64decode(digest_value.text)
             # check spec for specific method of retrieving cert
             digest_alg_impl = digest_algorithm_implementations[digest_alg]()
-            if b64decode(digest_value.text) != expect_cert.fingerprint(digest_alg_impl):
-                raise InvalidDigest("Digest mismatch for certificate digest")
+
+            if key in cert_dict:
+                candidate_cert = cert_dict[key]
+                if b64_digest_value != candidate_cert.fingerprint(digest_alg_impl):
+                    raise InvalidDigest("Digest mismatch for certificate digest")
+            elif alt_key in key_map:
+                key = key_map[alt_key]
+                candidate_cert = cert_dict[key]
+                if b64_digest_value != candidate_cert.fingerprint(digest_alg_impl):
+                    raise InvalidDigest("Digest mismatch for certificate digest")
+            else:
+                # find match by digest even if IssueSerial did not
+                cert_dict_keys = cert_dict.keys()
+                if key is not None:
+                    logger.debug(f"Certificate with IssuerSerial {key} not found in {cert_dict_keys}")
+                found = False
+                for val in cert_dict.values():
+                    if b64_digest_value == val.fingerprint(digest_alg_impl):
+                        found = True
+                if not found:
+                    raise InvalidDigest("Digest mismatch for certificate digest")
+
+    def parse_issuer_serial_v2(self, base64_data):
+        """
+        Decodes the base64-encoded DER-encoded IssuerSerialV2 and
+        returns a tuple of (issuer_name_string, serial_number).
+        """
+        from asn1crypto.core import Integer, Sequence
+        from asn1crypto.x509 import GeneralNames
+
+        class RFC5035IssuerSerial(Sequence):
+            _fields = [
+                ("issuer", GeneralNames),
+                ("serial_number", Integer),
+            ]
+
+        der_bytes = b64decode(base64_data)
+        if len(der_bytes) > 0:
+            try:
+                # Load the DER-encoded ASN.1 structure
+                issuer_serial_obj = RFC5035IssuerSerial.load(der_bytes)
+                # The 'issuer' field is a DER-encoded X.509 Name. We need to parse it.
+                # This is a bit tricky, but asn1crypto can help.                
+                issuer_names_obj = issuer_serial_obj["issuer"]
+                for general_name in issuer_names_obj:
+                    if general_name.name == "directory_name":
+                        # The value of directory_name is an asn1crypto.x509.Name object
+                        issuer_name_obj = general_name.chosen
+                        n_as = []
+                        for rdn_dict in issuer_name_obj.chosen:
+                            for rdn in rdn_dict:
+                                n_as.append(
+                                    x509.NameAttribute(x509.ObjectIdentifier(rdn["type"].dotted), rdn["value"].native)
+                                )
+                        nm = x509.Name(n_as)                        
+                    else:
+                        logger.debug(f"Found General name {general_name.name}, but we only know directory_name.")
+
+                # Get the serial number
+                serial_number = issuer_serial_obj["serial_number"].native
+
+                return (nm, serial_number)
+            except Exception as e:
+                # Handle parsing errors gracefully
+                logger.debug(f"Error parsing IssuerSerialV2: {e}")
+        else:
+            logger.debug("IssuerSerialV2 has 0 length.")
+            return None
+
+    def _verify_cert_digestV2(self, signing_cert_node, cert_dict):
+        for cert in self._findall(signing_cert_node, "xades:Cert"):
+            # Check for IssuerSerialV2 element
+            key = None
+            issuer_serial_v2_element = self._find(cert, ".//xades:IssuerSerialV2", require=False)
+            if issuer_serial_v2_element is not None:
+                issuer_serial_v2_data = issuer_serial_v2_element.text.strip()
+                # Parse the base64 and DER-encoded data
+                key = self.parse_issuer_serial_v2(issuer_serial_v2_data)
+
+            cert_digest = self._find(cert, "xades:CertDigest")
+            digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
+            digest_value = self._find(cert_digest, "DigestValue")
+            b64_digest_value = b64decode(digest_value.text)
+            # check spec for specific method of retrieving cert
+            digest_alg_impl = digest_algorithm_implementations[digest_alg]()
+
+            # The information in the IssuerSerialV2 element is only a hint, that can help to identify the certificate
+            # whose digest matches the value present in the reference. But the binding information is the digest of the
+            # certificate.
+
+            if key in cert_dict:
+                candidate_cert = cert_dict[key]
+                if b64decode(digest_value.text) != candidate_cert.fingerprint(digest_alg_impl):
+                    raise InvalidDigest("Digest mismatch for certificate digest")
+            else:
+                # find match by digest even if IssueSerial did not
+                cert_dict_keys = cert_dict.keys()
+                if key is not None:
+                    logger.debug(f"Certificate with IssuerSerialV2 {key} not found in {cert_dict_keys}.")                
+                found = False
+                for val in cert_dict.values():
+                    if b64_digest_value == val.fingerprint(digest_alg_impl):
+                        found = True
+                if not found:
+                    raise InvalidDigest("Digest mismatch for certificate digest")
 
     def _verify_cert_digests(self, verify_result: VerifyResult):
-        x509_data = verify_result.signature_xml.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
-        cert_from_key_info = x509.load_pem_x509_certificate(
-            add_pem_header(self._find(x509_data, "X509Certificate").text)
-        )
+        # From XML Signature Syntax and Processing Version 2.0
+        # Note, there is no direct provision for a PKCS#7 encoded "bag" of certificates or CRLs.
+        # However, a set of certificates and CRLs can occur within an X509Data element and multiple X509Data
+        # elements can occur in a KeyInfo. Whenever multiple certificates occur in an X509Data element,
+        # at least one such certificate must contain the public key which verifies the signature.
+        cert_dict: dict = {}
+        key_map: dict = {}
+        for x509_data in self._findall(verify_result.signature_xml, "ds:KeyInfo/ds:X509Data"):
+            for cert in self._findall(x509_data, "X509Certificate"):
+                cert_from_key_info = x509.load_pem_x509_certificate(add_pem_header(cert.text))
+                # Create a tuple key from the cert object's properties
+                # The key must be an immutable type, like a tuple
+                issuer_name_string = cert_from_key_info.issuer.rfc4514_string()
+                serial_number = cert_from_key_info.serial_number
+
+                key = (cert_from_key_info.issuer, serial_number)
+                cert_dict[key] = cert_from_key_info
+                key_map[(issuer_name_string, serial_number)] = key
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
         signing_cert = self._find(signed_signature_props, "xades:SigningCertificate", require=False)
         signing_cert_v2 = self._find(signed_signature_props, "xades:SigningCertificateV2", require=False)
@@ -296,9 +442,9 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         if signing_cert is not None and signing_cert_v2 is not None:
             raise InvalidInput("Expected to find exactly one of xades:SigningCertificate or xades:SigningCertificateV2")
         if signing_cert is not None:
-            self._verify_cert_digest(signing_cert, expect_cert=cert_from_key_info)
+            self._verify_cert_digestV1(signing_cert, cert_dict,key_map)
         elif signing_cert_v2 is not None:
-            self._verify_cert_digest(signing_cert_v2, expect_cert=cert_from_key_info)
+            self._verify_cert_digestV2(signing_cert_v2, cert_dict)
 
     def _verify_signature_policy(self, verify_result: VerifyResult, expect_signature_policy: XAdESSignaturePolicy):
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
