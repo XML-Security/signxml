@@ -30,6 +30,7 @@ dependencies = [
     "lxml >= 5.2.1, < 6",  # Ubuntu 24.04 LTS
     "cryptography >= 43",  # Required to support client certificate validation
     "certifi >= 2023.11.17",  # Ubuntu 24.04 LTS
+    "asn1crypto >= 1.5.1",
     # "tsp-client >= 0.1.3",
 ]
 
