@@ -290,7 +290,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                 try:
                     issuer_nm = issuer_name_xml.text.strip()
                     issuer_name = x509.Name.from_rfc4514_string(issuer_nm)
-                except ValueError as ve:
+                except ValueError:
                     logger.debug(f"Issuer name {issuer_nm} can not be parsed per RFC4514")
                 if issuer_name is not None:
                     if ser_num_str.isdigit():                    
@@ -301,7 +301,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                 else:
                     alt_key = (issuer_name_xml.text.strip(), int(ser_num_str))
             else:
-                raise InvalidInput(f"IssuerSerial not found in Cert.")
+                raise InvalidInput("IssuerSerial not found in Cert.")
 
             cert_digest = self._find(cert, "xades:CertDigest")
             digest_alg = DigestAlgorithm(self._find(cert_digest, "DigestMethod").get("Algorithm"))
