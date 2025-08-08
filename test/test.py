@@ -816,7 +816,7 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             "corrupted-cert": etree.DocumentInvalid,  # FIXME - flaky validation
             "cert-v2-wrong-digest": InvalidDigest,
             "wrong-sign-cert-digest": InvalidDigest,
-            #"nonconformant-X_BE_CONN_10": InvalidDigest,
+            # "nonconformant-X_BE_CONN_10": InvalidDigest,
             "sigPolStore-noDigest": InvalidInput,
         }
         for sig_file in glob(os.path.join(os.path.dirname(__file__), "xades", "*.xml")):

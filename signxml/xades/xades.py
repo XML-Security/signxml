@@ -276,7 +276,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _verify_signing_time(self, verify_result: VerifyResult):
         pass
 
-    def _verify_cert_digestV1(self, signing_cert_node, cert_dict,key_map):
+    def _verify_cert_digestV1(self, signing_cert_node, cert_dict, key_map):
         for cert in self._findall(signing_cert_node, "xades:Cert"):
             # Correctly find the nested ds:IssuerSerial element
             key = None
@@ -293,9 +293,9 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                 except ValueError:
                     logger.debug(f"Issuer name {issuer_nm} can not be parsed per RFC4514")
                 if issuer_name is not None:
-                    if ser_num_str.isdigit():                    
+                    if ser_num_str.isdigit():
                         ser_num = int(ser_num_str)
-                        key = (issuer_name,ser_num)                        
+                        key = (issuer_name, ser_num)
                     else:
                         logger.debug(f"Serial number {ser_num_str} is not an integer")
                 else:
@@ -351,7 +351,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                 # Load the DER-encoded ASN.1 structure
                 issuer_serial_obj = RFC5035IssuerSerial.load(der_bytes)
                 # The 'issuer' field is a DER-encoded X.509 Name. We need to parse it.
-                # This is a bit tricky, but asn1crypto can help.                
+                # This is a bit tricky, but asn1crypto can help.
                 issuer_names_obj = issuer_serial_obj["issuer"]
                 for general_name in issuer_names_obj:
                     if general_name.name == "directory_name":
@@ -363,7 +363,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                                 n_as.append(
                                     x509.NameAttribute(x509.ObjectIdentifier(rdn["type"].dotted), rdn["value"].native)
                                 )
-                        nm = x509.Name(n_as)                        
+                        nm = x509.Name(n_as)
                     else:
                         logger.debug(f"Found General name {general_name.name}, but we only know directory_name.")
 
@@ -407,7 +407,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
                 # find match by digest even if IssueSerial did not
                 cert_dict_keys = cert_dict.keys()
                 if key is not None:
-                    logger.debug(f"Certificate with IssuerSerialV2 {key} not found in {cert_dict_keys}.")                
+                    logger.debug(f"Certificate with IssuerSerialV2 {key} not found in {cert_dict_keys}.")
                 found = False
                 for val in cert_dict.values():
                     if b64_digest_value == val.fingerprint(digest_alg_impl):
@@ -442,7 +442,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         if signing_cert is not None and signing_cert_v2 is not None:
             raise InvalidInput("Expected to find exactly one of xades:SigningCertificate or xades:SigningCertificateV2")
         if signing_cert is not None:
-            self._verify_cert_digestV1(signing_cert, cert_dict,key_map)
+            self._verify_cert_digestV1(signing_cert, cert_dict, key_map)
         elif signing_cert_v2 is not None:
             self._verify_cert_digestV2(signing_cert_v2, cert_dict)
 
