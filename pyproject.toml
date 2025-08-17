@@ -27,7 +27,7 @@ classifiers = [
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "lxml >= 5.2.1, < 6",  # Ubuntu 24.04 LTS
+    "lxml >= 5.2.1, < 7",  # Ubuntu 24.04 LTS
     "cryptography >= 43",  # Required to support client certificate validation
     "certifi >= 2023.11.17",  # Ubuntu 24.04 LTS
     # "tsp-client >= 0.1.3",
