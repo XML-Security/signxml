@@ -1,3 +1,13 @@
+Changes for v4.2.0 (2025-08-19)
+===============================
+
+- Align behaviour of expect_references with docs (#279). Passing
+  ``expect_references=True`` to ``verify(...)`` now results in a list of
+  ``verify_results``, irrespective of the number of references in the
+  signature.
+
+- Accept lxml 6.x
+
 Changes for v4.1.0 (2025-06-28)
 ===============================
 
