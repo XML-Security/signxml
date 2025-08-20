@@ -535,7 +535,11 @@ class XMLVerifier(XMLSignatureProcessor):
             msg = "Expected to find {} references, but found {}"
             raise InvalidSignature(msg.format(self.config.expect_references, len(verify_results)))
 
-        return verify_results if self.config.expect_references > 1 else verify_results[0]
+        return (
+            verify_results[0]
+            if type(self.config.expect_references) is int and self.config.expect_references == 1
+            else verify_results
+        )
 
     def _verify_reference(
         self,

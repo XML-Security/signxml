@@ -112,6 +112,20 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
             expect_references=2,
         )
 
+    def test_example_multi_unspecified_reference_count(self):
+        cert, _ = self.load_example_keys()
+        with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
+            cert = fh.read()
+        example_file = os.path.join(os.path.dirname(__file__), "example-125.xml")
+        res = XMLVerifier().verify(
+            data=etree.parse(example_file),
+            x509_cert=cert,
+            expect_references=True,
+        )
+
+        self.assertIsInstance(res, list)
+        self.assertEqual(2, len(res))
+
 
 class TestSignXML(unittest.TestCase, LoadExampleKeys):
     def setUp(self):
@@ -490,6 +504,16 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             </samlp:Response>""",
     ]
 
+    def test_verify_results_with_nonspecific_reference_count(self):
+        crt, key = self.load_example_keys()
+        data = etree.fromstring(self.saml_test_vectors[0])
+        reference_uri = "assertionId"
+        signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
+        res = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)
+
+        self.assertIsInstance(res, list)
+        self.assertEqual(1, len(res))
+
     def test_reference_uris_and_custom_key_info(self):
         crt, key = self.load_example_keys()
 
@@ -499,7 +523,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             reference_uri = ["assertionId", "assertion2"] if "assertion2" in d else "assertionId"
             signed_root = XMLSigner().sign(data, reference_uri=reference_uri, key=key, cert=crt)
             res = XMLVerifier().verify(etree.tostring(signed_root), x509_cert=crt, expect_references=True)
-            signed_data_root = res.signed_xml
+            signed_data_root = res[0].signed_xml
             ref = signed_root.xpath(
                 "/samlp:Response/saml:Assertion/ds:Signature/ds:SignedInfo/ds:Reference",
                 namespaces={
