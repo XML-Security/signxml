@@ -190,7 +190,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         signing_time.text = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
 
     def add_signing_certificate(self, signed_signature_properties, sig_root, signing_settings: SigningSettings):
-        # TODO: check if we need to support SigningCertificate
+        # Emit both legacy SigningCertificate (SHA1 + IssuerSerial) and SigningCertificateV2
+        signing_cert = SubElement(
+            signed_signature_properties, xades_tag("SigningCertificate"), nsmap=self.namespaces
+        )
         signing_cert_v2 = SubElement(
             signed_signature_properties, xades_tag("SigningCertificateV2"), nsmap=self.namespaces
         )
@@ -202,6 +205,26 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 loaded_cert = x509.load_pem_x509_certificate(add_pem_header(cert))
             der_encoded_cert = loaded_cert.public_bytes(Encoding.DER)
             cert_digest_bytes = self._get_digest(der_encoded_cert, algorithm=self.digest_alg)
+            cert_digest_sha1_bytes = self._get_digest(der_encoded_cert, algorithm=DigestAlgorithm.SHA1)
+
+            # Legacy SigningCertificate
+            cert_node_legacy = SubElement(signing_cert, xades_tag("Cert"), nsmap=self.namespaces)
+            cert_digest = SubElement(cert_node_legacy, xades_tag("CertDigest"), nsmap=self.namespaces)
+            SubElement(cert_digest, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=DigestAlgorithm.SHA1.value)
+            digest_value_node = SubElement(cert_digest, ds_tag("DigestValue"), nsmap=self.namespaces)
+            digest_value_node.text = b64encode(cert_digest_sha1_bytes).decode()
+            issuer_serial = SubElement(cert_node_legacy, xades_tag("IssuerSerial"), nsmap=self.namespaces)
+            issuer_name = SubElement(issuer_serial, ds_tag("X509IssuerName"), nsmap=self.namespaces)
+            issuer_name.text = "C={C},O={O},OU={OU},CN={CN}".format(
+                C=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COUNTRY_NAME)[0].value,
+                O=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATION_NAME)[0].value,
+                OU=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value,
+                CN=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value,
+            )
+            serial_number = SubElement(issuer_serial, ds_tag("X509SerialNumber"), nsmap=self.namespaces)
+            serial_number.text = str(loaded_cert.serial_number)
+
+            # SigningCertificateV2 (current default)
             cert_node = SubElement(signing_cert_v2, xades_tag("Cert"), nsmap=self.namespaces)
             cert_digest = SubElement(cert_node, xades_tag("CertDigest"), nsmap=self.namespaces)
             SubElement(cert_digest, ds_tag("DigestMethod"), nsmap=self.namespaces, Algorithm=self.digest_alg.value)
