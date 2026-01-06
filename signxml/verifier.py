@@ -82,9 +82,9 @@ class SignatureConfiguration:
     Ignore the presence of a KeyValue element when X509Data is present in the signature and used for verifying.
     The presence of both elements is an ambiguity and a security hazard. The public key used to sign the
     document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore
-    KeyValue or make sure it matches what's in the certificate. SignXML does not implement the functionality
-    necessary to match the keys, and throws an InvalidInput error instead. Set this to True to bypass the error
-    and validate the signature using X509Data only.
+    KeyValue or make sure it matches what's in the certificate. When set to ``False``, SignXML compares KeyValue
+    (and DEREncodedKeyValue) against the X.509 certificate and raises InvalidInput on mismatch. Set this to
+    ``True`` to bypass the check and validate the signature using X509Data only.
     """
 
     default_reference_c14n_method: CanonicalizationMethod = CanonicalizationMethod.CANONICAL_XML_1_1
@@ -261,7 +261,7 @@ class XMLVerifier(XMLSignatureProcessor):
         return X509CertChainVerifier(ca_pem_file=ca_pem_file)
 
     def _match_key_values(self, key_value, der_encoded_key_value, signing_cert, signature_alg):
-        if self.config.ignore_ambiguous_key_info is False:
+        if self.config.ignore_ambiguous_key_info is True:
             return
         cert_pub_key = signing_cert.public_key()
         # If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch
