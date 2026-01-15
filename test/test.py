@@ -479,6 +479,33 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         expected_match = f'<Signature xmlns="{namespaces["ds"]}">'
         self.assertTrue(re.search(expected_match.encode("ascii"), signed_data))
 
+    def test_default_namespace_c14n_no_xmlns_undeclarations(self):
+        """
+        Test that using default namespace doesn't produce xmlns="" undeclarations in C14N.
+
+        When signer.namespaces = {None: ds_namespace}, the SignedInfo C14N should not
+        contain xmlns="" on child elements. This regression was reported in issue #275.
+        """
+        data = etree.parse(self.example_xml_files[0]).getroot()
+        signer = XMLSigner()
+        signer.namespaces = {None: namespaces["ds"]}
+        signed = signer.sign(data, key=self.keys["rsa"])
+
+        # Verify signature round-trips correctly
+        XMLVerifier().verify(signed, x509_cert=self.certs["example"])
+
+        # Extract SignedInfo and canonicalize it
+        signed_info = signed.find(".//{http://www.w3.org/2000/09/xmldsig#}SignedInfo")
+        c14n_output = etree.tostring(signed_info, method="c14n").decode()
+
+        # SignedInfo should have xmlns declaration, but child elements should NOT have xmlns=""
+        # Count occurrences: should be exactly 1 (on SignedInfo itself)
+        xmlns_count = c14n_output.count('xmlns="')
+        self.assertEqual(xmlns_count, 1, f"Expected 1 xmlns declaration, found {xmlns_count}. C14N output: {c14n_output}")
+
+        # Specifically verify no xmlns="" undeclarations
+        self.assertNotIn('xmlns=""', c14n_output, f"Found xmlns='' undeclaration in C14N output: {c14n_output}")
+
     def test_elementtree_compat(self):
         data = stdlibElementTree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
