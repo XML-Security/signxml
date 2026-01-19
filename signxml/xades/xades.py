@@ -204,10 +204,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 loaded_cert = x509.load_pem_x509_certificate(add_pem_header(cert))
             der_encoded_cert = loaded_cert.public_bytes(Encoding.DER)
             cert_digest_bytes = self._get_digest(der_encoded_cert, algorithm=self.digest_alg)
-            cert_digest_sha1_bytes = self._get_digest(der_encoded_cert, algorithm=DigestAlgorithm.SHA1)
 
             # Legacy SigningCertificate
             if self.use_deprecated_legacy_signing_certificate:
+                cert_digest_sha1_bytes = self._get_digest(der_encoded_cert, algorithm=DigestAlgorithm.SHA1)
                 signing_cert = SubElement(
                     signed_signature_properties, xades_tag("SigningCertificate"), nsmap=self.namespaces
                 )
