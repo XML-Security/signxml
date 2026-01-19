@@ -1,3 +1,9 @@
+Changes for v4.2.1 (2026-01-18)
+===============================
+
+- Add legacy SigningCertificate with IssuerSerial for XAdES
+  interoperability (#282)
+
 Changes for v4.2.0 (2025-08-19)
 ===============================
 
