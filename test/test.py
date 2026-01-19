@@ -479,6 +479,29 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         expected_match = f'<Signature xmlns="{namespaces["ds"]}">'
         self.assertTrue(re.search(expected_match.encode("ascii"), signed_data))
 
+    def test_sign_verify_default_ns_roundtrip(self):
+        """
+        Test sign/verify round-trip when using default namespace.
+
+        See https://github.com/XML-Security/signxml/issues/275
+        """
+        crt, key = self.load_example_keys()
+        data = etree.parse(self.example_xml_files[0]).getroot()
+        signer = XMLSigner()
+        signer.namespaces = {None: namespaces["ds"]}
+        signed = signer.sign(data, key=key, cert=crt)
+
+        signed_info = signed.find(".//SignedInfo")
+        self.assertIsNotNone(signed_info)
+        c14n_output = etree.tostring(signed_info, method="c14n").decode()
+        self.assertNotIn('xmlns=""', c14n_output)
+        self.assertIn('xmlns="http://www.w3.org/2000/09/xmldsig#"', c14n_output)
+
+        signed_data = etree.tostring(signed)
+        verifier = XMLVerifier()
+        verifier.excise_empty_xmlns_declarations = True
+        verifier.verify(signed_data, x509_cert=crt)
+
     def test_elementtree_compat(self):
         data = stdlibElementTree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
