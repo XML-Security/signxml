@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import Encoding, load_pem_private_key
-from lxml.etree import Element, QName, SubElement, _Element
+from lxml.etree import Element, SubElement, _Element
 
 from .algorithms import (
     CanonicalizationMethod,
@@ -116,20 +116,6 @@ class XMLSigner(XMLSignatureProcessor):
         self.namespaces = dict(ds=namespaces.ds)
         self._parser = None
         self.signature_annotators = [self._add_key_info]
-
-    def _ds_tag(self, tag):
-        """
-        Create a QName for the ds namespace, respecting the configured namespace mapping.
-
-        When the default namespace is set to the ds namespace ({None: namespaces.ds}),
-        elements should be created without an explicit namespace so they inherit from
-        the nsmap context. This avoids spurious xmlns="" undeclarations in C14N output.
-
-        See https://github.com/XML-Security/signxml/issues/275
-        """
-        if None in self.namespaces and self.namespaces[None] == namespaces.ds:
-            return QName(None, tag)
-        return ds_tag(tag)
 
     def check_deprecated_methods(self):
         if "SHA1" in self.sign_alg.name or "SHA1" in self.digest_alg.name:
@@ -318,9 +304,9 @@ class XMLSigner(XMLSignatureProcessor):
         if self.sign_alg.name.startswith("HMAC_"):
             return
         if signing_settings.key_info is None:
-            key_info = SubElement(sig_root, self._ds_tag("KeyInfo"))
+            key_info = SubElement(sig_root, ds_tag("KeyInfo"))
             if signing_settings.key_name is not None:
-                keyname = SubElement(key_info, self._ds_tag("KeyName"))
+                keyname = SubElement(key_info, ds_tag("KeyName"))
                 keyname.text = signing_settings.key_name
 
             if signing_settings.cert_chain is None or signing_settings.always_add_key_value:
@@ -328,9 +314,9 @@ class XMLSigner(XMLSignatureProcessor):
 
             if signing_settings.cert_chain is not None:
                 assert len(signing_settings.cert_chain) > 0
-                x509_data = SubElement(key_info, self._ds_tag("X509Data"))
+                x509_data = SubElement(key_info, ds_tag("X509Data"))
                 for cert in signing_settings.cert_chain:
-                    x509_certificate = SubElement(x509_data, self._ds_tag("X509Certificate"))
+                    x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
                     if isinstance(cert, (str, bytes)):
                         x509_certificate.text = strip_pem_header(cert)
                     else:
@@ -347,7 +333,7 @@ class XMLSigner(XMLSignatureProcessor):
         return c14n_inputs, new_references
 
     def _unpack(self, data, references: List[SignatureReference]):
-        sig_root = Element(self._ds_tag("Signature"), nsmap=self.namespaces)
+        sig_root = Element(ds_tag("Signature"), nsmap=self.namespaces)
         if self.construction_method == SignatureConstructionMethod.enveloped:
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
@@ -390,7 +376,7 @@ class XMLSigner(XMLSignatureProcessor):
                 c14n_inputs = [self.get_root(data)]
         elif self.construction_method == SignatureConstructionMethod.enveloping:
             doc_root = sig_root
-            c14n_inputs = [Element(self._ds_tag("Object"), nsmap=self.namespaces, Id="object")]
+            c14n_inputs = [Element(ds_tag("Object"), nsmap=self.namespaces, Id="object")]
             if isinstance(data, (str, bytes)):
                 c14n_inputs[0].text = data
             else:
@@ -403,14 +389,14 @@ class XMLSigner(XMLSignatureProcessor):
     ):
         assert reference.c14n_method is not None
         if self.construction_method == SignatureConstructionMethod.enveloped:
-            SubElement(transforms_node, self._ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
+            SubElement(transforms_node, ds_tag("Transform"), Algorithm=SignatureConstructionMethod.enveloped.value)
             if not exclude_c14n_transform_element:
-                SubElement(transforms_node, self._ds_tag("Transform"), Algorithm=reference.c14n_method.value)
+                SubElement(transforms_node, ds_tag("Transform"), Algorithm=reference.c14n_method.value)
         else:
             if not exclude_c14n_transform_element:
                 c14n_xform = SubElement(
                     transforms_node,
-                    self._ds_tag("Transform"),
+                    ds_tag("Transform"),
                     Algorithm=reference.c14n_method.value,
                 )
             if reference.inclusive_ns_prefixes:
@@ -421,41 +407,41 @@ class XMLSigner(XMLSignatureProcessor):
     def _build_sig(
         self, sig_root, references, c14n_inputs, inclusive_ns_prefixes, exclude_c14n_transform_element=False
     ):
-        signed_info = SubElement(sig_root, self._ds_tag("SignedInfo"), nsmap=self.namespaces)
-        sig_c14n_method = SubElement(signed_info, self._ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg.value)
+        signed_info = SubElement(sig_root, ds_tag("SignedInfo"), nsmap=self.namespaces)
+        sig_c14n_method = SubElement(signed_info, ds_tag("CanonicalizationMethod"), Algorithm=self.c14n_alg.value)
         if inclusive_ns_prefixes:
             SubElement(sig_c14n_method, ec_tag("InclusiveNamespaces"), PrefixList=" ".join(inclusive_ns_prefixes))
 
-        SubElement(signed_info, self._ds_tag("SignatureMethod"), Algorithm=self.sign_alg.value)
+        SubElement(signed_info, ds_tag("SignatureMethod"), Algorithm=self.sign_alg.value)
         for i, reference in enumerate(references):
             if reference.c14n_method is None:
                 reference = replace(reference, c14n_method=self.c14n_alg)
             if reference.inclusive_ns_prefixes is None:
                 reference = replace(reference, inclusive_ns_prefixes=inclusive_ns_prefixes)
-            reference_node = SubElement(signed_info, self._ds_tag("Reference"), URI=reference.URI)
-            transforms = SubElement(reference_node, self._ds_tag("Transforms"))
+            reference_node = SubElement(signed_info, ds_tag("Reference"), URI=reference.URI)
+            transforms = SubElement(reference_node, ds_tag("Transforms"))
             self._build_transforms_for_reference(
                 transforms_node=transforms,
                 reference=reference,
                 exclude_c14n_transform_element=exclude_c14n_transform_element,
             )
-            SubElement(reference_node, self._ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
-            digest_value = SubElement(reference_node, self._ds_tag("DigestValue"))
+            SubElement(reference_node, ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
+            digest_value = SubElement(reference_node, ds_tag("DigestValue"))
             payload_c14n = self._c14n(
                 c14n_inputs[i], algorithm=reference.c14n_method, inclusive_ns_prefixes=reference.inclusive_ns_prefixes
             )
             digest = self._get_digest(payload_c14n, algorithm=self.digest_alg)
             digest_value.text = b64encode(digest).decode()
-        signature_value = SubElement(sig_root, self._ds_tag("SignatureValue"))
+        signature_value = SubElement(sig_root, ds_tag("SignatureValue"))
         return signed_info, signature_value
 
     def _build_signature_properties(self, signature_properties):
         # FIXME: make this use the annotator API
-        obj = Element(self._ds_tag("Object"), attrib={"Id": "prop"}, nsmap=self.namespaces)
-        signature_properties_el = Element(self._ds_tag("SignatureProperties"))
+        obj = Element(ds_tag("Object"), attrib={"Id": "prop"}, nsmap=self.namespaces)
+        signature_properties_el = Element(ds_tag("SignatureProperties"))
         for i, el in enumerate(signature_properties):
             signature_property = Element(
-                self._ds_tag("SignatureProperty"),
+                ds_tag("SignatureProperty"),
                 attrib={
                     "Id": el.attrib.pop("Id", f"sigprop{i}"),
                     "Target": el.attrib.pop("Target", f"#sigproptarget{i}"),
@@ -470,17 +456,17 @@ class XMLSigner(XMLSignatureProcessor):
         """
         Add the public components of the key to the signature (see https://www.w3.org/TR/xmldsig-core2/#sec-KeyValue).
         """
-        key_value = SubElement(key_info_node, self._ds_tag("KeyValue"))
+        key_value = SubElement(key_info_node, ds_tag("KeyValue"))
         if self.sign_alg.name.startswith("RSA_") or self.sign_alg.name.startswith("SHA"):
-            rsa_key_value = SubElement(key_value, self._ds_tag("RSAKeyValue"))
-            modulus = SubElement(rsa_key_value, self._ds_tag("Modulus"))
+            rsa_key_value = SubElement(key_value, ds_tag("RSAKeyValue"))
+            modulus = SubElement(rsa_key_value, ds_tag("Modulus"))
             modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n)).decode()
-            exponent = SubElement(rsa_key_value, self._ds_tag("Exponent"))
+            exponent = SubElement(rsa_key_value, ds_tag("Exponent"))
             exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e)).decode()
         elif self.sign_alg.name.startswith("DSA_"):
-            dsa_key_value = SubElement(key_value, self._ds_tag("DSAKeyValue"))
+            dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
             for field in "p", "q", "g", "y":
-                e = SubElement(dsa_key_value, self._ds_tag(field.upper()))
+                e = SubElement(dsa_key_value, ds_tag(field.upper()))
 
                 if field == "y":
                     key_params = key.public_key().public_numbers()
