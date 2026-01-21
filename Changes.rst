@@ -1,3 +1,9 @@
+Changes for v4.2.2 (2026-01-21)
+===============================
+
+- Support default namespace with no xmlns=“” undeclarations in
+  sign/verify round-trip (#286)
+
 Changes for v4.2.1 (2026-01-18)
 ===============================
 
