@@ -221,7 +221,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 digest_value_node.text = b64encode(cert_digest_sha1_bytes).decode()
                 issuer_serial = SubElement(cert_node_legacy, xades_tag("IssuerSerial"), nsmap=self.namespaces)
                 issuer_name = SubElement(issuer_serial, ds_tag("X509IssuerName"), nsmap=self.namespaces)
-                issuer_name.text = "C={C},O={O},OU={OU},CN={CN}".format(
+                issuer_name.text = "C={C},O={O},OU={OU},CN={CN}".format(  # type:ignore[str-bytes-safe]
                     C=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COUNTRY_NAME)[0].value,
                     O=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATION_NAME)[0].value,
                     OU=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value,

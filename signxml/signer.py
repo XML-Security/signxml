@@ -127,7 +127,7 @@ class XMLSigner(XMLSignatureProcessor):
 
         See https://github.com/XML-Security/signxml/issues/275
         """
-        if None in self.namespaces and self.namespaces[None] == namespaces.ds:
+        if None in self.namespaces and self.namespaces[None] == namespaces.ds:  # type:ignore[index]
             return QName(None, tag)
         return ds_tag(tag)
 
