@@ -2,7 +2,7 @@
 name = "signxml"
 description = "Python XML Signature and XAdES library"
 readme = "README.rst"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = { text = "Apache Software License" }
 authors = [{ name = "Andrey Kislyuk"}, {email = "kislyuk@gmail.com" }]
 maintainers = [{ name = "Andrey Kislyuk"}, {email = "kislyuk@gmail.com" }]
