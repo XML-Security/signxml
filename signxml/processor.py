@@ -1,5 +1,8 @@
+import importlib.resources
 import logging
 import os
+import threading
+from functools import lru_cache
 from typing import Any, List, Tuple
 from xml.etree import ElementTree as stdlibElementTree
 
@@ -14,18 +17,23 @@ from .util import namespaces
 logger = logging.getLogger(__name__)
 
 
+@lru_cache
+def get_schema(schema_file: str) -> etree.XMLSchema:
+    schema_fh = importlib.resources.open_text("signxml.schemas", schema_file)
+    return etree.XMLSchema(etree.parse(schema_fh))
+
+
 class XMLProcessor:
     _schemas: List[Any] = []
     schema_files: List[Any] = []
     _default_parser, _parser = None, None
-    _schema_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "schemas"))
 
     @classmethod
     def schemas(cls):
-        if len(cls._schemas) == 0:
-            for schema_file in cls.schema_files:
-                schema_path = os.path.join(cls._schema_dir, schema_file)
-                cls._schemas.append(etree.XMLSchema(etree.parse(schema_path)))
+        with threading.Lock():
+            if len(cls._schemas) == 0:
+                for schema_file in cls.schema_files:
+                    cls._schemas.append(get_schema(schema_file))
         return cls._schemas
 
     @property
