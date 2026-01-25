@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 @lru_cache
 def get_schema(schema_file: str) -> etree.XMLSchema:
     pkg_name = "signxml.xades.schemas" if schema_file.startswith("XAdES") else "signxml.schemas"
-    schema_fh = importlib.resources.open_text(pkg_name, schema_file)
-    return etree.XMLSchema(etree.parse(schema_fh))
+    with importlib.resources.open_text(pkg_name, schema_file) as schema_fh:
+        return etree.XMLSchema(etree.parse(schema_fh))
 
 
 class XMLProcessor:
