@@ -1,6 +1,5 @@
 import importlib.resources
 import logging
-import os
 import threading
 from functools import lru_cache
 from typing import Any, List, Tuple
