@@ -70,19 +70,22 @@ class XMLSignatureProcessor(XMLProcessor):
     schema_files = ["xmldsig1-schema.xsd"]
 
     # See https://tools.ietf.org/html/rfc5656
+    # ec.SECT* curves have been de-registered due to CVE-2026-26007
+    # (https://github.com/pyca/cryptography/security/advisories/GHSA-r6ph-v2qm-q3c2)
+    # List of disabled curves:
+    # "urn:oid:1.3.132.0.1": ec.SECT163K1,
+    # "urn:oid:1.3.132.0.26": ec.SECT233K1,
+    # "urn:oid:1.3.132.0.27": ec.SECT233R1,
+    # "urn:oid:1.3.132.0.16": ec.SECT283R1,
+    # "urn:oid:1.3.132.0.36": ec.SECT409K1,
+    # "urn:oid:1.3.132.0.37": ec.SECT409R1,
+    # "urn:oid:1.3.132.0.38": ec.SECT571K1
     known_ecdsa_curves = {
         "urn:oid:1.2.840.10045.3.1.7": ec.SECP256R1,
         "urn:oid:1.3.132.0.34": ec.SECP384R1,
         "urn:oid:1.3.132.0.35": ec.SECP521R1,
-        "urn:oid:1.3.132.0.1": ec.SECT163K1,
         "urn:oid:1.2.840.10045.3.1.1": ec.SECP192R1,
         "urn:oid:1.3.132.0.33": ec.SECP224R1,
-        "urn:oid:1.3.132.0.26": ec.SECT233K1,
-        "urn:oid:1.3.132.0.27": ec.SECT233R1,
-        "urn:oid:1.3.132.0.16": ec.SECT283R1,
-        "urn:oid:1.3.132.0.36": ec.SECT409K1,
-        "urn:oid:1.3.132.0.37": ec.SECT409R1,
-        "urn:oid:1.3.132.0.38": ec.SECT571K1,
     }
     known_ecdsa_curve_oids = {ec().name: oid for oid, ec in known_ecdsa_curves.items()}  # type: ignore[abstract]
 
