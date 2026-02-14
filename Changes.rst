@@ -1,3 +1,10 @@
+Changes for v4.3.0 (2026-02-14)
+===============================
+
+- Remove registration for ec.SECT\* ECDSA curves (#289)
+
+- Fix key info matching behavior (#287)
+
 Changes for v4.2.2 (2026-01-21)
 ===============================
 
