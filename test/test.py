@@ -99,6 +99,13 @@ class LoadExampleKeys:
             key = fh.read()
         return crt, key
 
+    def load_example_ecdsa_keys(self):
+        with open(os.path.join(os.path.dirname(__file__), "example_ecdsa.pem"), "rb") as fh:
+            crt = fh.read()
+        with open(os.path.join(os.path.dirname(__file__), "example_ecdsa.key"), "rb") as fh:
+            key = fh.read()
+        return crt, key
+
 
 class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
     def test_example_multi(self):
@@ -667,6 +674,39 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             XMLVerifier().verify(signed_xml, x509_cert=crt)
 
         XMLVerifier().verify(signed_xml, x509_cert=crt, ignore_ambiguous_key_info=True)
+
+    def test_mismatched_ecdsa_key_value_with_x509_data(self):
+        crt, key = self.load_example_ecdsa_keys()
+        data = etree.parse(os.path.join(os.path.dirname(__file__), "example.xml")).getroot()
+        signer = XMLSigner(
+            signature_algorithm=SignatureMethod.ECDSA_SHA384,
+        )
+        signed = signer.sign(data, key=key, cert=crt, always_add_key_value=True)
+        key_info = signed.find(".//ds:KeyInfo", namespaces=namespaces)
+        key_value = key_info.find("ds:KeyValue", namespaces=namespaces)
+        key_info.remove(key_value)
+        mismatched_key = ec.generate_private_key(curve=ec.SECP384R1())
+        signer._serialize_key_value(mismatched_key, key_info)
+        signed_xml = etree.tostring(signed)
+
+        with self.assertRaisesRegex(
+            InvalidInput,
+            "Both X509Data and KeyValue found and they represent different public keys",
+        ):
+            XMLVerifier().verify(signed_xml, x509_cert=crt)
+
+        XMLVerifier().verify(signed_xml, x509_cert=crt, ignore_ambiguous_key_info=True)
+
+    def test_matched_ecdsa_key_value_with_x509_data(self):
+        crt, key = self.load_example_ecdsa_keys()
+        data = etree.parse(os.path.join(os.path.dirname(__file__), "example.xml")).getroot()
+        signer = XMLSigner(
+            signature_algorithm=SignatureMethod.ECDSA_SHA384,
+        )
+        signed = signer.sign(data, key=key, cert=crt, always_add_key_value=True)
+        signed_xml = etree.tostring(signed)
+
+        XMLVerifier().verify(signed_xml, x509_cert=crt, ignore_ambiguous_key_info=False)
 
     def test_ws_security(self):
         wsse_dir = os.path.join(interop_dir, "ws-security", "ws.js")
