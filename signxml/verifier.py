@@ -608,7 +608,7 @@ class XMLVerifier(XMLSignatureProcessor):
             pubk_x = public_key.public_numbers().x
             pubk_y = public_key.public_numbers().y
 
-            return curve_class == pubk_curve and x == pubk_x and y == pubk_y
+            return isinstance(pubk_curve, curve_class) and x == pubk_x and y == pubk_y
 
         elif signature_alg.name.startswith("DSA_") and isinstance(public_key, dsa.DSAPublicKey):
             dsa_key_value = self._find(key_value, "DSAKeyValue")
