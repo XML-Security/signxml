@@ -1,3 +1,8 @@
+Changes for v4.3.1 (2026-02-17)
+===============================
+
+- Fix comparison logic for ECDSA public keys (#290)
+
 Changes for v4.3.0 (2026-02-14)
 ===============================
 
