@@ -1,0 +1,1036 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta property="og:title" content="Release Notes" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://xml-security.github.io/changelog.html" />
+<meta property="og:site_name" content="signxml" />
+<meta property="og:description" content="Changes for v4.4.0 (2026-03-01): Forbid DTD declarations in XML input, Avoid deprecated method importlib.resources.open_text. Changes for v4.3.1 (2026-02-17): Fix comparison logic for ECDSA public ..." />
+<meta name="description" content="Changes for v4.4.0 (2026-03-01): Forbid DTD declarations in XML input, Avoid deprecated method importlib.resources.open_text. Changes for v4.3.1 (2026-02-17): Fix comparison logic for ECDSA public ..." />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="prev" title="SignXML: XML Signature and XAdES in Python" href="index.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>Release Notes - signxml documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">signxml  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <span class="sidebar-brand-text">signxml  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><ul>
+<li><a class="reference internal" href="#">Release Notes</a></li>
+<li><a class="reference internal" href="#changes-for-v4-4-0-2026-03-01">Changes for v4.4.0 (2026-03-01)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-3-1-2026-02-17">Changes for v4.3.1 (2026-02-17)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-3-0-2026-02-14">Changes for v4.3.0 (2026-02-14)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-2-2-2026-01-21">Changes for v4.2.2 (2026-01-21)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-2-1-2026-01-18">Changes for v4.2.1 (2026-01-18)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-2-0-2025-08-19">Changes for v4.2.0 (2025-08-19)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-1-0-2025-06-28">Changes for v4.1.0 (2025-06-28)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-0-5-2025-06-02">Changes for v4.0.5 (2025-06-02)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-0-4-2025-06-01">Changes for v4.0.4 (2025-06-01)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-0-3-2024-11-23">Changes for v4.0.3 (2024-11-23)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-0-2-2024-09-10">Changes for v4.0.2 (2024-09-10)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-0-1-2024-08-30">Changes for v4.0.1 (2024-08-30)</a></li>
+<li><a class="reference internal" href="#changes-for-v4-0-0-2024-08-21">Changes for v4.0.0 (2024-08-21)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-2-2-2024-01-28">Changes for v3.2.2 (2024-01-28)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-2-1-2023-08-06">Changes for v3.2.1 (2023-08-06)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-2-0-2023-04-12">Changes for v3.2.0 (2023-04-12)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-1-1-2023-04-08">Changes for v3.1.1 (2023-04-08)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-1-0-2023-01-04">Changes for v3.1.0 (2023-01-04)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-0-2-2022-11-28">Changes for v3.0.2 (2022-11-28)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-0-1-2022-11-27">Changes for v3.0.1 (2022-11-27)</a></li>
+<li><a class="reference internal" href="#changes-for-v3-0-0-2022-11-13">Changes for v3.0.0 (2022-11-13)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-10-1-2022-09-09">Changes for v2.10.1 (2022-09-09)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-10-0-2022-08-20">Changes for v2.10.0 (2022-08-20)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-9-0-2021-10-08">Changes for v2.9.0 (2021-10-08)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-8-2-2021-05-14">Changes for v2.8.2 (2021-05-14)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-8-1-2020-10-29">Changes for v2.8.1 (2020-10-29)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-8-0-2020-06-20">Changes for v2.8.0 (2020-06-20)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-7-3-2020-06-10">Changes for v2.7.3 (2020-06-10)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-7-2-2019-12-01">Changes for v2.7.2 (2019-12-01)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-7-1-2019-11-30">Changes for v2.7.1 (2019-11-30)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-7-0-2019-11-30">Changes for v2.7.0 (2019-11-30)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-6-0-2019-01-10">Changes for v2.6.0 (2019-01-10)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-5-2-2017-12-07">Changes for v2.5.2 (2017-12-07)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-5-1-2017-12-07">Changes for v2.5.1 (2017-12-07)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-5-0-2017-12-07">Changes for v2.5.0 (2017-12-07)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-4-0-2017-07-10">Changes for v2.4.0 (2017-07-10)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-3-0-2017-04-24">Changes for v2.3.0 (2017-04-24)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-2-4-2017-03-19">Changes for v2.2.4 (2017-03-19)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-2-3-2016-12-20">Changes for v2.2.3 (2016-12-20)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-2-2-2016-12-20">Changes for v2.2.2 (2016-12-20)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-2-1-2016-09-26">Changes for v2.2.1 (2016-09-26)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-2-0-2016-09-25">Changes for v2.2.0 (2016-09-25)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-1-4-2016-09-18">Changes for v2.1.4 (2016-09-18)</a></li>
+<li><a class="reference internal" href="#changes-for-v2-1-0-2016-09-18">Changes for v2.1.0 (2016-09-18)</a><ul>
+<li><a class="reference internal" href="#version-2-0-0-2016-08-05">Version 2.0.0 (2016-08-05)</a></li>
+<li><a class="reference internal" href="#version-1-0-2-2016-08-01">Version 1.0.2 (2016-08-01)</a></li>
+<li><a class="reference internal" href="#version-1-0-1-2016-07-14">Version 1.0.1 (2016-07-14)</a></li>
+<li><a class="reference internal" href="#version-1-0-0-2016-04-08">Version 1.0.0 (2016-04-08)</a></li>
+<li><a class="reference internal" href="#version-0-6-0-2016-03-24">Version 0.6.0 (2016-03-24)</a></li>
+<li><a class="reference internal" href="#version-0-5-0-2016-03-02">Version 0.5.0 (2016-03-02)</a></li>
+<li><a class="reference internal" href="#version-0-4-6-2015-11-28">Version 0.4.6 (2015-11-28)</a></li>
+<li><a class="reference internal" href="#version-0-4-5-2015-11-08">Version 0.4.5 (2015-11-08)</a></li>
+<li><a class="reference internal" href="#version-0-4-4-2015-08-07">Version 0.4.4 (2015-08-07)</a></li>
+<li><a class="reference internal" href="#version-0-4-3-2015-07-26">Version 0.4.3 (2015-07-26)</a></li>
+<li><a class="reference internal" href="#version-0-4-2-2015-04-24">Version 0.4.2 (2015-04-24)</a></li>
+<li><a class="reference internal" href="#version-0-4-1-2015-04-21">Version 0.4.1 (2015-04-21)</a></li>
+<li><a class="reference internal" href="#version-0-4-0-2015-03-08">Version 0.4.0 (2015-03-08)</a></li>
+<li><a class="reference internal" href="#version-0-3-9-2015-02-04">Version 0.3.9 (2015-02-04)</a></li>
+<li><a class="reference internal" href="#version-0-3-7-2015-02-04">Version 0.3.7 (2015-02-04)</a></li>
+<li><a class="reference internal" href="#version-0-3-6-2015-01-10">Version 0.3.6 (2015-01-10)</a></li>
+<li><a class="reference internal" href="#version-0-3-5-2014-12-22">Version 0.3.5 (2014-12-22)</a></li>
+<li><a class="reference internal" href="#version-0-3-4-2014-12-14">Version 0.3.4 (2014-12-14)</a></li>
+<li><a class="reference internal" href="#version-0-3-3-2014-12-13">Version 0.3.3 (2014-12-13)</a></li>
+<li><a class="reference internal" href="#version-0-3-2-2014-12-11">Version 0.3.2 (2014-12-11)</a></li>
+<li><a class="reference internal" href="#version-0-3-1-2014-10-17">Version 0.3.1 (2014-10-17)</a></li>
+<li><a class="reference internal" href="#version-0-3-0-2014-10-16">Version 0.3.0 (2014-10-16)</a></li>
+<li><a class="reference internal" href="#version-0-2-9-2014-10-14">Version 0.2.9 (2014-10-14)</a></li>
+<li><a class="reference internal" href="#version-0-2-8-2014-10-13">Version 0.2.8 (2014-10-13)</a></li>
+<li><a class="reference internal" href="#version-0-2-7-2014-10-13">Version 0.2.7 (2014-10-13)</a></li>
+<li><a class="reference internal" href="#version-0-2-6-2014-10-13">Version 0.2.6 (2014-10-13)</a></li>
+<li><a class="reference internal" href="#version-0-2-5-2014-10-13">Version 0.2.5 (2014-10-13)</a></li>
+<li><a class="reference internal" href="#version-0-2-4-2014-10-12">Version 0.2.4 (2014-10-12)</a></li>
+<li><a class="reference internal" href="#version-0-2-3-2014-10-12">Version 0.2.3 (2014-10-12)</a></li>
+<li><a class="reference internal" href="#version-0-2-2-2014-10-04">Version 0.2.2 (2014-10-04)</a></li>
+<li><a class="reference internal" href="#version-0-2-1-2014-10-04">Version 0.2.1 (2014-10-04)</a></li>
+<li><a class="reference internal" href="#version-0-2-0-2014-10-02">Version 0.2.0 (2014-10-02)</a></li>
+<li><a class="reference internal" href="#version-0-1-9-2014-09-27">Version 0.1.9 (2014-09-27)</a></li>
+<li><a class="reference internal" href="#version-0-1-8-2014-09-25">Version 0.1.8 (2014-09-25)</a></li>
+<li><a class="reference internal" href="#version-0-1-7-2014-09-25">Version 0.1.7 (2014-09-25)</a></li>
+<li><a class="reference internal" href="#version-0-1-6-2014-09-25">Version 0.1.6 (2014-09-25)</a></li>
+<li><a class="reference internal" href="#version-0-1-5-2014-09-25">Version 0.1.5 (2014-09-25)</a></li>
+<li><a class="reference internal" href="#version-0-1-4-2014-09-25">Version 0.1.4 (2014-09-25)</a></li>
+<li><a class="reference internal" href="#version-0-1-3-2014-09-23">Version 0.1.3 (2014-09-23)</a></li>
+<li><a class="reference internal" href="#version-0-1-2-2014-09-22">Version 0.1.2 (2014-09-22)</a></li>
+<li><a class="reference internal" href="#version-0-1-1-2014-09-22">Version 0.1.1 (2014-09-22)</a></li>
+<li><a class="reference internal" href="#version-0-1-0-2014-09-22">Version 0.1.0 (2014-09-22)</a></li>
+</ul>
+</li>
+</ul>
+</div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/changelog.rst.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="release-notes">
+<h1>Release Notes<a class="headerlink" href="#release-notes" title="Link to this heading">¶</a></h1>
+</section>
+<section id="changes-for-v4-4-0-2026-03-01">
+<h1>Changes for v4.4.0 (2026-03-01)<a class="headerlink" href="#changes-for-v4-4-0-2026-03-01" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Forbid DTD declarations in XML input</p></li>
+<li><p>Avoid deprecated method importlib.resources.open_text</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-3-1-2026-02-17">
+<h1>Changes for v4.3.1 (2026-02-17)<a class="headerlink" href="#changes-for-v4-3-1-2026-02-17" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Fix comparison logic for ECDSA public keys (#290)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-3-0-2026-02-14">
+<h1>Changes for v4.3.0 (2026-02-14)<a class="headerlink" href="#changes-for-v4-3-0-2026-02-14" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Remove registration for ec.SECT* ECDSA curves (#289)</p></li>
+<li><p>Fix key info matching behavior (#287)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-2-2-2026-01-21">
+<h1>Changes for v4.2.2 (2026-01-21)<a class="headerlink" href="#changes-for-v4-2-2-2026-01-21" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Support default namespace with no xmlns=“” undeclarations in
+sign/verify round-trip (#286)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-2-1-2026-01-18">
+<h1>Changes for v4.2.1 (2026-01-18)<a class="headerlink" href="#changes-for-v4-2-1-2026-01-18" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Add legacy SigningCertificate with IssuerSerial for XAdES
+interoperability (#282)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-2-0-2025-08-19">
+<h1>Changes for v4.2.0 (2025-08-19)<a class="headerlink" href="#changes-for-v4-2-0-2025-08-19" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Align behaviour of expect_references with docs (#279). Passing
+<code class="docutils literal notranslate"><span class="pre">expect_references=True</span></code> to <code class="docutils literal notranslate"><span class="pre">verify(...)</span></code> now results in a list of
+<code class="docutils literal notranslate"><span class="pre">verify_results</span></code>, irrespective of the number of references in the
+signature.</p></li>
+<li><p>Accept lxml 6.x</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-1-0-2025-06-28">
+<h1>Changes for v4.1.0 (2025-06-28)<a class="headerlink" href="#changes-for-v4-1-0-2025-06-28" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Add options to exclude the C14N Transform element in signatures
+(#274)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-0-5-2025-06-02">
+<h1>Changes for v4.0.5 (2025-06-02)<a class="headerlink" href="#changes-for-v4-0-5-2025-06-02" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Use Python 3.9 compatible typing expression</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-0-4-2025-06-01">
+<h1>Changes for v4.0.4 (2025-06-01)<a class="headerlink" href="#changes-for-v4-0-4-2025-06-01" title="Link to this heading">¶</a></h1>
+<p>This release contains security fixes for two security advisories:</p>
+<ul class="simple">
+<li><p>Signature verification with HMAC is vulnerable to an algorithm
+confusion attack
+(<a class="reference external" href="https://github.com/XML-Security/signxml/security/advisories/GHSA-6vx8-pcwv-xhf4">https://github.com/XML-Security/signxml/security/advisories/GHSA-6vx8-pcwv-xhf4</a>)</p></li>
+<li><p>Signature verification with HMAC is vulnerable to a timing attack
+(<a class="reference external" href="https://github.com/XML-Security/signxml/security/advisories/GHSA-gmhf-gg8w-jw42">https://github.com/XML-Security/signxml/security/advisories/GHSA-gmhf-gg8w-jw42</a>)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-0-3-2024-11-23">
+<h1>Changes for v4.0.3 (2024-11-23)<a class="headerlink" href="#changes-for-v4-0-3-2024-11-23" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Fix issue with support for deprecated PyOpenSSL certificates</p></li>
+<li><p>Fully remove the ca_path parameter; add docs for signature location
+pinning</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-0-2-2024-09-10">
+<h1>Changes for v4.0.2 (2024-09-10)<a class="headerlink" href="#changes-for-v4-0-2-2024-09-10" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>XAdES signing: remove duplicate timezone information from
+<code class="docutils literal notranslate"><span class="pre">SigningTime</span></code> (#266)</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-0-1-2024-08-30">
+<h1>Changes for v4.0.1 (2024-08-30)<a class="headerlink" href="#changes-for-v4-0-1-2024-08-30" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Verifier: Accept PyOpenSSL cert input, add deprecation warning</p></li>
+</ul>
+</section>
+<section id="changes-for-v4-0-0-2024-08-21">
+<h1>Changes for v4.0.0 (2024-08-21)<a class="headerlink" href="#changes-for-v4-0-0-2024-08-21" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Replace PyOpenSSL with Cryptography (#260)</p>
+<ul>
+<li><p>This is a major infrastructure change that replaces core
+certificate parsing, key processing, signature validation, and
+certificate chain validation functions previously provided by
+PyOpenSSL with those provided by Cryptography. Care was taken to
+preserve the exisitng API, including exception types, but many
+error messages raised in various error conditions have changed. If
+you see unexpected behavior and you have reason to believe it is
+incorrect, please file an issue.</p></li>
+<li><p>Breaking change: the ca_path parameter, previously used to specify
+CA certificate stores, is no longer supported. Use the ca_pem_file
+parameter instead.</p></li>
+</ul>
+</li>
+<li><p>Raise error when invalid certificate string is passed as input to
+signer</p></li>
+<li><p>Fix public key matching for ECDSA (#245)</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-2-2-2024-01-28">
+<h1>Changes for v3.2.2 (2024-01-28)<a class="headerlink" href="#changes-for-v3-2-2-2024-01-28" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Update upper bound on lxml dependency to allow lxml 5</p></li>
+<li><p>Bump minimum dependency versions to align with Ubuntu 20.04</p></li>
+<li><p>Test and release infrastructure improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-2-1-2023-08-06">
+<h1>Changes for v3.2.1 (2023-08-06)<a class="headerlink" href="#changes-for-v3-2-1-2023-08-06" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Use dataclass.replace in SignatureReference construction. Fixes #231</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-2-0-2023-04-12">
+<h1>Changes for v3.2.0 (2023-04-12)<a class="headerlink" href="#changes-for-v3-2-0-2023-04-12" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Roundtrip referenced XML nodes before c14n to detach them from parent
+document when verifying (#225)</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-1-1-2023-04-08">
+<h1>Changes for v3.1.1 (2023-04-08)<a class="headerlink" href="#changes-for-v3-1-1-2023-04-08" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Add type attribute to XAdES signed properties reference (#224)</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-1-0-2023-01-04">
+<h1>Changes for v3.1.0 (2023-01-04)<a class="headerlink" href="#changes-for-v3-1-0-2023-01-04" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Use distinct default for payload c14n. Fixes #217</p></li>
+<li><p>Deprecate SHA1</p></li>
+<li><p>Test and documentation improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-0-2-2022-11-28">
+<h1>Changes for v3.0.2 (2022-11-28)<a class="headerlink" href="#changes-for-v3-0-2-2022-11-28" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Remove incorrect deprecation of xml-c14n11 URI</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-0-1-2022-11-27">
+<h1>Changes for v3.0.1 (2022-11-27)<a class="headerlink" href="#changes-for-v3-0-1-2022-11-27" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Mark SHA1 as deprecated</p></li>
+<li><p>Aggregate verification settings in SignatureConfiguration dataclass</p></li>
+<li><p>Mark all dataclasses in API as frozen</p></li>
+<li><p>Add ability to assert expected signature location</p></li>
+<li><p>Add ability to assert expected signature algorithms</p></li>
+<li><p>Add ability to assert expected digest algorithms</p></li>
+<li><p>Add MGF1 (“RSASSA-PSS without parameters”) algorithm identifiers</p></li>
+<li><p>Remove PSS (“RSASSA-PSS with parameters”) and EdDSA algorithm
+identifiers (given low usage and no interop examples, we will not be
+implementing PSS parameters for now; EdDSA key info additionally has
+no standardized way to serialize it)</p></li>
+<li><p>Add debug logging of canonicalization outputs</p></li>
+<li><p>Documentation and formatting improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v3-0-0-2022-11-13">
+<h1>Changes for v3.0.0 (2022-11-13)<a class="headerlink" href="#changes-for-v3-0-0-2022-11-13" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Add XAdES support</p></li>
+<li><p>Migrate all configuration inputs to enums (string identifiers are
+still supported, but will be deprecated in a future version)</p></li>
+<li><p>Migrate structured data inputs to dataclasses</p></li>
+<li><p>Deprecate excise_empty_xmlns_declarations</p></li>
+<li><p>Documentation and test infrastructure improvements</p></li>
+<li><p>Clean up top level signxml and signxml.xades namespaces</p></li>
+<li><p>Stop using default_backend for cryptography, it is no longer required</p></li>
+<li><p>Drop Python 3.6 support (#200)</p></li>
+<li><p>Drop Python 3.6 support.</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-10-1-2022-09-09">
+<h1>Changes for v2.10.1 (2022-09-09)<a class="headerlink" href="#changes-for-v2-10-1-2022-09-09" title="Link to this heading">¶</a></h1>
+<ul>
+<li><p>Do not excise any empty <code class="docutils literal notranslate"><span class="pre">xmlns=&quot;&quot;</span></code> declarations by default. This
+behavior is now configurable as follows</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">signer</span> <span class="o">=</span> <span class="n">XMLSigner</span><span class="p">()</span>
+<span class="n">signer</span><span class="o">.</span><span class="n">excise_empty_xmlns_declarations</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">signer</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">verifier</span> <span class="o">=</span> <span class="n">XMLVerifier</span><span class="p">()</span>
+<span class="n">verifier</span><span class="o">.</span><span class="n">excise_empty_xmlns_declarations</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">verifier</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Documentation and autoformatting improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-10-0-2022-08-20">
+<h1>Changes for v2.10.0 (2022-08-20)<a class="headerlink" href="#changes-for-v2-10-0-2022-08-20" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Excise empty xmlns declarations only in signature, not in payload</p></li>
+<li><p>Add pyinstaller support to signxml (#188)</p></li>
+<li><p>Documentation, test infrastructure, and code organization
+improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-9-0-2021-10-08">
+<h1>Changes for v2.9.0 (2021-10-08)<a class="headerlink" href="#changes-for-v2-9-0-2021-10-08" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Unlimit cryptography version constraint. Fixes #177</p></li>
+<li><p>Bump pyOpenSSL compat range; add dep version strategy note</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-8-2-2021-05-14">
+<h1>Changes for v2.8.2 (2021-05-14)<a class="headerlink" href="#changes-for-v2-8-2-2021-05-14" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Allow the combination of X509Data and KeyValue when they represent
+the same public key (#169)</p></li>
+<li><p>Use self.namespaces signature properties “Object” element (#167)</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-8-1-2020-10-29">
+<h1>Changes for v2.8.1 (2020-10-29)<a class="headerlink" href="#changes-for-v2-8-1-2020-10-29" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Allow cryptography versions &gt;3 (but &lt;4) (#164)</p></li>
+<li><p>Add support for adding Signature Properties to a detached signature
+(#160)</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-8-0-2020-06-20">
+<h1>Changes for v2.8.0 (2020-06-20)<a class="headerlink" href="#changes-for-v2-8-0-2020-06-20" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Compare raw digest bytes instead of base64 encoded digests. Fixes
+#155</p></li>
+<li><p>Initial X509IssuerSerial/X509Digest support</p></li>
+<li><p>Support custom inclusive_ns_prefixes when signing</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-7-3-2020-06-10">
+<h1>Changes for v2.7.3 (2020-06-10)<a class="headerlink" href="#changes-for-v2-7-3-2020-06-10" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Fix ECDSA signature encoding/decoding (#150)</p></li>
+<li><p>Add InclusiveNamespaces PrefixList support for SignedInfo</p></li>
+<li><p>Test and documentation improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-7-2-2019-12-01">
+<h1>Changes for v2.7.2 (2019-12-01)<a class="headerlink" href="#changes-for-v2-7-2-2019-12-01" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Relax dependency version range on eight</p></li>
+<li><p>Update dependency installation documentation</p></li>
+<li><p>XMLSigner.sign(): add always_add_key_value kwarg to include both
+X509Data and KeyValue for ill-defined signing applications</p></li>
+<li><p>XMLVerifier.verify(): reject signatures that contain both X509Data
+and KeyValue by default; add ignore_ambiguous_key_info kwarg to
+bypass</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-7-1-2019-11-30">
+<h1>Changes for v2.7.1 (2019-11-30)<a class="headerlink" href="#changes-for-v2-7-1-2019-11-30" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Accept PEM keys as either str or bytes</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-7-0-2019-11-30">
+<h1>Changes for v2.7.0 (2019-11-30)<a class="headerlink" href="#changes-for-v2-7-0-2019-11-30" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Drop defusedxml dependency; add security notes</p></li>
+<li><p>Add missing c14n transform for enveloping and detached methods (#107)</p></li>
+<li><p>Relax pyOpenSSL dependency version range to include version 19</p></li>
+<li><p>Apply transforms and digest calculations to copies of root. Closes
+#125. (#126)</p></li>
+<li><p>Documentation and test improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-6-0-2019-01-10">
+<h1>Changes for v2.6.0 (2019-01-10)<a class="headerlink" href="#changes-for-v2-6-0-2019-01-10" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Update dependencies to baseline on Ubuntu 18.04</p></li>
+<li><p>Clarify documentation of Ubuntu installation dependencies</p></li>
+<li><p>List ipaddress as a dependency</p></li>
+<li><p>Strip PEM header from OpenSSL.crypto.X509 cert</p></li>
+<li><p>Doc updates: dependency versions, standard links</p></li>
+<li><p>Fix cryptography deprecation warnings. Closes #108</p></li>
+<li><p>Allow URI attribute of Reference to be absent (#102)</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-5-2-2017-12-07">
+<h1>Changes for v2.5.2 (2017-12-07)<a class="headerlink" href="#changes-for-v2-5-2-2017-12-07" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Fix release</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-5-1-2017-12-07">
+<h1>Changes for v2.5.1 (2017-12-07)<a class="headerlink" href="#changes-for-v2-5-1-2017-12-07" title="Link to this heading">¶</a></h1>
+<p>Fix release</p>
+</section>
+<section id="changes-for-v2-5-0-2017-12-07">
+<h1>Changes for v2.5.0 (2017-12-07)<a class="headerlink" href="#changes-for-v2-5-0-2017-12-07" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Relax dependency version constraints.</p></li>
+<li><p>Drop Python 3.3 support.</p></li>
+<li><p>Support for PEM files with CR+LF line endings (#93).</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-4-0-2017-07-10">
+<h1>Changes for v2.4.0 (2017-07-10)<a class="headerlink" href="#changes-for-v2-4-0-2017-07-10" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Import asn1crypto on demand</p></li>
+<li><p>Allow newer versions of cryptography library (#89)</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-3-0-2017-04-24">
+<h1>Changes for v2.3.0 (2017-04-24)<a class="headerlink" href="#changes-for-v2-3-0-2017-04-24" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Add explicit dependency on asn1crypto to setup.py (#87)</p></li>
+<li><p>Remove use of Exception.message for py3 compatibility. Closes #36
+(#86)</p></li>
+<li><p>Use asn1crypto instead of pyasn1 to match cryptography lib (#85)</p></li>
+<li><p>Pin to major version of lxml instead of minor</p></li>
+<li><p>Allow newer versions of several requirements (#84)</p></li>
+<li><p>Allow newer version of eight library (#83)</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-2-4-2017-03-19">
+<h1>Changes for v2.2.4 (2017-03-19)<a class="headerlink" href="#changes-for-v2-2-4-2017-03-19" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Documentation and test fixes</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-2-3-2016-12-20">
+<h1>Changes for v2.2.3 (2016-12-20)<a class="headerlink" href="#changes-for-v2-2-3-2016-12-20" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Release automation: parse repo name correctly</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-2-2-2016-12-20">
+<h1>Changes for v2.2.2 (2016-12-20)<a class="headerlink" href="#changes-for-v2-2-2-2016-12-20" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Expand supported cryptography version range. Fixes #74</p></li>
+<li><p>Documentation and release automation improvements</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-2-1-2016-09-26">
+<h1>Changes for v2.2.1 (2016-09-26)<a class="headerlink" href="#changes-for-v2-2-1-2016-09-26" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Fix handling of reference URIs in detached signing</p></li>
+<li><p>Test infra fixes</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-2-0-2016-09-25">
+<h1>Changes for v2.2.0 (2016-09-25)<a class="headerlink" href="#changes-for-v2-2-0-2016-09-25" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Support custom key info when signing</p></li>
+<li><p>Initial elements of ws-security support</p></li>
+<li><p>Support signing and verifying multiple references</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-1-4-2016-09-18">
+<h1>Changes for v2.1.4 (2016-09-18)<a class="headerlink" href="#changes-for-v2-1-4-2016-09-18" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Only sign the referenced element when passed reference_uri (thanks
+to &#64;soby).</p></li>
+<li><p>Add CN validation - instead of a full X.509 certificate, it is now
+possible to pass a common name that will be matched against the CN of
+a cert trusted by the CA store.</p></li>
+<li><p>Order-agnostic cert chain validation and friendlier ingestion of cert
+chains.</p></li>
+<li><p>Minor/internal changes; packaging fix for 2.1.0</p></li>
+</ul>
+</section>
+<section id="changes-for-v2-1-0-2016-09-18">
+<h1>Changes for v2.1.0 (2016-09-18)<a class="headerlink" href="#changes-for-v2-1-0-2016-09-18" title="Link to this heading">¶</a></h1>
+<ul class="simple">
+<li><p>Pre-release; see notes for v2.1.4</p></li>
+</ul>
+<section id="version-2-0-0-2016-08-05">
+<h2>Version 2.0.0 (2016-08-05)<a class="headerlink" href="#version-2-0-0-2016-08-05" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Major API change: signxml.xmldsig(data).sign() -&gt; signxml.XMLSigner().sign(data)</p></li>
+<li><p>Major API change: signxml.xmldsig(data).verify() -&gt; signxml.XMLVerifier().verify(data)</p></li>
+<li><p>Signer and verifier objects now carry no data-specific state; instead carry system configuration state that is
+expected to be reused</p></li>
+<li><p>Signer and verifier objects should now be safe to reuse in reentrant environments</p></li>
+<li><p>Internal architecture changes to improve modularity and eliminate data-specific latent state and side effects</p></li>
+</ul>
+</section>
+<section id="version-1-0-2-2016-08-01">
+<h2>Version 1.0.2 (2016-08-01)<a class="headerlink" href="#version-1-0-2-2016-08-01" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Update xmlenc namespaces for downstream encryptxml support</p></li>
+</ul>
+</section>
+<section id="version-1-0-1-2016-07-14">
+<h2>Version 1.0.1 (2016-07-14)<a class="headerlink" href="#version-1-0-1-2016-07-14" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Packaging fix: remove stray .pyc file</p></li>
+</ul>
+</section>
+<section id="version-1-0-0-2016-04-08">
+<h2>Version 1.0.0 (2016-04-08)<a class="headerlink" href="#version-1-0-0-2016-04-08" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Major API change: Return signature information in verify() return value (#41, #50). Thanks to &#64;klondi.</p></li>
+<li><p>Major API change: Excise signature node from verify() return value to avoid possibly returning untrusted data (#47). Thanks to &#64;klondi.</p></li>
+</ul>
+</section>
+<section id="version-0-6-0-2016-03-24">
+<h2>Version 0.6.0 (2016-03-24)<a class="headerlink" href="#version-0-6-0-2016-03-24" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Remove signature nodes appropriately (#46). Thanks to &#64;klondi.</p></li>
+<li><p>Expand Travis CI test to include flake8 linter.</p></li>
+</ul>
+</section>
+<section id="version-0-5-0-2016-03-02">
+<h2>Version 0.5.0 (2016-03-02)<a class="headerlink" href="#version-0-5-0-2016-03-02" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Add support for using a KeyName element within the KeyInfo block (#38). Thanks to &#64;Pelleplutt.</p></li>
+<li><p>Update cryptography dependency</p></li>
+<li><p>Expand Travis CI test matrix to include OS X</p></li>
+</ul>
+</section>
+<section id="version-0-4-6-2015-11-28">
+<h2>Version 0.4.6 (2015-11-28)<a class="headerlink" href="#version-0-4-6-2015-11-28" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Python 3.5 compatibility fix: move enum34 into conditional dependencies (#37). Thanks to &#64;agronholm.</p></li>
+</ul>
+</section>
+<section id="version-0-4-5-2015-11-08">
+<h2>Version 0.4.5 (2015-11-08)<a class="headerlink" href="#version-0-4-5-2015-11-08" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Support enveloped signatures nested at arbitrary levels beneath root element (#32, #33). Thanks to &#64;jmindek.</p></li>
+<li><p>Update certifi, cryptography dependencies</p></li>
+</ul>
+</section>
+<section id="version-0-4-4-2015-08-07">
+<h2>Version 0.4.4 (2015-08-07)<a class="headerlink" href="#version-0-4-4-2015-08-07" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Handle xml.etree.ElementTree nodes as input (previously these would cause a crash, despite the documentation suggesting otherwise). Closes #19, thanks to &#64;nickcash.</p></li>
+</ul>
+</section>
+<section id="version-0-4-3-2015-07-26">
+<h2>Version 0.4.3 (2015-07-26)<a class="headerlink" href="#version-0-4-3-2015-07-26" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Do not open schema file in text mode when parsing XML (closes #18, thanks to &#64;nick210)</p></li>
+<li><p>Update cryptography dependency</p></li>
+</ul>
+</section>
+<section id="version-0-4-2-2015-04-24">
+<h2>Version 0.4.2 (2015-04-24)<a class="headerlink" href="#version-0-4-2-2015-04-24" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Add support for parameterizable signature namespace (PR #12, thanks to &#64;ldnunes)</p></li>
+<li><p>Update cryptography dependency</p></li>
+</ul>
+</section>
+<section id="version-0-4-1-2015-04-21">
+<h2>Version 0.4.1 (2015-04-21)<a class="headerlink" href="#version-0-4-1-2015-04-21" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Add support for detached signatures (closes #3)</p></li>
+<li><p>Update pyOpenSSL dependency; use X509StoreContext.verify_certificate()</p></li>
+</ul>
+</section>
+<section id="version-0-4-0-2015-03-08">
+<h2>Version 0.4.0 (2015-03-08)<a class="headerlink" href="#version-0-4-0-2015-03-08" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Use pyasn1 for DER encoding and decoding, eliminating some DSA signature verification failures</p></li>
+</ul>
+</section>
+<section id="version-0-3-9-2015-02-04">
+<h2>Version 0.3.9 (2015-02-04)<a class="headerlink" href="#version-0-3-9-2015-02-04" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Do not distribute tests in source archive</p></li>
+</ul>
+</section>
+<section id="version-0-3-7-2015-02-04">
+<h2>Version 0.3.7 (2015-02-04)<a class="headerlink" href="#version-0-3-7-2015-02-04" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Configurable id attribute name for verifying non-standard internal object references, e.g. ADFS (closes #6)</p></li>
+</ul>
+</section>
+<section id="version-0-3-6-2015-01-10">
+<h2>Version 0.3.6 (2015-01-10)<a class="headerlink" href="#version-0-3-6-2015-01-10" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Python 3 compatibility fixes</p></li>
+<li><p>Fix test matrix (Python version configuration) in Travis</p></li>
+</ul>
+</section>
+<section id="version-0-3-5-2014-12-22">
+<h2>Version 0.3.5 (2014-12-22)<a class="headerlink" href="#version-0-3-5-2014-12-22" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Refactor application of enveloped signature transforms</p></li>
+<li><p>Support base64 transform</p></li>
+<li><p>Support application of different canonicalization algorithms to signature and payload (closes #1)</p></li>
+</ul>
+</section>
+<section id="version-0-3-4-2014-12-14">
+<h2>Version 0.3.4 (2014-12-14)<a class="headerlink" href="#version-0-3-4-2014-12-14" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Add support for exclusive canonicalization with InclusiveNamespaces PrefixList attribute</p></li>
+</ul>
+</section>
+<section id="version-0-3-3-2014-12-13">
+<h2>Version 0.3.3 (2014-12-13)<a class="headerlink" href="#version-0-3-3-2014-12-13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Overhaul support of canonicalization algorithms</p></li>
+</ul>
+</section>
+<section id="version-0-3-2-2014-12-11">
+<h2>Version 0.3.2 (2014-12-11)<a class="headerlink" href="#version-0-3-2-2014-12-11" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Fix bug in enveloped signature canonicalization of namespace prefixes</p></li>
+</ul>
+</section>
+<section id="version-0-3-1-2014-10-17">
+<h2>Version 0.3.1 (2014-10-17)<a class="headerlink" href="#version-0-3-1-2014-10-17" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Fix bug in enveloped signature excision</p></li>
+</ul>
+</section>
+<section id="version-0-3-0-2014-10-16">
+<h2>Version 0.3.0 (2014-10-16)<a class="headerlink" href="#version-0-3-0-2014-10-16" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Allow location of enveloped signature to be specified</p></li>
+</ul>
+</section>
+<section id="version-0-2-9-2014-10-14">
+<h2>Version 0.2.9 (2014-10-14)<a class="headerlink" href="#version-0-2-9-2014-10-14" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Use exclusive c14n when signing</p></li>
+</ul>
+</section>
+<section id="version-0-2-8-2014-10-13">
+<h2>Version 0.2.8 (2014-10-13)<a class="headerlink" href="#version-0-2-8-2014-10-13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Namespace all tags when generating signature</p></li>
+</ul>
+</section>
+<section id="version-0-2-7-2014-10-13">
+<h2>Version 0.2.7 (2014-10-13)<a class="headerlink" href="#version-0-2-7-2014-10-13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Switch default signing method to enveloped signature</p></li>
+</ul>
+</section>
+<section id="version-0-2-6-2014-10-13">
+<h2>Version 0.2.6 (2014-10-13)<a class="headerlink" href="#version-0-2-6-2014-10-13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Fix typo in ns prefixing code</p></li>
+</ul>
+</section>
+<section id="version-0-2-5-2014-10-13">
+<h2>Version 0.2.5 (2014-10-13)<a class="headerlink" href="#version-0-2-5-2014-10-13" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Fix handling of DER sequences in DSA key serialization</p></li>
+<li><p>Parameterize excision with ns prefix</p></li>
+</ul>
+</section>
+<section id="version-0-2-4-2014-10-12">
+<h2>Version 0.2.4 (2014-10-12)<a class="headerlink" href="#version-0-2-4-2014-10-12" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Fix excision with ns prefix</p></li>
+</ul>
+</section>
+<section id="version-0-2-3-2014-10-12">
+<h2>Version 0.2.3 (2014-10-12)<a class="headerlink" href="#version-0-2-3-2014-10-12" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Fixes to c14n of enveloped signatures</p></li>
+<li><p>Expand tests to use the XML Signature interoperability test suite</p></li>
+</ul>
+</section>
+<section id="version-0-2-2-2014-10-04">
+<h2>Version 0.2.2 (2014-10-04)<a class="headerlink" href="#version-0-2-2-2014-10-04" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Load bare X509 certificates from SAML metadata correctly</p></li>
+</ul>
+</section>
+<section id="version-0-2-1-2014-10-04">
+<h2>Version 0.2.1 (2014-10-04)<a class="headerlink" href="#version-0-2-1-2014-10-04" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Always use X509 information even if key value is present</p></li>
+<li><p>Internal refactor to modularize key value handling logic</p></li>
+</ul>
+</section>
+<section id="version-0-2-0-2014-10-02">
+<h2>Version 0.2.0 (2014-10-02)<a class="headerlink" href="#version-0-2-0-2014-10-02" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Use defusedxml when verifying signatures.</p></li>
+<li><p>Eliminate dependency on PyCrypto.</p></li>
+<li><p>Introduce support for ECDSA asymmetric key encryption.</p></li>
+<li><p>Introduce ability to validate xmldsig11 schema.</p></li>
+<li><p>Expand test suite coverage.</p></li>
+</ul>
+</section>
+<section id="version-0-1-9-2014-09-27">
+<h2>Version 0.1.9 (2014-09-27)<a class="headerlink" href="#version-0-1-9-2014-09-27" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Allow use of external X509 certificates for validation; add an example of supplying a cert from SAML metadata.</p></li>
+</ul>
+</section>
+<section id="version-0-1-8-2014-09-25">
+<h2>Version 0.1.8 (2014-09-25)<a class="headerlink" href="#version-0-1-8-2014-09-25" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Packaging fix.</p></li>
+</ul>
+</section>
+<section id="version-0-1-7-2014-09-25">
+<h2>Version 0.1.7 (2014-09-25)<a class="headerlink" href="#version-0-1-7-2014-09-25" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Packaging fix.</p></li>
+</ul>
+</section>
+<section id="version-0-1-6-2014-09-25">
+<h2>Version 0.1.6 (2014-09-25)<a class="headerlink" href="#version-0-1-6-2014-09-25" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Accept etree elements in verify.</p></li>
+</ul>
+</section>
+<section id="version-0-1-5-2014-09-25">
+<h2>Version 0.1.5 (2014-09-25)<a class="headerlink" href="#version-0-1-5-2014-09-25" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Packaging fix.</p></li>
+</ul>
+</section>
+<section id="version-0-1-4-2014-09-25">
+<h2>Version 0.1.4 (2014-09-25)<a class="headerlink" href="#version-0-1-4-2014-09-25" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Begin work toward conformance with version 1.1 of the spec.</p></li>
+</ul>
+</section>
+<section id="version-0-1-3-2014-09-23">
+<h2>Version 0.1.3 (2014-09-23)<a class="headerlink" href="#version-0-1-3-2014-09-23" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Require x509 for verification by default.</p></li>
+</ul>
+</section>
+<section id="version-0-1-2-2014-09-22">
+<h2>Version 0.1.2 (2014-09-22)<a class="headerlink" href="#version-0-1-2-2014-09-22" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Documentation fixes.</p></li>
+</ul>
+</section>
+<section id="version-0-1-1-2014-09-22">
+<h2>Version 0.1.1 (2014-09-22)<a class="headerlink" href="#version-0-1-1-2014-09-22" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Documentation fixes.</p></li>
+</ul>
+</section>
+<section id="version-0-1-0-2014-09-22">
+<h2>Version 0.1.0 (2014-09-22)<a class="headerlink" href="#version-0-1-0-2014-09-22" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Initial release.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Andrey Kislyuk and signxml contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    </body>
+</html>

@@ -1,0 +1,974 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html">
+
+    <!-- Generated with Sphinx 9.1.0 and Furo 2025.12.19 -->
+        <title>signxml.verifier - signxml documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #eeffcc;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../index.html"><div class="brand">signxml  documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
+  
+  <span class="sidebar-brand-text">signxml  documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"></div>
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for signxml.verifier</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">base64</span><span class="w"> </span><span class="kn">import</span> <span class="n">b64decode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">replace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">FrozenSet</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cryptography.exceptions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryptography</span><span class="w"> </span><span class="kn">import</span> <span class="n">x509</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryptography.hazmat.primitives.asymmetric</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsa</span><span class="p">,</span> <span class="n">ec</span><span class="p">,</span> <span class="n">rsa</span><span class="p">,</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryptography.hazmat.primitives.asymmetric.padding</span><span class="w"> </span><span class="kn">import</span> <span class="n">MGF1</span><span class="p">,</span> <span class="n">PSS</span><span class="p">,</span> <span class="n">AsymmetricPadding</span><span class="p">,</span> <span class="n">PKCS1v15</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryptography.hazmat.primitives.hmac</span><span class="w"> </span><span class="kn">import</span> <span class="n">HMAC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cryptography.hazmat.primitives.serialization</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoding</span><span class="p">,</span> <span class="n">PublicFormat</span><span class="p">,</span> <span class="n">load_der_public_key</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lxml</span><span class="w"> </span><span class="kn">import</span> <span class="n">etree</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.algorithms</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CanonicalizationMethod</span><span class="p">,</span>
+    <span class="n">DigestAlgorithm</span><span class="p">,</span>
+    <span class="n">SignatureConstructionMethod</span><span class="p">,</span>
+    <span class="n">SignatureMethod</span><span class="p">,</span>
+    <span class="n">digest_algorithm_implementations</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">InvalidCertificate</span><span class="p">,</span> <span class="n">InvalidDigest</span><span class="p">,</span> <span class="n">InvalidInput</span><span class="p">,</span> <span class="n">InvalidSignature</span><span class="p">,</span> <span class="n">SignXMLException</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.processor</span><span class="w"> </span><span class="kn">import</span> <span class="n">XMLSignatureProcessor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.util</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">X509CertChainVerifier</span><span class="p">,</span>
+    <span class="n">_remove_sig</span><span class="p">,</span>
+    <span class="n">add_pem_header</span><span class="p">,</span>
+    <span class="n">bits_to_bytes_unit</span><span class="p">,</span>
+    <span class="n">bytes_to_long</span><span class="p">,</span>
+    <span class="n">ds_tag</span><span class="p">,</span>
+    <span class="n">namespaces</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="SignatureConfiguration">
+<a class="viewcode-back" href="../../index.html#signxml.SignatureConfiguration">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SignatureConfiguration</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A container holding signature settings that will be used to assert properties of the signature.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">require_x509</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If ``True``, a valid X.509 certificate-based signature with an established chain of trust is required to</span>
+<span class="sd">    pass validation. If ``False``, other types of valid signatures (e.g. HMAC or RSA public key) are accepted.</span>
+
+<span class="sd">    Ensure you establish trust: to specify an HMAC shared secret that will be required to be used by the signature, use</span>
+<span class="sd">    the ``hmac_key`` parameter. If ``require_x509`` is ``False`` and no ``hmac_key`` is set, any valid XML signature</span>
+<span class="sd">    satisfying the other SignatureConfiguration parameters will be accepted, regardless of the key used. You must then</span>
+<span class="sd">    establish trust by examining the ``VerifyResult`` contents, in particular asserting on the value of ``signature_key``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;.//&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    XPath location where the signature tag will be expected. By default, the signature tag is expected to be a child of</span>
+<span class="sd">    the top level element (i.e. enveloped at the top level). If your signature is enveloping (i.e. the ``ds:Signature``</span>
+<span class="sd">    tag is itself the top level tag), it is recommended that you set this to ``./``. If your signature is nested</span>
+<span class="sd">    elsewhere in the document, you can reference the full path as ``./{ns}Tag1/{ns}Tag2/{ns}Tag3/``. If you wish to</span>
+<span class="sd">    search for the signature anywhere in the document, you can set this to ``.//``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">expect_references</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.</span>
+<span class="sd">    If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">signature_methods</span><span class="p">:</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="n">SignatureMethod</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">sm</span> <span class="k">for</span> <span class="n">sm</span> <span class="ow">in</span> <span class="n">SignatureMethod</span> <span class="k">if</span> <span class="s2">&quot;SHA1&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sm</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set of acceptable signature methods (signature algorithms). Any signature generated using an algorithm not listed</span>
+<span class="sd">    here will fail verification. It is recommended that you restrict this set to only methods expected to be used in</span>
+<span class="sd">    signatures handled by your application.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">digest_algorithms</span><span class="p">:</span> <span class="n">FrozenSet</span><span class="p">[</span><span class="n">DigestAlgorithm</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">da</span> <span class="k">for</span> <span class="n">da</span> <span class="ow">in</span> <span class="n">DigestAlgorithm</span> <span class="k">if</span> <span class="s2">&quot;SHA1&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">da</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set of acceptable digest algorithms. Any signature or reference transform generated using an algorithm not listed</span>
+<span class="sd">    here will cause verification to fail. It is recommended that you restrict this set to only methods expected to be</span>
+<span class="sd">    used in signatures handled by your application.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ignore_ambiguous_key_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ignore the presence of a KeyValue element when X509Data is present in the signature and used for verifying.</span>
+<span class="sd">    The presence of both elements is an ambiguity and a security hazard. The public key used to sign the</span>
+<span class="sd">    document is already encoded in the certificate (which is in X509Data), so the verifier must either ignore</span>
+<span class="sd">    KeyValue or make sure it matches what&#39;s in the certificate. When set to ``False``, SignXML compares KeyValue</span>
+<span class="sd">    (and DEREncodedKeyValue) against the X.509 certificate and raises InvalidInput on mismatch. Set this to</span>
+<span class="sd">    ``True`` to bypass the check and validate the signature using X509Data only.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">default_reference_c14n_method</span><span class="p">:</span> <span class="n">CanonicalizationMethod</span> <span class="o">=</span> <span class="n">CanonicalizationMethod</span><span class="o">.</span><span class="n">CANONICAL_XML_1_1</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default canonicalization method to use for referenced data structures, if there is no canonicalization</span>
+<span class="sd">    algorithm specified in the Transforms element. In most cases, it should not be necessary to override this</span>
+<span class="sd">    setting; SignedInfo should include every transformation that were applied to the reference before creating</span>
+<span class="sd">    the digests and signature, but there are some uses of XML Signatures where the canonicalization method is</span>
+<span class="sd">    fixed, and not added to the Transforms. This setting can be used to validate signatures in those use-cases.</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="VerifyResult">
+<a class="viewcode-back" href="../../index.html#signxml.VerifyResult">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">VerifyResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is a dataclass representing structured data returned by :func:`signxml.XMLVerifier.verify`. The results of a</span>
+<span class="sd">    verification contain the signed bytes, the parsed signed XML, the parsed signature XML, and the key that was used</span>
+<span class="sd">    to verify the signature. Example usage:</span>
+
+<span class="sd">        verified_data = signxml.XMLVerifier().verify(input_data).signed_xml</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">signed_data</span><span class="p">:</span> <span class="nb">bytes</span>
+    <span class="s2">&quot;The binary data as it was signed&quot;</span>
+
+    <span class="n">signed_xml</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">_Element</span><span class="p">]</span>
+    <span class="s2">&quot;The signed data parsed as XML (or None if parsing failed)&quot;</span>
+
+    <span class="n">signature_xml</span><span class="p">:</span> <span class="n">etree</span><span class="o">.</span><span class="n">_Element</span>
+    <span class="s2">&quot;The signature element parsed as XML&quot;</span>
+
+    <span class="n">signature_key</span><span class="p">:</span> <span class="nb">bytes</span>
+    <span class="s2">&quot;The cryptographic key that was used to verify the signature, in PEM format (for asymmetric keys) or raw secret bytes (for HMAC keys)&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="XMLVerifier">
+<a class="viewcode-back" href="../../index.html#signxml.XMLVerifier">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">XMLVerifier</span><span class="p">(</span><span class="n">XMLSignatureProcessor</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a new XML Signature Verifier object, which can be used to verify multiple pieces of data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_signature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">root</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="n">ds_tag</span><span class="p">(</span><span class="s2">&quot;Signature&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">root</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="s2">&quot;Signature&quot;</span><span class="p">,</span> <span class="n">xpath</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_verify_signature_with_pubkey</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">signed_info_c14n</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">raw_signature</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">signature_alg</span><span class="p">:</span> <span class="n">SignatureMethod</span><span class="p">,</span>
+        <span class="n">key_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">_Element</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">der_encoded_key_value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">etree</span><span class="o">.</span><span class="n">_Element</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">signing_certificate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">x509</span><span class="o">.</span><span class="n">Certificate</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">dsa</span><span class="o">.</span><span class="n">DSAPublicKey</span><span class="p">,</span> <span class="n">rsa</span><span class="o">.</span><span class="n">RSAPublicKey</span><span class="p">,</span> <span class="n">ec</span><span class="o">.</span><span class="n">EllipticCurvePublicKey</span><span class="p">]]:</span>
+        <span class="k">if</span> <span class="n">der_encoded_key_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">der_encoded_key_value</span><span class="o">.</span><span class="n">text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">load_der_public_key</span><span class="p">(</span><span class="n">b64decode</span><span class="p">(</span><span class="n">der_encoded_key_value</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">signing_certificate</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">signing_certificate</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">key_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;Expected one of key_value, der_encoded_key_value, or signing_certificate to be set&quot;</span><span class="p">)</span>
+
+        <span class="n">digest_alg_impl</span> <span class="o">=</span> <span class="n">digest_algorithm_implementations</span><span class="p">[</span><span class="n">signature_alg</span><span class="p">]()</span>
+        <span class="k">if</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ECDSA_&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ec_key_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="s2">&quot;dsig11:ECKeyValue&quot;</span><span class="p">)</span>
+                <span class="n">named_curve</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">ec_key_value</span><span class="p">,</span> <span class="s2">&quot;dsig11:NamedCurve&quot;</span><span class="p">)</span>
+                <span class="n">public_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">ec_key_value</span><span class="p">,</span> <span class="s2">&quot;dsig11:PublicKey&quot;</span><span class="p">)</span>
+                <span class="n">key_data</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">public_key</span><span class="o">.</span><span class="n">text</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">key_data</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">key_data</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">])</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">key_data</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">key_data</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span> <span class="p">:])</span>
+                <span class="n">curve_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">known_ecdsa_curves</span><span class="p">[</span><span class="n">named_curve</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;URI&quot;</span><span class="p">)]</span>
+                <span class="n">ecpn</span> <span class="o">=</span> <span class="n">ec</span><span class="o">.</span><span class="n">EllipticCurvePublicNumbers</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">curve</span><span class="o">=</span><span class="n">curve_class</span><span class="p">())</span>  <span class="c1"># type: ignore[abstract]</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">ecpn</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">ec</span><span class="o">.</span><span class="n">EllipticCurvePublicKey</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;DER encoded key value does not match specified signature algorithm&quot;</span><span class="p">)</span>
+            <span class="n">signature_for_ecdsa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_encode_dss_signature</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">,</span> <span class="n">key</span><span class="o">.</span><span class="n">key_size</span><span class="p">)</span>
+            <span class="n">key</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">signature_for_ecdsa</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">signed_info_c14n</span><span class="p">,</span> <span class="n">signature_algorithm</span><span class="o">=</span><span class="n">ec</span><span class="o">.</span><span class="n">ECDSA</span><span class="p">(</span><span class="n">digest_alg_impl</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;DSA_&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dsa_key_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="s2">&quot;DSAKeyValue&quot;</span><span class="p">)</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;P&quot;</span><span class="p">)</span>
+                <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Q&quot;</span><span class="p">)</span>
+                <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="n">require</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">)</span>
+                <span class="n">dsapn</span> <span class="o">=</span> <span class="n">dsa</span><span class="o">.</span><span class="n">DSAPublicNumbers</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">parameter_numbers</span><span class="o">=</span><span class="n">dsa</span><span class="o">.</span><span class="n">DSAParameterNumbers</span><span class="p">(</span><span class="n">p</span><span class="o">=</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="n">q</span><span class="p">,</span> <span class="n">g</span><span class="o">=</span><span class="n">g</span><span class="p">))</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">dsapn</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">dsa</span><span class="o">.</span><span class="n">DSAPublicKey</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;DER encoded key value does not match specified signature algorithm&quot;</span><span class="p">)</span>
+            <span class="c1"># TODO: supply meaningful key_size_bits for signature length assertion</span>
+            <span class="n">dss_signature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_encode_dss_signature</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">)</span> <span class="o">*</span> <span class="mi">8</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">key</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">dss_signature</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">signed_info_c14n</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">digest_alg_impl</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;RSA_&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;SHA&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">rsa_key_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="s2">&quot;RSAKeyValue&quot;</span><span class="p">)</span>
+                <span class="n">modulus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">rsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Modulus&quot;</span><span class="p">)</span>
+                <span class="n">exponent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">rsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Exponent&quot;</span><span class="p">)</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="n">rsa</span><span class="o">.</span><span class="n">RSAPublicNumbers</span><span class="p">(</span><span class="n">e</span><span class="o">=</span><span class="n">exponent</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">modulus</span><span class="p">)</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">rsa</span><span class="o">.</span><span class="n">RSAPublicKey</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;DER encoded key value does not match specified signature algorithm&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;RSA_&quot;</span><span class="p">):</span>
+                <span class="n">padding</span><span class="p">:</span> <span class="n">AsymmetricPadding</span> <span class="o">=</span> <span class="n">PKCS1v15</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">padding</span> <span class="o">=</span> <span class="n">PSS</span><span class="p">(</span><span class="n">mgf</span><span class="o">=</span><span class="n">MGF1</span><span class="p">(</span><span class="n">algorithm</span><span class="o">=</span><span class="n">digest_alg_impl</span><span class="p">),</span> <span class="n">salt_length</span><span class="o">=</span><span class="n">digest_alg_impl</span><span class="o">.</span><span class="n">digest_size</span><span class="p">)</span>
+            <span class="n">key</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">signed_info_c14n</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">digest_alg_impl</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported signature algorithm </span><span class="si">{</span><span class="n">signature_alg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">signed_info_c14n</span><span class="p">,</span> <span class="n">key</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_encode_dss_signature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_signature</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">key_size_bits</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="n">want_raw_signature_len</span> <span class="o">=</span> <span class="n">bits_to_bytes_unit</span><span class="p">(</span><span class="n">key_size_bits</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">)</span> <span class="o">!=</span> <span class="n">want_raw_signature_len</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidSignature</span><span class="p">(</span>
+                <span class="s2">&quot;Expected </span><span class="si">%d</span><span class="s2"> byte SignatureValue, got </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">want_raw_signature_len</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">))</span>
+            <span class="p">)</span>
+        <span class="n">int_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">[:</span><span class="n">int_len</span><span class="p">])</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">[</span><span class="n">int_len</span><span class="p">:])</span>
+        <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">encode_dss_signature</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_inclusive_ns_prefixes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">transform_node</span><span class="p">):</span>
+        <span class="n">inclusive_namespaces</span> <span class="o">=</span> <span class="n">transform_node</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;./ec:InclusiveNamespaces[@PrefixList]&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">inclusive_namespaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">inclusive_namespaces</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PrefixList&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_transforms</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">payload</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">transforms_node</span><span class="p">:</span> <span class="n">etree</span><span class="o">.</span><span class="n">_Element</span><span class="p">,</span>
+        <span class="n">signature</span><span class="p">:</span> <span class="n">etree</span><span class="o">.</span><span class="n">_Element</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">transforms</span><span class="p">,</span> <span class="n">c14n_applied</span> <span class="o">=</span> <span class="p">[],</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">transforms_node</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">transforms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_findall</span><span class="p">(</span><span class="n">transforms_node</span><span class="p">,</span> <span class="s2">&quot;Transform&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">transforms</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">transform</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Algorithm&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">SignatureConstructionMethod</span><span class="o">.</span><span class="n">enveloped</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                <span class="n">_remove_sig</span><span class="p">(</span><span class="n">signature</span><span class="p">,</span> <span class="n">idempotent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">transforms</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">transform</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Algorithm&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;http://www.w3.org/2000/09/xmldsig#base64&quot;</span><span class="p">:</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">transform</span> <span class="ow">in</span> <span class="n">transforms</span><span class="p">:</span>
+            <span class="n">algorithm</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Algorithm&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">c14n_algorithm_from_transform</span> <span class="o">=</span> <span class="n">CanonicalizationMethod</span><span class="p">(</span><span class="n">algorithm</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">inclusive_ns_prefixes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_inclusive_ns_prefixes</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+
+            <span class="c1"># Create a separate copy of the node so we can modify the tree and avoid any c14n inconsistencies from</span>
+            <span class="c1"># namespaces propagating from parent nodes. The lxml docs recommend using copy.deepcopy for this, but it</span>
+            <span class="c1"># doesn&#39;t seem to preserve namespaces. It would be nice to find a less heavy-handed way of doing this.</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromstring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tostring</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
+
+            <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c14n</span><span class="p">(</span>
+                <span class="n">payload</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">c14n_algorithm_from_transform</span><span class="p">,</span> <span class="n">inclusive_ns_prefixes</span><span class="o">=</span><span class="n">inclusive_ns_prefixes</span>
+            <span class="p">)</span>
+            <span class="n">c14n_applied</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">c14n_applied</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)):</span>
+            <span class="c1"># Create a separate copy of the node, see above</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromstring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tostring</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c14n</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">default_reference_c14n_method</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">payload</span>
+
+<div class="viewcode-block" id="XMLVerifier.get_cert_chain_verifier">
+<a class="viewcode-back" href="../../index.html#signxml.XMLVerifier.get_cert_chain_verifier">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cert_chain_verifier</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ca_pem_file</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">X509CertChainVerifier</span><span class="p">(</span><span class="n">ca_pem_file</span><span class="o">=</span><span class="n">ca_pem_file</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_match_key_values</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key_value</span><span class="p">,</span> <span class="n">der_encoded_key_value</span><span class="p">,</span> <span class="n">signing_cert</span><span class="p">,</span> <span class="n">signature_alg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">ignore_ambiguous_key_info</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">cert_pub_key</span> <span class="o">=</span> <span class="n">signing_cert</span><span class="o">.</span><span class="n">public_key</span><span class="p">()</span>
+        <span class="c1"># If both X509Data and KeyValue are present, match one against the other and raise an error on mismatch</span>
+        <span class="k">if</span> <span class="n">key_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">match_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_key_value_matches_cert_public_key</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="n">cert_pub_key</span><span class="p">,</span> <span class="n">signature_alg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">match_result</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span>
+                    <span class="s2">&quot;Both X509Data and KeyValue found and they represent different public keys. &quot;</span>
+                    <span class="s2">&quot;Use verify(ignore_ambiguous_key_info=True) to ignore KeyValue and validate &quot;</span>
+                    <span class="s2">&quot;using X509Data only.&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># If both X509Data and DEREncodedKeyValue are present, match one against the other and raise an error on</span>
+        <span class="c1"># mismatch</span>
+        <span class="k">if</span> <span class="n">der_encoded_key_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">match_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_der_key_value_matches_cert_public_key</span><span class="p">(</span>
+                <span class="n">der_encoded_key_value</span><span class="p">,</span> <span class="n">signing_cert</span><span class="o">.</span><span class="n">public_key</span><span class="p">(),</span> <span class="n">signature_alg</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">match_result</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span>
+                    <span class="s2">&quot;Both X509Data and DEREncodedKeyValue found and they represent different &quot;</span>
+                    <span class="s2">&quot;public keys. Use verify(ignore_ambiguous_key_info=True) to ignore &quot;</span>
+                    <span class="s2">&quot;DEREncodedKeyValue and validate using X509Data only.&quot;</span>
+                <span class="p">)</span>
+
+<div class="viewcode-block" id="XMLVerifier.check_digest_alg_expected">
+<a class="viewcode-back" href="../../index.html#signxml.XMLVerifier.check_digest_alg_expected">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_digest_alg_expected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">digest_alg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">digest_alg</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">digest_algorithms</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Digest algorithm </span><span class="si">{</span><span class="n">digest_alg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> forbidden by configuration&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XMLVerifier.check_signature_alg_expected">
+<a class="viewcode-back" href="../../index.html#signxml.XMLVerifier.check_signature_alg_expected">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_signature_alg_expected</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signature_alg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">signature_alg</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">signature_methods</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signature method </span><span class="si">{</span><span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> forbidden by configuration&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="XMLVerifier.verify">
+<a class="viewcode-back" href="../../index.html#signxml.XMLVerifier.verify">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">verify</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">x509_cert</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">x509</span><span class="o">.</span><span class="n">Certificate</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cert_subject_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">cert_resolver</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">ca_pem_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">hmac_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">validate_schema</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">parser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">uri_resolver</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">id_attribute</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">expect_config</span><span class="p">:</span> <span class="n">SignatureConfiguration</span> <span class="o">=</span> <span class="n">SignatureConfiguration</span><span class="p">(),</span>
+        <span class="o">**</span><span class="n">deprecated_kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">VerifyResult</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">VerifyResult</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Verify the XML signature supplied in the data and return a list of :class:`VerifyResult` data structures</span>
+<span class="sd">        representing the data signed by the signature, or raise an exception if the signature is not valid. By default,</span>
+<span class="sd">        this requires the signature to be generated using a valid X.509 certificate. To enable other means of signature</span>
+<span class="sd">        validation, set ``expect_config`` to a configuration with the **require_x509** parameter set to `False`.</span>
+
+<span class="sd">        .. admonition:: See what is signed</span>
+
+<span class="sd">         It is important to understand and follow the best practice rule of &quot;See what is signed&quot; when verifying XML</span>
+<span class="sd">         signatures. The gist of this rule is: if your application neglects to verify that the information it trusts is</span>
+<span class="sd">         what was actually signed, the attacker can supply a valid signature but point you to malicious data that wasn&#39;t</span>
+<span class="sd">         signed by that signature.</span>
+
+<span class="sd">         In SignXML, you can ensure that the information signed is what you expect to be signed by only trusting the</span>
+<span class="sd">         data returned by ``XMLVerifier.verify()``. The ``signed_xml`` attribute of the return value is the XML node or string</span>
+<span class="sd">         that was signed. We also recommend that you assert the expected location for the signature within the document:</span>
+
+<span class="sd">         .. code-block:: python</span>
+
+<span class="sd">             from signxml import XMLVerifier, SignatureConfiguration</span>
+<span class="sd">             config = SignatureConfiguration(location=&quot;./&quot;)</span>
+<span class="sd">             XMLVerifier(...).verify(..., expect_config=config)</span>
+
+<span class="sd">         Depending on the canonicalization method used by the signature, comments in the XML data may not be subject to</span>
+<span class="sd">         signing, so may need to be untrusted. If so, they are excised from the return value of ``verify()``.</span>
+
+<span class="sd">         **Recommended reading:** http://www.w3.org/TR/xmldsig-bestpractices/#practices-applications</span>
+
+<span class="sd">        .. admonition:: Establish trust</span>
+
+<span class="sd">         If you do not supply any keyword arguments to ``verify()``, the default behavior is to trust **any** valid XML</span>
+<span class="sd">         signature generated using a valid X.509 certificate trusted by your system&#39;s CA store. This means anyone can</span>
+<span class="sd">         get an SSL certificate and generate a signature that you will trust. To establish trust in the signer, use the</span>
+<span class="sd">         ``x509_cert`` argument to specify a certificate that was pre-shared out-of-band (e.g. via SAML metadata, as</span>
+<span class="sd">         shown in :ref:`Verifying SAML assertions &lt;verifying-saml-assertions&gt;`), or ``cert_subject_name`` to specify a</span>
+<span class="sd">         subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a</span>
+<span class="sd">         domain name), or ``ca_pem_file`` to give a custom CA.</span>
+
+<span class="sd">        :param data: Signature data to verify</span>
+<span class="sd">        :type data: String, file-like object, or XML ElementTree Element API compatible object</span>
+<span class="sd">        :param x509_cert:</span>
+<span class="sd">            A trusted external X.509 certificate, given as a PEM-formatted string or cryptography.x509.Certificate</span>
+<span class="sd">            object, to use for verification. Overrides any X.509 certificate information supplied by the signature. If</span>
+<span class="sd">            left set to ``None``, requires that the signature supply a valid X.509 certificate chain that validates</span>
+<span class="sd">            against the known certificate authorities. Implies **require_x509=True**.</span>
+<span class="sd">        :param cert_subject_name:</span>
+<span class="sd">            Subject Common Name to check the signing X.509 certificate against. Implies **require_x509=True**.</span>
+<span class="sd">        :param cert_resolver:</span>
+<span class="sd">            Function to use to resolve trusted X.509 certificates when X509IssuerSerial and X509Digest references are</span>
+<span class="sd">            found in the signature. The function is called with the keyword arguments ``x509_issuer_name``,</span>
+<span class="sd">            ``x509_serial_number`` and ``x509_digest``, and is expected to return an iterable of one or more</span>
+<span class="sd">            strings containing a PEM-formatted certificate and a chain of intermediate certificates, if needed.</span>
+<span class="sd">            Implies **require_x509=True**.</span>
+<span class="sd">        :param ca_pem_file:</span>
+<span class="sd">            Filename of a PEM file containing certificate authority information to use when verifying certificate-based</span>
+<span class="sd">            signatures.</span>
+<span class="sd">        :param hmac_key: If using HMAC, a string containing the shared secret.</span>
+<span class="sd">        :param validate_schema: Whether to validate **data** against the XML Signature schema.</span>
+<span class="sd">        :param parser:</span>
+<span class="sd">            Custom XML parser instance to use when parsing **data**. The default parser arguments used by SignXML are:</span>
+<span class="sd">            ``resolve_entities=False``. See https://lxml.de/FAQ.html#how-do-i-use-lxml-safely-as-a-web-service-endpoint.</span>
+<span class="sd">        :type parser: :class:`lxml.etree.XMLParser` compatible parser</span>
+<span class="sd">        :param uri_resolver:</span>
+<span class="sd">            Function to use to resolve reference URIs that are not empty and don&#39;t start with &quot;#&quot; (such references are</span>
+<span class="sd">            only expected in detached signatures; if you don&#39;t expect such signatures, leave this unset to prevent them</span>
+<span class="sd">            from validating). The function is called with a single string argument containing the URI to be resolved,</span>
+<span class="sd">            and is expected to return a :class:`lxml.etree._Element` node or bytes.</span>
+<span class="sd">        :param id_attribute:</span>
+<span class="sd">            Name of the attribute whose value ``URI`` refers to. By default, SignXML will search for &quot;Id&quot;, then &quot;ID&quot;.</span>
+<span class="sd">        :param expect_config:</span>
+<span class="sd">            Expected signature configuration. Pass a :class:`SignatureConfiguration` object to describe expected</span>
+<span class="sd">            properties of the verified signature. Signatures with unexpected configurations will fail validation.</span>
+<span class="sd">        :param deprecated_kwargs:</span>
+<span class="sd">            Direct application of the parameters **require_x509**, **expect_references**, and</span>
+<span class="sd">            **ignore_ambiguous_key_info** is deprecated. Use **expect_config** instead.</span>
+
+<span class="sd">        :raises: :class:`signxml.exceptions.InvalidSignature`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hmac_key</span> <span class="o">=</span> <span class="n">hmac_key</span>
+        <span class="k">if</span> <span class="n">hmac_key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">expect_config</span><span class="o">.</span><span class="n">signature_methods</span> <span class="o">==</span> <span class="n">SignatureConfiguration</span><span class="p">()</span><span class="o">.</span><span class="n">signature_methods</span><span class="p">:</span>  <span class="c1"># default value</span>
+                <span class="n">expect_config</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span>
+                    <span class="n">expect_config</span><span class="p">,</span>
+                    <span class="n">signature_methods</span><span class="o">=</span><span class="nb">frozenset</span><span class="p">(</span><span class="n">sm</span> <span class="k">for</span> <span class="n">sm</span> <span class="ow">in</span> <span class="n">SignatureMethod</span> <span class="k">if</span> <span class="n">sm</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;HMAC&quot;</span><span class="p">)),</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">sm</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;HMAC&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">sm</span> <span class="ow">in</span> <span class="n">expect_config</span><span class="o">.</span><span class="n">signature_methods</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;When hmac_key is set, all expected signature methods must use HMAC&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">expect_config</span>
+        <span class="k">if</span> <span class="n">deprecated_kwargs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">expect_config</span><span class="p">,</span> <span class="o">**</span><span class="n">deprecated_kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parser</span> <span class="o">=</span> <span class="n">parser</span>
+
+        <span class="k">if</span> <span class="n">x509_cert</span> <span class="ow">or</span> <span class="n">cert_resolver</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">require_x509</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">x509_cert</span> <span class="ow">and</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">x509_cert</span><span class="p">))</span> <span class="o">==</span> <span class="s2">&quot;&lt;class &#39;OpenSSL.crypto.X509&#39;&gt;&quot;</span><span class="p">:</span>
+            <span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;SignXML received a PyOpenSSL object as x509_cert input. Please pass a Cryptography.X509 object instead.&quot;</span><span class="p">,</span>
+                <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">x509_cert</span> <span class="o">=</span> <span class="n">x509_cert</span><span class="o">.</span><span class="n">to_cryptography</span><span class="p">()</span>  <span class="c1"># type: ignore[union-attr]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x509_cert</span> <span class="o">=</span> <span class="n">x509_cert</span>
+
+        <span class="k">if</span> <span class="n">id_attribute</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">id_attributes</span> <span class="o">=</span> <span class="p">(</span><span class="n">id_attribute</span><span class="p">,)</span>
+
+        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_root</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">signature_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_signature</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+
+        <span class="c1"># We could do a deep copy here, but it wouldn&#39;t preserve root level namespaces</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromstring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tostring</span><span class="p">(</span><span class="n">signature_ref</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">validate_schema</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">validate_schema</span><span class="p">(</span><span class="n">signature</span><span class="p">)</span>
+
+        <span class="n">signed_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">signature</span><span class="p">,</span> <span class="s2">&quot;SignedInfo&quot;</span><span class="p">)</span>
+        <span class="n">c14n_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">signed_info</span><span class="p">,</span> <span class="s2">&quot;CanonicalizationMethod&quot;</span><span class="p">)</span>
+        <span class="n">c14n_algorithm</span> <span class="o">=</span> <span class="n">CanonicalizationMethod</span><span class="p">(</span><span class="n">c14n_method</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Algorithm&quot;</span><span class="p">))</span>
+        <span class="n">inclusive_ns_prefixes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_inclusive_ns_prefixes</span><span class="p">(</span><span class="n">c14n_method</span><span class="p">)</span>
+        <span class="n">signature_method</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">signed_info</span><span class="p">,</span> <span class="s2">&quot;SignatureMethod&quot;</span><span class="p">)</span>
+        <span class="n">signature_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">signature</span><span class="p">,</span> <span class="s2">&quot;SignatureValue&quot;</span><span class="p">)</span>
+        <span class="n">signature_alg</span> <span class="o">=</span> <span class="n">SignatureMethod</span><span class="p">(</span><span class="n">signature_method</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Algorithm&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_signature_alg_expected</span><span class="p">(</span><span class="n">signature_alg</span><span class="p">)</span>
+        <span class="n">raw_signature</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">signature_value</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">x509_data</span> <span class="o">=</span> <span class="n">signature</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;ds:KeyInfo/ds:X509Data&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+        <span class="n">key_value</span> <span class="o">=</span> <span class="n">signature</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;ds:KeyInfo/ds:KeyValue&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+        <span class="n">der_encoded_key_value</span> <span class="o">=</span> <span class="n">signature</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;ds:KeyInfo/dsig11:DEREncodedKeyValue&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+        <span class="n">signed_info_c14n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_c14n</span><span class="p">(</span>
+            <span class="n">signed_info</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">c14n_algorithm</span><span class="p">,</span> <span class="n">inclusive_ns_prefixes</span><span class="o">=</span><span class="n">inclusive_ns_prefixes</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">x509_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">require_x509</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">x509_cert</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">x509_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;Expected a X.509 certificate based signature&quot;</span><span class="p">)</span>
+                <span class="n">certs</span> <span class="o">=</span> <span class="p">[</span><span class="n">cert</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">cert</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_findall</span><span class="p">(</span><span class="n">x509_data</span><span class="p">,</span> <span class="s2">&quot;X509Certificate&quot;</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">certs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">x509_iss</span> <span class="o">=</span> <span class="n">x509_data</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;ds:X509IssuerSerial/ds:X509IssuerName&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+                    <span class="n">x509_sn</span> <span class="o">=</span> <span class="n">x509_data</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;ds:X509IssuerSerial/ds:X509SerialNumber&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+                    <span class="n">x509_digest</span> <span class="o">=</span> <span class="n">x509_data</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;dsig11:X509Digest&quot;</span><span class="p">,</span> <span class="n">namespaces</span><span class="o">=</span><span class="n">namespaces</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">cert_resolver</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="n">x509_iss</span><span class="p">,</span> <span class="n">x509_sn</span><span class="p">,</span> <span class="n">x509_digest</span><span class="p">)):</span>
+                        <span class="n">cert_chain</span> <span class="o">=</span> <span class="n">cert_resolver</span><span class="p">(</span>
+                            <span class="n">x509_issuer_name</span><span class="o">=</span><span class="n">x509_iss</span><span class="o">.</span><span class="n">text</span> <span class="k">if</span> <span class="n">x509_iss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">x509_serial_number</span><span class="o">=</span><span class="n">x509_sn</span><span class="o">.</span><span class="n">text</span> <span class="k">if</span> <span class="n">x509_sn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">x509_digest</span><span class="o">=</span><span class="n">x509_digest</span><span class="o">.</span><span class="n">text</span> <span class="k">if</span> <span class="n">x509_digest</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cert_chain</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="n">InvalidCertificate</span><span class="p">(</span><span class="s2">&quot;No certificate found for given X509 data&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">x509</span><span class="o">.</span><span class="n">Certificate</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cert_chain</span><span class="p">):</span>
+                            <span class="n">cert_chain</span> <span class="o">=</span> <span class="p">[</span><span class="n">x509</span><span class="o">.</span><span class="n">load_pem_x509_certificate</span><span class="p">(</span><span class="n">add_pem_header</span><span class="p">(</span><span class="n">cert</span><span class="p">))</span> <span class="k">for</span> <span class="n">cert</span> <span class="ow">in</span> <span class="n">cert_chain</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Expected to find an X509Certificate element in the signature&quot;</span>
+                        <span class="n">msg</span> <span class="o">+=</span> <span class="s2">&quot; (X509SubjectName, X509SKI are not supported)&quot;</span>
+                        <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">cert_chain</span> <span class="o">=</span> <span class="p">[</span><span class="n">x509</span><span class="o">.</span><span class="n">load_pem_x509_certificate</span><span class="p">(</span><span class="n">add_pem_header</span><span class="p">(</span><span class="n">cert</span><span class="p">))</span> <span class="k">for</span> <span class="n">cert</span> <span class="ow">in</span> <span class="n">certs</span><span class="p">]</span>
+
+                <span class="n">cert_verifier</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cert_chain_verifier</span><span class="p">(</span><span class="n">ca_pem_file</span><span class="o">=</span><span class="n">ca_pem_file</span><span class="p">)</span>
+
+                <span class="n">signing_cert</span> <span class="o">=</span> <span class="n">cert_verifier</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">cert_chain</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x509_cert</span><span class="p">,</span> <span class="n">x509</span><span class="o">.</span><span class="n">Certificate</span><span class="p">):</span>
+                <span class="n">signing_cert</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x509_cert</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">signing_cert</span> <span class="o">=</span> <span class="n">x509</span><span class="o">.</span><span class="n">load_pem_x509_certificate</span><span class="p">(</span><span class="n">add_pem_header</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x509_cert</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">cert_subject_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">cn_oid</span> <span class="o">=</span> <span class="n">x509</span><span class="o">.</span><span class="n">oid</span><span class="o">.</span><span class="n">NameOID</span><span class="o">.</span><span class="n">COMMON_NAME</span>
+                <span class="n">subject_cn_from_signing_cert</span> <span class="o">=</span> <span class="n">signing_cert</span><span class="o">.</span><span class="n">subject</span><span class="o">.</span><span class="n">get_attributes_for_oid</span><span class="p">(</span><span class="n">cn_oid</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">if</span> <span class="n">subject_cn_from_signing_cert</span> <span class="o">!=</span> <span class="n">cert_subject_name</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">InvalidSignature</span><span class="p">(</span><span class="s2">&quot;Certificate subject common name mismatch&quot;</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">verified_signed_info_c14n</span><span class="p">,</span> <span class="n">key_used</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verify_signature_with_pubkey</span><span class="p">(</span>
+                    <span class="n">signed_info_c14n</span><span class="o">=</span><span class="n">signed_info_c14n</span><span class="p">,</span>
+                    <span class="n">raw_signature</span><span class="o">=</span><span class="n">raw_signature</span><span class="p">,</span>
+                    <span class="n">signing_certificate</span><span class="o">=</span><span class="n">signing_cert</span><span class="p">,</span>
+                    <span class="n">signature_alg</span><span class="o">=</span><span class="n">signature_alg</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">cryptography</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">InvalidSignature</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidSignature</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Signature verification failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_match_key_values</span><span class="p">(</span>
+                <span class="n">key_value</span><span class="o">=</span><span class="n">key_value</span><span class="p">,</span>
+                <span class="n">der_encoded_key_value</span><span class="o">=</span><span class="n">der_encoded_key_value</span><span class="p">,</span>
+                <span class="n">signing_cert</span><span class="o">=</span><span class="n">signing_cert</span><span class="p">,</span>
+                <span class="n">signature_alg</span><span class="o">=</span><span class="n">signature_alg</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;HMAC_&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">hmac_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s1">&#39;Parameter &quot;hmac_key&quot; is required when verifying a HMAC signature&#39;</span><span class="p">)</span>
+
+            <span class="n">signer</span> <span class="o">=</span> <span class="n">HMAC</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hmac_key</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="n">digest_algorithm_implementations</span><span class="p">[</span><span class="n">signature_alg</span><span class="p">]())</span>
+            <span class="n">signer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">signed_info_c14n</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">signer</span><span class="o">.</span><span class="n">verify</span><span class="p">(</span><span class="n">raw_signature</span><span class="p">)</span>
+                <span class="n">verified_signed_info_c14n</span> <span class="o">=</span> <span class="n">signed_info_c14n</span>
+            <span class="k">except</span> <span class="n">cryptography</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">InvalidSignature</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidSignature</span><span class="p">(</span><span class="s2">&quot;Signature mismatch (HMAC)&quot;</span><span class="p">)</span>
+            <span class="n">key_used</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hmac_key</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key_value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">der_encoded_key_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">InvalidInput</span><span class="p">(</span><span class="s2">&quot;Expected to find either KeyValue or X509Data XML element in KeyInfo&quot;</span><span class="p">)</span>
+
+            <span class="n">verified_signed_info_c14n</span><span class="p">,</span> <span class="n">key_used</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_verify_signature_with_pubkey</span><span class="p">(</span>
+                <span class="n">signed_info_c14n</span><span class="o">=</span><span class="n">signed_info_c14n</span><span class="p">,</span>
+                <span class="n">raw_signature</span><span class="o">=</span><span class="n">raw_signature</span><span class="p">,</span>
+                <span class="n">key_value</span><span class="o">=</span><span class="n">key_value</span><span class="p">,</span>
+                <span class="n">der_encoded_key_value</span><span class="o">=</span><span class="n">der_encoded_key_value</span><span class="p">,</span>
+                <span class="n">signature_alg</span><span class="o">=</span><span class="n">signature_alg</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">verified_signed_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromstring</span><span class="p">(</span><span class="n">verified_signed_info_c14n</span><span class="p">)</span>
+        <span class="n">verify_results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">VerifyResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">reference</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_findall</span><span class="p">(</span><span class="n">verified_signed_info</span><span class="p">,</span> <span class="s2">&quot;Reference&quot;</span><span class="p">)):</span>
+            <span class="n">verify_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_verify_reference</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">uri_resolver</span><span class="p">,</span> <span class="n">c14n_algorithm</span><span class="p">,</span> <span class="n">signature</span><span class="p">,</span> <span class="n">key_used</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">expect_references</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">verify_results</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">expect_references</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Expected to find </span><span class="si">{}</span><span class="s2"> references, but found </span><span class="si">{}</span><span class="s2">&quot;</span>
+            <span class="k">raise</span> <span class="n">InvalidSignature</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">expect_references</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">verify_results</span><span class="p">)))</span>
+
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">verify_results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">expect_references</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">expect_references</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="k">else</span> <span class="n">verify_results</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_verify_reference</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">reference</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">,</span>
+        <span class="n">root</span><span class="p">,</span>
+        <span class="n">uri_resolver</span><span class="p">,</span>
+        <span class="n">c14n_algorithm</span><span class="p">,</span>
+        <span class="n">signature</span><span class="p">,</span>
+        <span class="n">signature_key_used</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">copied_root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromstring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tostring</span><span class="p">(</span><span class="n">root</span><span class="p">))</span>
+        <span class="n">copied_signature_ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_signature</span><span class="p">(</span><span class="n">copied_root</span><span class="p">)</span>
+        <span class="n">transforms</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="s2">&quot;Transforms&quot;</span><span class="p">,</span> <span class="n">require</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">digest_method_alg_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="s2">&quot;DigestMethod&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Algorithm&quot;</span><span class="p">)</span>
+        <span class="n">digest_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">reference</span><span class="p">,</span> <span class="s2">&quot;DigestValue&quot;</span><span class="p">)</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_reference</span><span class="p">(</span><span class="n">copied_root</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span> <span class="n">uri_resolver</span><span class="o">=</span><span class="n">uri_resolver</span><span class="p">)</span>
+        <span class="n">payload_c14n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_transforms</span><span class="p">(</span>
+            <span class="n">payload</span><span class="p">,</span>
+            <span class="n">transforms_node</span><span class="o">=</span><span class="n">transforms</span><span class="p">,</span>
+            <span class="n">signature</span><span class="o">=</span><span class="n">copied_signature_ref</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">digest_alg</span> <span class="o">=</span> <span class="n">DigestAlgorithm</span><span class="p">(</span><span class="n">digest_method_alg_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_digest_alg_expected</span><span class="p">(</span><span class="n">digest_alg</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">digest_value</span><span class="o">.</span><span class="n">text</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_digest</span><span class="p">(</span><span class="n">payload_c14n</span><span class="p">,</span> <span class="n">digest_alg</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">InvalidDigest</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Digest mismatch for reference </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;URI&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># We return the signed XML (and only that) to ensure no access to unsigned data happens.</span>
+        <span class="c1"># Note it is essential to roundtrip the payload and render it from canonicalized XML, to avoid returning</span>
+        <span class="c1"># untrusted comments, avoid text nodes being broken up even after comments are excised, etc.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">payload_c14n_xml</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromstring</span><span class="p">(</span><span class="n">payload_c14n</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">etree</span><span class="o">.</span><span class="n">XMLSyntaxError</span><span class="p">:</span>
+            <span class="n">payload_c14n_xml</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">signature_key_used</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="n">signature_key</span> <span class="o">=</span> <span class="n">signature_key_used</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">signature_key</span> <span class="o">=</span> <span class="n">signature_key_used</span><span class="o">.</span><span class="n">public_bytes</span><span class="p">(</span><span class="n">Encoding</span><span class="o">.</span><span class="n">PEM</span><span class="p">,</span> <span class="n">PublicFormat</span><span class="o">.</span><span class="n">SubjectPublicKeyInfo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">VerifyResult</span><span class="p">(</span><span class="n">payload_c14n</span><span class="p">,</span> <span class="n">payload_c14n_xml</span><span class="p">,</span> <span class="n">signature</span><span class="p">,</span> <span class="n">signature_key</span><span class="o">=</span><span class="n">signature_key</span><span class="p">)</span>
+
+<div class="viewcode-block" id="XMLVerifier.validate_schema">
+<a class="viewcode-back" href="../../index.html#signxml.XMLVerifier.validate_schema">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">signature</span><span class="p">):</span>
+        <span class="n">last_exception</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">schema</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">schemas</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">schema</span><span class="o">.</span><span class="n">assertValid</span><span class="p">(</span><span class="n">signature</span><span class="p">)</span>
+                <span class="k">return</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">last_exception</span> <span class="o">=</span> <span class="n">e</span>
+        <span class="k">if</span> <span class="n">last_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">last_exception</span>
+        <span class="k">raise</span> <span class="n">SignXMLException</span><span class="p">(</span><span class="s2">&quot;Invalid state&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_key_value_matches_cert_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key_value</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">signature_alg</span><span class="p">:</span> <span class="n">SignatureMethod</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ECDSA_&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">public_key</span><span class="p">,</span> <span class="n">ec</span><span class="o">.</span><span class="n">EllipticCurvePublicKey</span><span class="p">):</span>
+            <span class="n">ec_key_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="s2">&quot;dsig11:ECKeyValue&quot;</span><span class="p">)</span>
+            <span class="n">named_curve</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">ec_key_value</span><span class="p">,</span> <span class="s2">&quot;dsig11:NamedCurve&quot;</span><span class="p">)</span>
+            <span class="n">pub_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">ec_key_value</span><span class="p">,</span> <span class="s2">&quot;dsig11:PublicKey&quot;</span><span class="p">)</span>
+            <span class="n">key_data</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">pub_key</span><span class="o">.</span><span class="n">text</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">key_data</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">key_data</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span><span class="p">])</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">key_data</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">key_data</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span> <span class="p">:])</span>
+            <span class="n">curve_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">known_ecdsa_curves</span><span class="p">[</span><span class="n">named_curve</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;URI&quot;</span><span class="p">)]</span>
+
+            <span class="n">pubk_curve</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">curve</span>
+            <span class="n">pubk_x</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">x</span>
+            <span class="n">pubk_y</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">y</span>
+
+            <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pubk_curve</span><span class="p">,</span> <span class="n">curve_class</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span> <span class="o">==</span> <span class="n">pubk_x</span> <span class="ow">and</span> <span class="n">y</span> <span class="o">==</span> <span class="n">pubk_y</span>
+
+        <span class="k">elif</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;DSA_&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">public_key</span><span class="p">,</span> <span class="n">dsa</span><span class="o">.</span><span class="n">DSAPublicKey</span><span class="p">):</span>
+            <span class="n">dsa_key_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="s2">&quot;DSAKeyValue&quot;</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;P&quot;</span><span class="p">)</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Q&quot;</span><span class="p">)</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">dsa_key_value</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="n">require</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">pubk_p</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">p</span>
+            <span class="n">pubk_q</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">q</span>
+            <span class="n">pubk_g</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">g</span>
+
+            <span class="k">return</span> <span class="n">p</span> <span class="o">==</span> <span class="n">pubk_p</span> <span class="ow">and</span> <span class="n">q</span> <span class="o">==</span> <span class="n">pubk_q</span> <span class="ow">and</span> <span class="n">g</span> <span class="o">==</span> <span class="n">pubk_g</span>
+
+        <span class="k">elif</span> <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;RSA_&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">public_key</span><span class="p">,</span> <span class="n">rsa</span><span class="o">.</span><span class="n">RSAPublicKey</span><span class="p">):</span>
+            <span class="n">rsa_key_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">key_value</span><span class="p">,</span> <span class="s2">&quot;RSAKeyValue&quot;</span><span class="p">)</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">rsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Modulus&quot;</span><span class="p">)</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_long</span><span class="p">(</span><span class="n">rsa_key_value</span><span class="p">,</span> <span class="s2">&quot;Exponent&quot;</span><span class="p">)</span>
+
+            <span class="n">pubk_n</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">n</span>
+            <span class="n">pubk_e</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">e</span>
+
+            <span class="k">return</span> <span class="n">n</span> <span class="o">==</span> <span class="n">pubk_n</span> <span class="ow">and</span> <span class="n">e</span> <span class="o">==</span> <span class="n">pubk_e</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_der_key_value_matches_cert_public_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">der_encoded_key_value</span><span class="p">,</span> <span class="n">public_key</span><span class="p">,</span> <span class="n">signature_alg</span><span class="p">):</span>
+        <span class="c1"># TODO: Add a test case for this functionality</span>
+        <span class="n">der_public_key</span> <span class="o">=</span> <span class="n">load_der_public_key</span><span class="p">(</span><span class="n">b64decode</span><span class="p">(</span><span class="n">der_encoded_key_value</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;ECDSA_&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">der_public_key</span><span class="p">,</span> <span class="n">ec</span><span class="o">.</span><span class="n">EllipticCurvePublicKey</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">public_key</span><span class="p">,</span> <span class="n">ec</span><span class="o">.</span><span class="n">EllipticCurvePublicKey</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">curve_class</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">curve</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">x</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">y</span>
+
+            <span class="n">pubk_curve</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">curve</span>
+            <span class="n">pubk_x</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">x</span>
+            <span class="n">pubk_y</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">y</span>
+
+            <span class="k">return</span> <span class="n">curve_class</span> <span class="o">==</span> <span class="n">pubk_curve</span> <span class="ow">and</span> <span class="n">x</span> <span class="o">==</span> <span class="n">pubk_x</span> <span class="ow">and</span> <span class="n">y</span> <span class="o">==</span> <span class="n">pubk_y</span>
+
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;DSA_&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">der_public_key</span><span class="p">,</span> <span class="n">dsa</span><span class="o">.</span><span class="n">DSAPublicKey</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">public_key</span><span class="p">,</span> <span class="n">dsa</span><span class="o">.</span><span class="n">DSAPublicKey</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">p</span>
+            <span class="n">q</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">q</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">g</span>
+
+            <span class="n">pubk_p</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">p</span>
+            <span class="n">pubk_q</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">q</span>
+            <span class="n">pubk_g</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">parameter_numbers</span><span class="o">.</span><span class="n">g</span>
+
+            <span class="k">return</span> <span class="n">p</span> <span class="o">==</span> <span class="n">pubk_p</span> <span class="ow">and</span> <span class="n">q</span> <span class="o">==</span> <span class="n">pubk_q</span> <span class="ow">and</span> <span class="n">g</span> <span class="o">==</span> <span class="n">pubk_g</span>
+
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">signature_alg</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;RSA_&quot;</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">der_public_key</span><span class="p">,</span> <span class="n">rsa</span><span class="o">.</span><span class="n">RSAPublicKey</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">public_key</span><span class="p">,</span> <span class="n">rsa</span><span class="o">.</span><span class="n">RSAPublicKey</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">n</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">der_public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">e</span>
+
+            <span class="n">pubk_n</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">n</span>
+            <span class="n">pubk_e</span> <span class="o">=</span> <span class="n">public_key</span><span class="o">.</span><span class="n">public_numbers</span><span class="p">()</span><span class="o">.</span><span class="n">e</span>
+
+            <span class="k">return</span> <span class="n">n</span> <span class="o">==</span> <span class="n">pubk_n</span> <span class="ow">and</span> <span class="n">e</span> <span class="o">==</span> <span class="n">pubk_e</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_long</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">require</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find</span><span class="p">(</span><span class="n">element</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">require</span><span class="o">=</span><span class="n">require</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">bytes_to_long</span><span class="p">(</span><span class="n">b64decode</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; Andrey Kislyuk and signxml contributors
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    </body>
+</html>
