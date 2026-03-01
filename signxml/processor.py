@@ -48,6 +48,9 @@ class XMLProcessor:
 
     def _fromstring(self, xml_string, **kwargs):
         xml_node = etree.fromstring(xml_string, parser=self.parser, **kwargs)
+        docinfo = etree.ElementTree(xml_node).docinfo
+        if docinfo.internalDTD is not None or docinfo.externalDTD is not None:
+            raise InvalidInput("DTD declarations are not supported in XML input")
         for entity in xml_node.iter(etree.Entity):
             raise InvalidInput("Entities are not supported in XML input")
         return xml_node

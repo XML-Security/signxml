@@ -655,6 +655,31 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
     def test_excision_of_untrusted_comments(self):
         pass  # TODO: test comments excision
 
+    def test_doctype_rejection(self):
+        doc = """<!DOCTYPE samlp:Response [<!ATTLIST saml:Assertion xmlns:saml CDATA "urn:oasis:names:tc:SAML:2.0:assertion">]><samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:Assertion"><saml:Assertion Version="2.0" ID="_test">
+          <saml:Subject><saml:NameID>admin@example.com</saml:NameID></saml:Subject>
+          <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/><ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/><ds:Reference URI="#_test"><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/><ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/><ds:DigestValue>qMAYPT7tK9U5s0OuDLgiY7t3uXBgXxmM8doM849sH2g=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>VfrFy9IakkV48zDp0NJxdueUPG8Ec9II0I9InWHDaQzIlNm+F8fwdvYU6JEoXoIKHv3Bj8beE9qcNh03xzL/l7DVtKV31YQc0+cylp/5YvkZBZHza643tKKPIXag3tR6Zo/wR+X+e1YuDlbb1oAOcl85Ob9ZPmW7wnVqu27kGratcYbU2vHh4jbYua3ZkPyUajwbw8O5R/LLIg3uko1oWdQxWnmNM9zoxLT3V5O7rYPp/gwvebhYTX6tnxkKrHK7CsslEINRbEDCXbpc0gT9TuADSP/aHrQmFN8eLXahpyBygYnNIdbil4usKfdcf2L13x03OkWiLdhvqMbOQZOV0g==</ds:SignatureValue><ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIIC/zCCAeegAwIBAgIUZd6NULqQQPpHUImmpZ5d8KO0meYwDQYJKoZIhvcNAQEL
+          BQAwDzENMAsGA1UEAwwEdGVzdDAeFw0yNjAzMDExNzExNTlaFw0yNjAzMDIxNzEx
+          NTlaMA8xDTALBgNVBAMMBHRlc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+          AoIBAQDAyHLFxknSg8igmRlNJwSnZ1HzRtaqmLb6THv2cyNdGspvce6LmfOE/0dz
+          KEqh7XVhvK3pMfsDi0NEjddyENA+IRZIcjQinBaG6d1+k/LmJybO+SBtopKbOMi2
+          EsjlTbcOj/TzvEkdSJukHvZWd/AfUJcl7YWHTYCeevtad/ko454AfS6fGSWg4HXd
+          7s6SI/RlcDW3VAzY19C6bIX8GPVW5aZZg0Dihe2QW1ghN5n/6Etp9No2zooBdV1f
+          zq79xvECUdTSwGEvEZz92sxjFnOJKVFZetDuE+BylpYxnc7akiPQZbhHCeiTheiL
+          yiDE2BVp6q2zxXuhNjbkXvVLI0qtAgMBAAGjUzBRMB0GA1UdDgQWBBQcgXR3Y2y/
+          jjlgm1DyvNLu/+NN4TAfBgNVHSMEGDAWgBQcgXR3Y2y/jjlgm1DyvNLu/+NN4TAP
+          BgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQATqMPgzLiUaxJBBvKa
+          +TyUTiH/ZFjGY3eYEWxbjzaBvRll8r09rd8roORdPr299EKKfDMn4N9l9X+nYvAY
+          //sJ+NO54yO6uiWW6ScOqq9igj5Q6bnNgvuz/5PBai/i/sb8cFKHzY+TEIRnRMBb
+          8LAynzKgh9IXyTvjeBCiIT06C0nP4tKIygIoXcESBzzLjOO9rxG9nLqznZYfUKMT
+          4h8Lh2DO5VeLsZawPsR9VU99MjrYsMrcHPXdW42KUTY7IpjBcd69xI6lhwTOqOV0
+          TStby5C4JWMZtMpJPwBJjczYSBsxx91OTDzMhQuEqH4WiCOcrBtqLjT7DSj6kAHx
+          ea+x
+          </ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature></saml:Assertion></samlp:Response>"""
+
+        with self.assertRaises(InvalidInput):
+            XMLVerifier().verify(doc)
+
     def test_mismatched_key_value_with_x509_data(self):
         crt, key = self.load_example_keys()
         data = etree.parse(os.path.join(os.path.dirname(__file__), "example.xml")).getroot()
