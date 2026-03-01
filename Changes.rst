@@ -1,3 +1,10 @@
+Changes for v4.4.0 (2026-03-01)
+===============================
+
+- Forbid DTD declarations in XML input
+
+- Avoid deprecated method importlib.resources.open_text
+
 Changes for v4.3.1 (2026-02-17)
 ===============================
 
