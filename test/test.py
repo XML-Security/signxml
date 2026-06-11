@@ -71,8 +71,8 @@ def reset_tree(t, method):
 
 def get_verifier_for_year(year: int):
     class _Verifier(XMLVerifier):
-        def get_cert_chain_verifier(self, ca_pem_file):
-            verifier = super().get_cert_chain_verifier(ca_pem_file)
+        def get_cert_chain_verifier(self, ca_pem_file, ee_policy, ca_policy):
+            verifier = super().get_cert_chain_verifier(ca_pem_file, ee_policy, ca_policy)
             verifier.verification_time = datetime(year, 1, 1)
             return verifier
 
