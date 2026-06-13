@@ -245,14 +245,9 @@ class X509CertChainVerifier:
             self.ee_policy = ee_policy
         else:
             # Set default EE extension policy that requires digitalSignature flag in keyUsage
-            self.ee_policy = (x509.verification.ExtensionPolicy
-                    .permit_all()
-                    .require_present(
-                        x509.KeyUsage,
-                        x509.verification.Criticality.AGNOSTIC,
-                        self.require_digital_signature_key_usage
-                    )
-                )
+            self.ee_policy = x509.verification.ExtensionPolicy.permit_all().require_present(
+                x509.KeyUsage, x509.verification.Criticality.AGNOSTIC, self.require_digital_signature_key_usage
+            )
 
         if ca_policy is not None:
             if not isinstance(ca_policy, x509.verification.ExtensionPolicy):
