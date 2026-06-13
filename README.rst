@@ -123,6 +123,7 @@ When verifying x.509 certificates, the default verification policy provided by C
 a custom policy to require the digital signature key extension to be set in the certificate, use:
 
  .. code-block:: python
+
     def require_digital_signature_key_usage(_, _, key_usage):
         assert key_usage.digital_signature
 
