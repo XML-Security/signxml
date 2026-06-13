@@ -257,8 +257,8 @@ class XMLVerifier(XMLSignatureProcessor):
             payload = self._c14n(payload, algorithm=self.config.default_reference_c14n_method)
         return payload
 
-    def get_cert_chain_verifier(self, ca_pem_file):
-        return X509CertChainVerifier(ca_pem_file=ca_pem_file)
+    def get_cert_chain_verifier(self, ca_pem_file, ee_policy, ca_policy):
+        return X509CertChainVerifier(ca_pem_file=ca_pem_file, ee_policy=ee_policy, ca_policy=ca_policy)
 
     def _match_key_values(self, key_value, der_encoded_key_value, signing_cert, signature_alg):
         if self.config.ignore_ambiguous_key_info is True:
@@ -309,6 +309,8 @@ class XMLVerifier(XMLSignatureProcessor):
         uri_resolver: Optional[Callable] = None,
         id_attribute: Optional[str] = None,
         expect_config: SignatureConfiguration = SignatureConfiguration(),
+        ee_policy: Optional[x509.verification.PolicyBuilder] = None,
+        ca_policy: Optional[x509.verification.PolicyBuilder] = None,
         **deprecated_kwargs,
     ) -> Union[VerifyResult, List[VerifyResult]]:
         """
@@ -383,6 +385,10 @@ class XMLVerifier(XMLSignatureProcessor):
         :param expect_config:
             Expected signature configuration. Pass a :class:`SignatureConfiguration` object to describe expected
             properties of the verified signature. Signatures with unexpected configurations will fail validation.
+        :param ee_policy:
+            Custom x509.verification.PolicyBuilder to use for validating the end-entity certificate.
+        :param ca_policy:
+            Custom x509.verification.PolicyBuilder to use for validating the CA certificate.
         :param deprecated_kwargs:
             Direct application of the parameters **require_x509**, **expect_references**, and
             **ignore_ambiguous_key_info** is deprecated. Use **expect_config** instead.
@@ -470,7 +476,9 @@ class XMLVerifier(XMLSignatureProcessor):
                 else:
                     cert_chain = [x509.load_pem_x509_certificate(add_pem_header(cert)) for cert in certs]
 
-                cert_verifier = self.get_cert_chain_verifier(ca_pem_file=ca_pem_file)
+                cert_verifier = self.get_cert_chain_verifier(
+                    ca_pem_file=ca_pem_file, ee_policy=ee_policy, ca_policy=ca_policy
+                )
 
                 signing_cert = cert_verifier.verify(cert_chain)
             elif isinstance(self.x509_cert, x509.Certificate):
