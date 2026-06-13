@@ -1,3 +1,8 @@
+Changes for v4.5.0 (2026-06-13)
+===============================
+
+- Support setting certificate validation policy
+
 Changes for v4.4.0 (2026-03-01)
 ===============================
 
