@@ -227,6 +227,7 @@ class X509CertChainVerifier:
     See https://docs.openssl.org/master/man3/SSL_CTX_load_verify_locations/#notes. If you need CApath support, please
     contact SignXML maintainers.
     """
+
     def __init__(self, ca_pem_file=None, verification_time=None, ee_policy=None, ca_policy=None):
         if ca_pem_file is None:
             ca_pem_file = certifi.where()
