@@ -239,7 +239,7 @@ class X509CertChainVerifier:
                 raise ValueError("ee_policy must be an instance of x509.verification.ExtensionPolicy")
             self.ee_policy = ee_policy
         else:
-            self.ee_policy = x509.verification.ExtensionPolicy.webpki_defaults_ee()
+            self.ee_policy = x509.verification.ExtensionPolicy.permit_all()
 
         if ca_policy is not None:
             if not isinstance(ca_policy, x509.verification.ExtensionPolicy):
