@@ -228,11 +228,6 @@ class X509CertChainVerifier:
     contact SignXML maintainers.
     """
 
-    @staticmethod
-    def require_digital_signature_key_usage(policy, cert, key_usage):
-        if not key_usage.digital_signature:
-            raise ValueError("certificate KeyUsage does not allow digitalSignature")
-
     def __init__(self, ca_pem_file=None, verification_time=None, ee_policy=None, ca_policy=None):
         if ca_pem_file is None:
             ca_pem_file = certifi.where()
@@ -244,15 +239,7 @@ class X509CertChainVerifier:
                 raise ValueError("ee_policy must be an instance of x509.verification.ExtensionPolicy")
             self.ee_policy = ee_policy
         else:
-            # Set default EE extension policy that requires digitalSignature flag in keyUsage
-            self.ee_policy = (x509.verification.ExtensionPolicy
-                    .permit_all()
-                    .require_present(
-                        x509.KeyUsage,
-                        x509.verification.Criticality.AGNOSTIC,
-                        self.require_digital_signature_key_usage
-                    )
-                )
+            self.ee_policy = x509.verification.ExtensionPolicy.webpki_defaults_ee()
 
         if ca_policy is not None:
             if not isinstance(ca_policy, x509.verification.ExtensionPolicy):

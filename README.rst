@@ -117,6 +117,25 @@ Assuming ``metadata.xml`` contains SAML metadata for the assertion source:
  subject name that must be in the signing X.509 certificate given by the signature (verified as if it were a
  domain name), or ``ca_pem_file`` to give a custom CA.
 
+Requiring digital signature key usage extension for certificates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When verifying x.509 certificates, the default verification policy provided by Cryptography is used. To pass
+a custom policy to require the digital signature key extension to be set in the certificate, use:
+
+.. code-block:: python
+
+    def require_digital_signature_key_usage(_, _, key_usage):
+        assert key_usage.digital_signature
+
+    ee_policy = x509.verification.ExtensionPolicy.permit_all().require_present(
+        extension_type=x509.KeyUsage,
+        criticality=x509.verification.Criticality.AGNOSTIC,
+        validator_cb=require_digital_signature_key_usage
+    )
+
+    XMLVerifier(...).verify(..., ee_policy=ee_policy)
+
+
 XML signature construction methods: enveloped, detached, enveloping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 The XML Signature specification defines three ways to compose a signature with the data being signed: enveloped,
