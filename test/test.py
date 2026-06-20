@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 import unittest
 from base64 import b64decode, b64encode
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +21,7 @@ from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import signxml.processor as processor  # noqa:E402
 from signxml import (  # noqa:E402
     CanonicalizationMethod,
     DigestAlgorithm,
@@ -145,6 +147,46 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
 
         self.assertIsInstance(res, list)
         self.assertEqual(2, len(res))
+
+    def test_schema_cache_is_scoped_to_processor_subclasses(self):
+        for first, second in ((XMLVerifier, XAdESVerifier), (XAdESVerifier, XMLVerifier)):
+            for cls in (XMLVerifier, XAdESVerifier):
+                if "_schemas" in cls.__dict__:
+                    delattr(cls, "_schemas")
+
+            first_schemas = first.schemas()
+            second_schemas = second.schemas()
+
+            self.assertIsNot(first_schemas, second_schemas)
+            self.assertEqual(len(first_schemas), len(first.schema_files))
+            self.assertEqual(len(second_schemas), len(second.schema_files))
+
+    def test_schema_cache_is_thread_safe_on_first_access(self):
+        class ThreadedProcessor(processor.XMLProcessor):
+            schema_files = ["schema-a.xsd", "schema-b.xsd"]
+
+        original_get_schema = processor.get_schema
+        original_schemas = processor.XMLProcessor._schemas
+        calls = []
+
+        def fake_get_schema(schema_file):
+            time.sleep(0.01)
+            calls.append(schema_file)
+            return schema_file
+
+        processor.XMLProcessor._schemas = []
+        processor.get_schema = fake_get_schema
+        try:
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                results = list(executor.map(lambda _: ThreadedProcessor.schemas(), range(8)))
+        finally:
+            processor.get_schema = original_get_schema
+            processor.XMLProcessor._schemas = original_schemas
+            if "_schemas" in ThreadedProcessor.__dict__:
+                delattr(ThreadedProcessor, "_schemas")
+
+        self.assertEqual(ThreadedProcessor.schema_files, calls)
+        self.assertTrue(all(result is results[0] for result in results))
 
 
 class TestSignXML(unittest.TestCase, LoadExampleKeys):

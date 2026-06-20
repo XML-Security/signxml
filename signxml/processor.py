@@ -27,15 +27,15 @@ def get_schema(schema_file: str) -> etree.XMLSchema:
 
 class XMLProcessor:
     _schemas: List[Any] = []
+    _schemas_lock = threading.Lock()
     schema_files: List[Any] = []
     _default_parser, _parser = None, None
 
     @classmethod
     def schemas(cls):
-        with threading.Lock():
-            if len(cls._schemas) == 0:
-                for schema_file in cls.schema_files:
-                    cls._schemas.append(get_schema(schema_file))
+        with cls._schemas_lock:
+            if "_schemas" not in cls.__dict__:
+                cls._schemas = [get_schema(schema_file) for schema_file in cls.schema_files]
         return cls._schemas
 
     @property
