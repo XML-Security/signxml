@@ -309,8 +309,8 @@ class XMLVerifier(XMLSignatureProcessor):
         uri_resolver: Optional[Callable] = None,
         id_attribute: Optional[str] = None,
         expect_config: SignatureConfiguration = SignatureConfiguration(),
-        ee_policy: Optional[x509.verification.PolicyBuilder] = None,
-        ca_policy: Optional[x509.verification.PolicyBuilder] = None,
+        ee_policy: Optional[x509.verification.ExtensionPolicy] = None,
+        ca_policy: Optional[x509.verification.ExtensionPolicy] = None,
         **deprecated_kwargs,
     ) -> Union[VerifyResult, List[VerifyResult]]:
         """
@@ -386,9 +386,9 @@ class XMLVerifier(XMLSignatureProcessor):
             Expected signature configuration. Pass a :class:`SignatureConfiguration` object to describe expected
             properties of the verified signature. Signatures with unexpected configurations will fail validation.
         :param ee_policy:
-            Custom x509.verification.PolicyBuilder to use for validating the end-entity certificate.
+            Custom x509.verification.ExtensionPolicy to use for validating the end-entity certificate.
         :param ca_policy:
-            Custom x509.verification.PolicyBuilder to use for validating the CA certificate.
+            Custom x509.verification.ExtensionPolicy to use for validating the CA certificate.
         :param deprecated_kwargs:
             Direct application of the parameters **require_x509**, **expect_references**, and
             **ignore_ambiguous_key_info** is deprecated. Use **expect_config** instead.

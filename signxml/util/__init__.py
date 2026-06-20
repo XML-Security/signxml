@@ -239,15 +239,28 @@ class X509CertChainVerifier:
                 raise ValueError("ee_policy must be an instance of x509.verification.ExtensionPolicy")
             self.ee_policy = ee_policy
         else:
-            self.ee_policy = x509.verification.ExtensionPolicy.webpki_defaults_ee()
+            self.ee_policy = self.get_default_ee_policy()
 
         if ca_policy is not None:
             if not isinstance(ca_policy, x509.verification.ExtensionPolicy):
                 raise ValueError("ca_policy must be an instance of x509.verification.ExtensionPolicy")
             self.ca_policy = ca_policy
         else:
-            # Set default CA policy
-            self.ca_policy = x509.verification.ExtensionPolicy.webpki_defaults_ca()
+            self.ca_policy = self.get_default_ca_policy()
+
+    def validate_key_usage(self, policy, cert, key_usage):
+        if not key_usage.digital_signature:
+            raise ValueError("certificate KeyUsage does not allow digitalSignature")
+
+    def get_default_ee_policy(self):
+        return x509.verification.ExtensionPolicy.permit_all().require_present(
+            x509.KeyUsage,
+            x509.verification.Criticality.AGNOSTIC,
+            self.validate_key_usage,
+        )
+
+    def get_default_ca_policy(self):
+        return x509.verification.ExtensionPolicy.webpki_defaults_ca()
 
     @property
     def store(self):
