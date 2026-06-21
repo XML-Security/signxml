@@ -1,6 +1,6 @@
 from base64 import b64encode
 from dataclasses import dataclass, replace
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union, cast
 
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
@@ -113,7 +113,7 @@ class XMLSigner(XMLSignatureProcessor):
             self.digest_alg = DigestAlgorithm(digest_algorithm)
         self.check_deprecated_methods()
         self.c14n_alg = CanonicalizationMethod(c14n_algorithm)
-        self.namespaces = dict(ds=namespaces.ds)
+        self.namespaces: Dict[str, str] = {"ds": namespaces.ds}
         self._parser = None
         self.signature_annotators = [self._add_key_info]
 
@@ -127,7 +127,8 @@ class XMLSigner(XMLSignatureProcessor):
 
         See https://github.com/XML-Security/signxml/issues/275
         """
-        if None in self.namespaces and self.namespaces[None] == namespaces.ds:  # type:ignore[index]
+        namespaces_map = cast(Dict[Optional[str], str], self.namespaces)
+        if namespaces_map.get(None) == namespaces.ds:
             return QName(None, tag)
         return ds_tag(tag)
 
@@ -216,12 +217,15 @@ class XMLSigner(XMLSignatureProcessor):
         if id_attribute is not None:
             self.id_attributes = (id_attribute,)
 
+        cert_chain: Optional[List[Union[str, x509.Certificate]]]
         if isinstance(cert, (str, bytes)):
             cert_chain = list(iterate_pem(cert))
             if len(cert_chain) == 0:
                 raise InvalidInput("No PEM-encoded certificates found in string cert input data")
+        elif cert is None:
+            cert_chain = None
         else:
-            cert_chain = cert  # type:ignore[assignment]
+            cert_chain = list(cert)
 
         input_references = self._preprocess_reference_uri(reference_uri)
 
@@ -265,7 +269,11 @@ class XMLSigner(XMLSignatureProcessor):
             signed_info_node, algorithm=self.c14n_alg, inclusive_ns_prefixes=inclusive_ns_prefixes
         )
         if self.sign_alg.name.startswith("HMAC_"):
-            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())  # type:ignore[arg-type]
+            if isinstance(key, str):
+                key = key.encode()
+            elif not isinstance(key, bytes):
+                raise InvalidInput('Parameter "key" must be bytes when signing with HMAC')
+            signer = HMAC(key=key, algorithm=digest_algorithm_implementations[self.sign_alg]())
             signer.update(signed_info_c14n)
             signature_value_node.text = b64encode(signer.finalize()).decode()
             sig_root.append(signature_value_node)

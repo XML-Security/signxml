@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Callable, Dict, Type, Union
+from typing import Callable, Dict, Iterable, Type, Union, cast
 
 from cryptography.hazmat.primitives import hashes
 
@@ -37,7 +37,7 @@ class SignatureConstructionMethod(Enum):
 class FragmentLookupMixin:
     @classmethod
     def from_fragment(cls, fragment):
-        for i in cls:  # type: ignore[attr-defined]
+        for i in cast(Iterable[Enum], cls):
             if i.value.endswith("#" + fragment):
                 return i
         else:
@@ -50,7 +50,8 @@ class InvalidInputErrorMixin:
         raise InvalidInput(f"Unrecognized {cls.__name__}: {value}")
 
     def __repr__(self):
-        return f"{self.__class__.__name__}.{self.name}"  # type: ignore[attr-defined]
+        enum_self = cast(Enum, self)
+        return f"{self.__class__.__name__}.{enum_self.name}"
 
 
 class DigestAlgorithm(FragmentLookupMixin, InvalidInputErrorMixin, Enum):

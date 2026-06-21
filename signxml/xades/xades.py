@@ -19,13 +19,15 @@ We do not yet support all of them here (issue 206 tracks the implementation of R
 The main difference with plain XML Signature is that HMAC algorithms are not supported, and SHA1 is deprecated.
 """
 
+from __future__ import annotations
+
 import datetime
 import os
 import secrets
 from base64 import b64decode, b64encode
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass
 from functools import wraps
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -34,7 +36,21 @@ from lxml.etree import SubElement, _Element
 from .. import SignatureConfiguration, VerifyResult, XMLSignatureProcessor, XMLSigner, XMLVerifier
 from ..algorithms import DigestAlgorithm, digest_algorithm_implementations
 from ..exceptions import InvalidDigest, InvalidInput
-from ..util import SigningSettings, add_pem_header, ds_tag, namespaces, xades_tag
+from ..util import SigningSettings, add_pem_header, ds_tag, ensure_str, namespaces, xades_tag
+
+if TYPE_CHECKING:
+    from typing import Callable, Concatenate, ParamSpec
+
+    _P = ParamSpec("_P")
+
+
+def _with_parent_signature(
+    wrapped: Callable[Concatenate[XMLSigner, _P], _Element],
+) -> Callable[[Callable[..., _Element]], Callable[Concatenate[XMLSigner, _P], _Element]]:
+    def decorator(wrapper: Callable[..., _Element]) -> Callable[Concatenate[XMLSigner, _P], _Element]:
+        return cast(Any, wraps(wrapped)(wrapper))
+
+    return decorator
 
 
 @dataclass(frozen=True)
@@ -129,8 +145,8 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
         self.data_object_format = data_object_format
         self.namespaces.update(xades=namespaces.xades)
 
-    @wraps(XMLSigner.sign)
-    def sign(self, data, always_add_key_value: bool = True, **kwargs) -> _Element:  # type: ignore[override]
+    @_with_parent_signature(XMLSigner.sign)
+    def sign(self, data, always_add_key_value: bool = True, **kwargs: Any) -> _Element:
         return super().sign(data=data, always_add_key_value=always_add_key_value, **kwargs)
 
     def _get_token(self, length=4):
@@ -221,11 +237,15 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
                 digest_value_node.text = b64encode(cert_digest_sha1_bytes).decode()
                 issuer_serial = SubElement(cert_node_legacy, xades_tag("IssuerSerial"), nsmap=self.namespaces)
                 issuer_name = SubElement(issuer_serial, ds_tag("X509IssuerName"), nsmap=self.namespaces)
-                issuer_name.text = "C={C},O={O},OU={OU},CN={CN}".format(  # type:ignore[str-bytes-safe]
-                    C=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COUNTRY_NAME)[0].value,
-                    O=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATION_NAME)[0].value,
-                    OU=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value,
-                    CN=loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value,
+                issuer_name.text = "C={C},O={O},OU={OU},CN={CN}".format(
+                    C=ensure_str(loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COUNTRY_NAME)[0].value),
+                    O=ensure_str(
+                        loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATION_NAME)[0].value
+                    ),
+                    OU=ensure_str(
+                        loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value
+                    ),
+                    CN=ensure_str(loaded_cert.issuer.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value),
                 )
                 serial_number = SubElement(issuer_serial, ds_tag("X509SerialNumber"), nsmap=self.namespaces)
                 serial_number.text = str(loaded_cert.serial_number)
@@ -297,6 +317,8 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     Create a new XAdES Signature Verifier object, which can be used to verify multiple pieces of data.
     """
 
+    expect_signature_policy: Optional[XAdESSignaturePolicy]
+
     # TODO: document/support SignatureTimeStamp / timestamp attestation
     # SignatureTimeStamp is required by certain profiles but is an unsigned property
     def _verify_signing_time(self, verify_result: VerifyResult):
@@ -362,14 +384,14 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             )
         return self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
 
-    def verify(  # type: ignore[override]
+    def verify(
         self,
         data,
         *,
         expect_signature_policy: Optional[XAdESSignaturePolicy] = None,
-        expect_config: XAdESSignatureConfiguration = XAdESSignatureConfiguration(),
-        **xml_verifier_args,
-    ) -> List[XAdESVerifyResult]:
+        expect_config: SignatureConfiguration = XAdESSignatureConfiguration(),
+        **xml_verifier_args: Any,
+    ) -> List[VerifyResult]:
         """
         Verify the XAdES signature supplied in the data and return a list of :class:`XAdESVerifyResult` data structures
         representing the data signed by the signature, or raise an exception if the signature is not valid. This method
@@ -396,12 +418,16 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
             if verify_result.signed_xml is None:
                 continue
             if verify_result.signed_xml.tag == xades_tag("SignedProperties"):
-                verify_results[i] = XAdESVerifyResult(  # type: ignore[misc]
-                    *astuple(verify_result), signed_properties=self._verify_signed_properties(verify_result)
+                verify_results[i] = XAdESVerifyResult(
+                    signed_data=verify_result.signed_data,
+                    signed_xml=verify_result.signed_xml,
+                    signature_xml=verify_result.signature_xml,
+                    signature_key=verify_result.signature_key,
+                    signed_properties=self._verify_signed_properties(verify_result),
                 )
                 break
         else:
             raise InvalidInput("Expected to find a xades:SignedProperties element")
 
         # TODO: assert all mandatory signed properties are set
-        return verify_results  # type: ignore[return-value]
+        return verify_results
