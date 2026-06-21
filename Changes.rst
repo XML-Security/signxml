@@ -1,3 +1,9 @@
+Changes for v5.0.0 (2026-06-20)
+===============================
+
+-  X.509 certificate valitation now requires the provided certificate to
+   list digital signature as a key usage.
+
 Changes for v4.5.1 (2026-06-13)
 ===============================
 
