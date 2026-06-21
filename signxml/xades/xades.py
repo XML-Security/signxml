@@ -27,7 +27,7 @@ import secrets
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
