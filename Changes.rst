@@ -1,3 +1,8 @@
+Changes for v5.0.1 (2026-06-23)
+===============================
+
+-  Increase minimum cryptography version to 45 (#295)
+
 Changes for v5.0.0 (2026-06-20)
 ===============================
 
