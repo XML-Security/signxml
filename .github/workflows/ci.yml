@@ -8,11 +8,11 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        os: [ubuntu-22.04, ubuntu-latest, macos-14, macos-latest]
+        os: [ubuntu-22.04, ubuntu-latest, macos-15, macos-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
       with:
         python-version: ${{matrix.python-version}}
     - run: |
@@ -26,13 +26,13 @@ jobs:
   isort:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
-    - uses: isort/isort-action@v1.1.0
+    - uses: actions/checkout@v6
+    - uses: isort/isort-action@v1.1.1
   ruff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/ruff-action@v1
-      - uses: astral-sh/ruff-action@v1
+      - uses: actions/checkout@v6
+      - uses: astral-sh/ruff-action@v4.0.0
+      - uses: astral-sh/ruff-action@v4.0.0
         with:
           args: "format --check"
