@@ -6,7 +6,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
-from cryptography.hazmat.primitives.serialization import Encoding, load_pem_private_key
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_private_key
 from lxml.etree import Element, QName, SubElement, _Element
 
 from .algorithms import (
@@ -521,6 +521,6 @@ class XMLSigner(XMLSignatureProcessor):
                 ec_key_value, dsig11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name]
             )
             public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
-            x = key.public_key().public_numbers().x
-            y = key.public_key().public_numbers().y
-            public_key.text = b64encode(long_to_bytes(4) + long_to_bytes(x) + long_to_bytes(y)).decode()
+            public_key.text = b64encode(
+                key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+            ).decode()
