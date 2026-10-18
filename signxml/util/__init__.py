@@ -4,13 +4,15 @@ SignXML utility functions
 bytes_to_long, long_to_bytes copied from https://github.com/dlitz/pycrypto/blob/master/lib/Crypto/Util/number.py
 """
 
+from __future__ import annotations
+
 import math
 import re
 import struct
 import textwrap
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
 
 import certifi
 from cryptography import x509
@@ -67,10 +69,10 @@ def xades141_tag(tag):
 @dataclass
 class SigningSettings:
     key: Any
-    key_name: Optional[str]
+    key_name: str | None
     key_info: Any
     always_add_key_value: bool
-    cert_chain: Optional[List]
+    cert_chain: list | None
 
 
 def ensure_bytes(x, encoding="utf-8", none_ok=False):
@@ -146,11 +148,11 @@ def bits_to_bytes_unit(num_of_bits):
 
     Rounds up to the nearest whole byte.
     """
-    return int(math.ceil(num_of_bits / 8))
+    return math.ceil(num_of_bits / 8)
 
 
 pem_regexp = re.compile(
-    "{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER), flags=re.S
+    "{header}{nl}(.+?){footer}".format(header=PEM_HEADER, nl="\r{0,1}\n", footer=PEM_FOOTER), flags=re.DOTALL
 )
 
 
@@ -170,8 +172,7 @@ def add_pem_header(bare_base64_cert):
 
 
 def iterate_pem(certs):
-    for match in re.findall(pem_regexp, ensure_str(certs)):
-        yield match
+    yield from re.findall(pem_regexp, ensure_str(certs))
 
 
 def hmac_sha1(key, message):

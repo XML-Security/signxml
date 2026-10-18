@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from base64 import b64encode
 from dataclasses import dataclass, replace
-from typing import Dict, List, Optional, Union, cast
+from typing import Optional, cast
 
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
@@ -46,13 +48,13 @@ class SignatureReference:
     The reference URI, for example ``#elementId`` to refer to an element whose Id attribute is set to ``elementId``.
     """
 
-    c14n_method: Optional[CanonicalizationMethod] = None
+    c14n_method: CanonicalizationMethod | None = None
     """
     Use this parameter to set a canonicalization method for the reference value that is distinct from that for the
     signature itself.
     """
 
-    inclusive_ns_prefixes: Optional[List] = None
+    inclusive_ns_prefixes: list | None = None
     """
     When using exclusive XML canonicalization, use this parameter to provide a list of XML namespace prefixes whose
     declarations should be preserved when canonicalizing the reference value (**InclusiveNamespaces PrefixList**).
@@ -78,7 +80,7 @@ class XMLSigner(XMLSignatureProcessor):
         :class:`CanonicalizationMethod` for the list of algorithm IDs supported.
     """
 
-    signature_annotators: List
+    signature_annotators: list
     """
     A list of callables that will be called at signature creation time to annotate the content to be signed before
     signing. You can use this to register a custom signature decorator as follows:
@@ -97,9 +99,9 @@ class XMLSigner(XMLSignatureProcessor):
     def __init__(
         self,
         method: SignatureConstructionMethod = SignatureConstructionMethod.enveloped,
-        signature_algorithm: Union[SignatureMethod, str] = SignatureMethod.RSA_SHA256,
-        digest_algorithm: Union[DigestAlgorithm, str] = DigestAlgorithm.SHA256,
-        c14n_algorithm: Union[CanonicalizationMethod, str] = CanonicalizationMethod.CANONICAL_XML_1_1,
+        signature_algorithm: SignatureMethod | str = SignatureMethod.RSA_SHA256,
+        digest_algorithm: DigestAlgorithm | str = DigestAlgorithm.SHA256,
+        c14n_algorithm: CanonicalizationMethod | str = CanonicalizationMethod.CANONICAL_XML_1_1,
     ):
         if method is None or method not in SignatureConstructionMethod:
             raise InvalidInput(f"Unknown signature construction method {method}")
@@ -114,7 +116,7 @@ class XMLSigner(XMLSignatureProcessor):
             self.digest_alg = DigestAlgorithm(digest_algorithm)
         self.check_deprecated_methods()
         self.c14n_alg = CanonicalizationMethod(c14n_algorithm)
-        self.namespaces: Dict[str, str] = {"ds": namespaces.ds}
+        self.namespaces: dict[str, str] = {"ds": namespaces.ds}
         self._parser = None
         self.signature_annotators = [self._add_key_info]
 
@@ -128,7 +130,7 @@ class XMLSigner(XMLSignatureProcessor):
 
         See https://github.com/XML-Security/signxml/issues/275
         """
-        namespaces_map = cast(Dict[Optional[str], str], self.namespaces)
+        namespaces_map = cast(dict[Optional[str], str], self.namespaces)
         if namespaces_map.get(None) == namespaces.ds:
             return QName(None, tag)
         return ds_tag(tag)
@@ -142,16 +144,16 @@ class XMLSigner(XMLSignatureProcessor):
         self,
         data,
         *,
-        key: Optional[Union[str, bytes, rsa.RSAPrivateKey, dsa.DSAPrivateKey, ec.EllipticCurvePrivateKey]] = None,
-        passphrase: Optional[bytes] = None,
-        cert: Optional[Union[str, List[str], List[x509.Certificate]]] = None,
-        reference_uri: Optional[Union[str, List[str], List[SignatureReference]]] = None,
-        key_name: Optional[str] = None,
-        key_info: Optional[_Element] = None,
-        id_attribute: Optional[str] = None,
+        key: str | bytes | rsa.RSAPrivateKey | dsa.DSAPrivateKey | ec.EllipticCurvePrivateKey | None = None,
+        passphrase: bytes | None = None,
+        cert: str | list[str] | list[x509.Certificate] | None = None,
+        reference_uri: str | list[str] | list[SignatureReference] | None = None,
+        key_name: str | None = None,
+        key_info: _Element | None = None,
+        id_attribute: str | None = None,
         always_add_key_value: bool = False,
-        inclusive_ns_prefixes: Optional[List[str]] = None,
-        signature_properties: Optional[Union[_Element, List[_Element]]] = None,
+        inclusive_ns_prefixes: list[str] | None = None,
+        signature_properties: _Element | list[_Element] | None = None,
         exclude_c14n_transform_element: bool = False,
     ) -> _Element:
         """
@@ -334,9 +336,9 @@ class XMLSigner(XMLSignatureProcessor):
             return None
         if isinstance(reference_uris, (str, bytes)):
             reference_uris = [reference_uris]
-        references = list(
+        references = [
             ref if isinstance(ref, SignatureReference) else SignatureReference(URI=ref) for ref in reference_uris
-        )
+        ]
         return references
 
     def _add_key_info(self, sig_root, signing_settings: SigningSettings):
@@ -363,7 +365,7 @@ class XMLSigner(XMLSignatureProcessor):
         else:
             sig_root.append(signing_settings.key_info)
 
-    def _get_c14n_inputs_from_references(self, doc_root, references: List[SignatureReference]):
+    def _get_c14n_inputs_from_references(self, doc_root, references: list[SignatureReference]):
         c14n_inputs, new_references = [], []
         for reference in references:
             uri = reference.URI if reference.URI.startswith("#") else "#" + reference.URI
@@ -371,7 +373,7 @@ class XMLSigner(XMLSignatureProcessor):
             new_references.append(replace(reference, URI=uri))
         return c14n_inputs, new_references
 
-    def _unpack(self, data, references: List[SignatureReference]):
+    def _unpack(self, data, references: list[SignatureReference]):
         sig_root = Element(self._ds_tag("Signature"), nsmap=self.namespaces)
         if self.construction_method == SignatureConstructionMethod.enveloped:
             if isinstance(data, (str, bytes)):
@@ -401,7 +403,7 @@ class XMLSigner(XMLSignatureProcessor):
                 references = []
                 for c14n_input in c14n_inputs:
                     payload_id = c14n_input.get("Id", c14n_input.get("ID"))
-                    uri = "#{}".format(payload_id) if payload_id is not None else ""
+                    uri = f"#{payload_id}" if payload_id is not None else ""
                     references.append(SignatureReference(URI=uri))
         elif self.construction_method == SignatureConstructionMethod.detached:
             doc_root = self.get_root(data)
@@ -506,17 +508,18 @@ class XMLSigner(XMLSignatureProcessor):
             exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e)).decode()
         elif self.sign_alg.name.startswith("DSA_"):
             dsa_key_value = SubElement(key_value, self._ds_tag("DSAKeyValue"))
-            for field in "p", "q", "g", "y":
+            public_numbers = key.public_key().public_numbers()
+            parameters = public_numbers.parameter_numbers
+            for field, value in (
+                ("p", parameters.p),
+                ("q", parameters.q),
+                ("g", parameters.g),
+                ("y", public_numbers.y),
+            ):
                 e = SubElement(dsa_key_value, self._ds_tag(field.upper()))
-
-                if field == "y":
-                    key_params = key.public_key().public_numbers()
-                else:
-                    key_params = key.parameters().parameter_numbers()
-
-                e.text = b64encode(long_to_bytes(getattr(key_params, field))).decode()
+                e.text = b64encode(long_to_bytes(value)).decode()
         elif self.sign_alg.name.startswith("ECDSA_"):
-            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
+            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap={"dsig11": namespaces.dsig11})
             named_curve = SubElement(  # noqa:F841
                 ec_key_value, dsig11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name]
             )

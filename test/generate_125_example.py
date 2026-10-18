@@ -39,7 +39,7 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
         self.digest_alg = digest_algorithm
         assert c14n_algorithm in self.known_c14n_algorithms
         self.c14n_alg = c14n_algorithm
-        self.namespaces = dict(ds=namespaces.ds)
+        self.namespaces = {"ds": namespaces.ds}
         self._parser = None
 
     def sign(self, data, key=None, passphrase=None, cert=None, key_name=None, key_info=None, id_attribute=None):
@@ -145,14 +145,14 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                     self._serialize_key_value(key, key_info)
                 else:
                     x509_data = SubElement(key_info, ds_tag("X509Data"))
-                    for cert in cert_chain:
+                    for certificate in cert_chain:
                         x509_certificate = SubElement(x509_data, ds_tag("X509Certificate"))
-                        if isinstance(cert, (str, bytes)):
-                            x509_certificate.text = strip_pem_header(cert)
+                        if isinstance(certificate, (str, bytes)):
+                            x509_certificate.text = strip_pem_header(certificate)
                         else:
                             from OpenSSL.crypto import FILETYPE_PEM, dump_certificate
 
-                            x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, cert))
+                            x509_certificate.text = strip_pem_header(dump_certificate(FILETYPE_PEM, certificate))
             else:
                 sig_root.append(key_info)
         else:
@@ -193,16 +193,16 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
                 payload_id = c14n_input.get(id_attribute)
                 if payload_id:
                     break
-            reference_uris.append("#{}".format(payload_id) if payload_id else "")
+            reference_uris.append(f"#{payload_id}" if payload_id else "")
 
         index = 1
         for enveloped_data in data[1:]:
-            c14n_inputs.append(Element(ds_tag("Object"), nsmap=self.namespaces, Id="object-{}".format(index)))
+            c14n_inputs.append(Element(ds_tag("Object"), nsmap=self.namespaces, Id=f"object-{index}"))
             if isinstance(enveloped_data, (str, bytes)):
                 c14n_inputs[index].text = enveloped_data
             else:
                 c14n_inputs[index].append(self.get_root(enveloped_data))
-            reference_uris.append("#object-{}".format(index))
+            reference_uris.append(f"#object-{index}")
             index += 1
 
         return sig_root, doc_root, c14n_inputs, reference_uris
@@ -241,17 +241,18 @@ class XMLEnvelopedEnvelopingSigner(XMLSignatureProcessor):
             exponent.text = ensure_str(b64encode(long_to_bytes(key.public_key().public_numbers().e)))
         elif self.sign_alg.startswith("dsa-"):
             dsa_key_value = SubElement(key_value, ds_tag("DSAKeyValue"))
-            for field in "p", "q", "g", "y":
+            public_numbers = key.public_key().public_numbers()
+            parameters = public_numbers.parameter_numbers
+            for field, value in (
+                ("p", parameters.p),
+                ("q", parameters.q),
+                ("g", parameters.g),
+                ("y", public_numbers.y),
+            ):
                 e = SubElement(dsa_key_value, ds_tag(field.upper()))
-
-                if field == "y":
-                    key_params = key.public_key().public_numbers()
-                else:
-                    key_params = key.parameters().parameter_numbers()
-
-                e.text = ensure_str(b64encode(long_to_bytes(getattr(key_params, field))))
+                e.text = ensure_str(b64encode(long_to_bytes(value)))
         elif self.sign_alg.startswith("ecdsa-"):
-            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap=dict(dsig11=namespaces.dsig11))
+            ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap={"dsig11": namespaces.dsig11})
             named_curve = SubElement(  # noqa:F841
                 ec_key_value, dsig11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name]
             )

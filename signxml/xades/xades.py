@@ -27,7 +27,7 @@ import secrets
 from base64 import b64decode, b64encode
 from dataclasses import dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -59,12 +59,15 @@ class XAdESSignatureConfiguration(SignatureConfiguration):
     A subclass of :class:`signxml.SignatureConfiguration`, with default overrides as described below.
     """
 
-    expect_references: Union[int, bool] = 3
+    expect_references: int | bool = 3
     """
     By default, XAdES signatures carry 3 references (the original data reference, the KeyInfo (X.509 certificate)
     reference, and the signed properties reference). Signatures can carry more references if more data or extensions
     are present. Specify the expected number of references here.
     """
+
+
+_DEFAULT_XADES_SIGNATURE_CONFIG = XAdESSignatureConfiguration()
 
 
 @dataclass(frozen=True)
@@ -92,7 +95,7 @@ class XAdESVerifyResult(VerifyResult):
 
 
 class XAdESProcessor(XMLSignatureProcessor):
-    schema_files = ["XAdESv141.xsd", "XAdES01903v141-201601.xsd", "XAdES01903v141-201506.xsd"]
+    schema_files: ClassVar[list[str]] = ["XAdESv141.xsd", "XAdES01903v141-201601.xsd", "XAdES01903v141-201506.xsd"]
     _schema_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "schemas"))
 
 
@@ -118,16 +121,16 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
 
     def __init__(
         self,
-        signature_policy: Optional[XAdESSignaturePolicy] = None,
-        claimed_roles: Optional[List] = None,
-        data_object_format: Optional[XAdESDataObjectFormat] = None,
+        signature_policy: XAdESSignaturePolicy | None = None,
+        claimed_roles: list | None = None,
+        data_object_format: XAdESDataObjectFormat | None = None,
         **xml_signer_args,
     ) -> None:
         super().__init__(**xml_signer_args)
         if self.sign_alg.name.startswith("HMAC_"):
-            raise Exception("HMAC signatures are not supported by XAdES")
+            raise InvalidInput("HMAC signatures are not supported by XAdES")
         self.signature_annotators.append(self._build_xades_ds_object)
-        self._tokens_used: Dict[str, bool] = {}
+        self._tokens_used: dict[str, bool] = {}
         self.signed_signature_properties_annotators = [
             self.add_signing_time,
             self.add_signing_certificate,
@@ -160,10 +163,10 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
     def _build_xades_ds_object(self, sig_root, signing_settings: SigningSettings):
         ds_object = SubElement(sig_root, ds_tag("Object"), nsmap=self.namespaces)
         sig_root.append(ds_object)
-        if "Id" not in sig_root.keys():
+        if "Id" not in sig_root.attrib:
             sig_root.set("Id", f"SignXMLSignature{self._get_token()}")
         key_info = self._find(sig_root, "KeyInfo")
-        if "Id" not in key_info.keys():
+        if "Id" not in key_info.attrib:
             key_info.set("Id", f"SignXMLCertificate{self._get_token()}")
 
         qualifying_properties = SubElement(
@@ -298,7 +301,7 @@ class XAdESSigner(XAdESProcessor, XMLSigner):
     def add_data_object_format(self, signed_data_object_properties, sig_root, signing_settings: SigningSettings):
         signed_info = self._find(sig_root, "ds:SignedInfo")
         reference = self._find(signed_info, "ds:Reference")
-        if "Id" not in reference.keys():
+        if "Id" not in reference.attrib:
             reference.set("Id", f"SignXMLReference{self._get_token()}")
         data_object_format = SubElement(
             signed_data_object_properties,
@@ -317,7 +320,7 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     Create a new XAdES Signature Verifier object, which can be used to verify multiple pieces of data.
     """
 
-    expect_signature_policy: Optional[XAdESSignaturePolicy]
+    expect_signature_policy: XAdESSignaturePolicy | None
 
     # TODO: document/support SignatureTimeStamp / timestamp attestation
     # SignatureTimeStamp is required by certain profiles but is an unsigned property
@@ -327,14 +330,12 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _get_cert_public_key(self, cert: x509.Certificate) -> bytes:
         return cert.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
 
-    def _add_cert_if_missing(self, certs: List[x509.Certificate], cert: x509.Certificate) -> None:
+    def _add_cert_if_missing(self, certs: list[x509.Certificate], cert: x509.Certificate) -> None:
         cert_der = cert.public_bytes(Encoding.DER)
         if not any(candidate.public_bytes(Encoding.DER) == cert_der for candidate in certs):
             certs.append(cert)
 
-    def _find_signing_cert(
-        self, verify_result: VerifyResult, certs: List[x509.Certificate]
-    ) -> Optional[x509.Certificate]:
+    def _find_signing_cert(self, verify_result: VerifyResult, certs: list[x509.Certificate]) -> x509.Certificate | None:
         if self.x509_cert is not None:
             if isinstance(self.x509_cert, x509.Certificate):
                 return self.x509_cert
@@ -348,8 +349,8 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
     def _verify_cert_digest(
         self,
         signing_cert_node,
-        certs: List[x509.Certificate],
-        signing_cert: Optional[x509.Certificate],
+        certs: list[x509.Certificate],
+        signing_cert: x509.Certificate | None,
     ):
         if len(certs) == 0:
             raise InvalidInput("Expected to find an X509Certificate element in the signature")
@@ -429,10 +430,10 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         self,
         data,
         *,
-        expect_signature_policy: Optional[XAdESSignaturePolicy] = None,
-        expect_config: SignatureConfiguration = XAdESSignatureConfiguration(),
+        expect_signature_policy: XAdESSignaturePolicy | None = None,
+        expect_config: SignatureConfiguration = _DEFAULT_XADES_SIGNATURE_CONFIG,
         **xml_verifier_args: Any,
-    ) -> List[VerifyResult]:
+    ) -> list[VerifyResult]:
         """
         Verify the XAdES signature supplied in the data and return a list of :class:`XAdESVerifyResult` data structures
         representing the data signed by the signature, or raise an exception if the signature is not valid. This method

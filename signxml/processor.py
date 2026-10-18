@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import importlib.resources
 import logging
 import threading
 from functools import lru_cache
-from typing import Any, Dict, List, Tuple
+from typing import Any, ClassVar
 from xml.etree import ElementTree as stdlibElementTree
 
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -26,9 +28,9 @@ def get_schema(schema_file: str) -> etree.XMLSchema:
 
 
 class XMLProcessor:
-    _schemas: List[Any] = []
+    _schemas: ClassVar[list[Any]] = []
     _schemas_lock = threading.Lock()
-    schema_files: List[Any] = []
+    schema_files: ClassVar[list[str]] = []
     _default_parser, _parser = None, None
 
     @classmethod
@@ -72,7 +74,7 @@ class XMLProcessor:
 
 
 class XMLSignatureProcessor(XMLProcessor):
-    schema_files = ["xmldsig1-schema.xsd"]
+    schema_files: ClassVar[list[str]] = ["xmldsig1-schema.xsd"]
 
     # See https://tools.ietf.org/html/rfc5656
     # ec.SECT* curves have been de-registered due to CVE-2026-26007
@@ -85,18 +87,18 @@ class XMLSignatureProcessor(XMLProcessor):
     # "urn:oid:1.3.132.0.36": ec.SECT409K1,
     # "urn:oid:1.3.132.0.37": ec.SECT409R1,
     # "urn:oid:1.3.132.0.38": ec.SECT571K1
-    known_ecdsa_curves: Dict[str, ec.EllipticCurve] = {
+    known_ecdsa_curves: ClassVar[dict[str, ec.EllipticCurve]] = {
         "urn:oid:1.2.840.10045.3.1.7": ec.SECP256R1(),
         "urn:oid:1.3.132.0.34": ec.SECP384R1(),
         "urn:oid:1.3.132.0.35": ec.SECP521R1(),
         "urn:oid:1.2.840.10045.3.1.1": ec.SECP192R1(),
         "urn:oid:1.3.132.0.33": ec.SECP224R1(),
     }
-    known_ecdsa_curve_oids = {curve.name: oid for oid, curve in known_ecdsa_curves.items()}
+    known_ecdsa_curve_oids: ClassVar[dict[str, str]] = {curve.name: oid for oid, curve in known_ecdsa_curves.items()}
 
     excise_empty_xmlns_declarations = False
 
-    id_attributes: Tuple[str, ...] = ("Id", "ID", "id", "xml:id")
+    id_attributes: tuple[str, ...] = ("Id", "ID", "id", "xml:id")
 
     def _get_digest(self, data, algorithm: DigestAlgorithm):
         algorithm_implementation = digest_algorithm_implementations[algorithm]()

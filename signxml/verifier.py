@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from base64 import b64decode
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from typing import Any, Callable, FrozenSet, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, cast
 from warnings import warn
 
 import cryptography.exceptions
@@ -58,20 +60,20 @@ class SignatureConfiguration:
     search for the signature anywhere in the document, you can set this to ``.//``.
     """
 
-    expect_references: Union[int, bool] = 1
+    expect_references: int | bool = 1
     """
     Number of references to expect in the signature. If this is not 1, an array of VerifyResults is returned.
     If set to a non-integer, any number of references is accepted (otherwise a mismatch raises an error).
     """
 
-    signature_methods: FrozenSet[SignatureMethod] = frozenset(sm for sm in SignatureMethod if "SHA1" not in sm.name)
+    signature_methods: frozenset[SignatureMethod] = frozenset(sm for sm in SignatureMethod if "SHA1" not in sm.name)
     """
     Set of acceptable signature methods (signature algorithms). Any signature generated using an algorithm not listed
     here will fail verification. It is recommended that you restrict this set to only methods expected to be used in
     signatures handled by your application.
     """
 
-    digest_algorithms: FrozenSet[DigestAlgorithm] = frozenset(da for da in DigestAlgorithm if "SHA1" not in da.name)
+    digest_algorithms: frozenset[DigestAlgorithm] = frozenset(da for da in DigestAlgorithm if "SHA1" not in da.name)
     """
     Set of acceptable digest algorithms. Any signature or reference transform generated using an algorithm not listed
     here will cause verification to fail. It is recommended that you restrict this set to only methods expected to be
@@ -88,7 +90,7 @@ class SignatureConfiguration:
     ``True`` to bypass the check and validate the signature using X509Data only.
     """
 
-    verification_time: Optional[datetime] = None
+    verification_time: datetime | None = None
     """
     The time to use when validating X.509 certificate validity periods. If unset, the current time is used.
     Use this to verify signatures with certificates that are expired or not yet valid at the current time.
@@ -104,6 +106,9 @@ class SignatureConfiguration:
     """
 
 
+_DEFAULT_SIGNATURE_CONFIG = SignatureConfiguration()
+
+
 @dataclass(frozen=True)
 class VerifyResult:
     """
@@ -117,7 +122,7 @@ class VerifyResult:
     signed_data: bytes
     "The binary data as it was signed"
 
-    signed_xml: Optional[etree._Element]
+    signed_xml: etree._Element | None
     "The signed data parsed as XML (or None if parsing failed)"
 
     signature_xml: etree._Element
@@ -144,10 +149,10 @@ class XMLVerifier(XMLSignatureProcessor):
         signed_info_c14n: bytes,
         raw_signature: bytes,
         signature_alg: SignatureMethod,
-        key_value: Optional[etree._Element] = None,
-        der_encoded_key_value: Optional[etree._Element] = None,
-        signing_certificate: Optional[x509.Certificate] = None,
-    ) -> Tuple[bytes, Union[bytes, dsa.DSAPublicKey, rsa.RSAPublicKey, ec.EllipticCurvePublicKey]]:
+        key_value: etree._Element | None = None,
+        der_encoded_key_value: etree._Element | None = None,
+        signing_certificate: x509.Certificate | None = None,
+    ) -> tuple[bytes, bytes | dsa.DSAPublicKey | rsa.RSAPublicKey | ec.EllipticCurvePublicKey]:
         if der_encoded_key_value is not None:
             assert der_encoded_key_value.text is not None
             key = load_der_public_key(b64decode(der_encoded_key_value.text))
@@ -209,9 +214,7 @@ class XMLVerifier(XMLSignatureProcessor):
     def _encode_dss_signature(self, raw_signature: bytes, key_size_bits: int) -> bytes:
         want_raw_signature_len = bits_to_bytes_unit(key_size_bits) * 2
         if len(raw_signature) != want_raw_signature_len:
-            raise InvalidSignature(
-                "Expected %d byte SignatureValue, got %d" % (want_raw_signature_len, len(raw_signature))
-            )
+            raise InvalidSignature(f"Expected {want_raw_signature_len} byte SignatureValue, got {len(raw_signature)}")
         int_len = len(raw_signature) // 2
         r = bytes_to_long(raw_signature[:int_len])
         s = bytes_to_long(raw_signature[int_len:])
@@ -351,20 +354,20 @@ class XMLVerifier(XMLSignatureProcessor):
         self,
         data,
         *,
-        x509_cert: Optional[Union[str, x509.Certificate]] = None,
-        cert_subject_name: Optional[str] = None,
-        cert_resolver: Optional[Callable] = None,
-        ca_pem_file: Optional[Union[str, bytes]] = None,
-        hmac_key: Optional[bytes] = None,
+        x509_cert: str | x509.Certificate | None = None,
+        cert_subject_name: str | None = None,
+        cert_resolver: Callable | None = None,
+        ca_pem_file: str | bytes | None = None,
+        hmac_key: bytes | None = None,
         validate_schema: bool = True,
         parser=None,
-        uri_resolver: Optional[Callable] = None,
-        id_attribute: Optional[str] = None,
-        expect_config: SignatureConfiguration = SignatureConfiguration(),
-        ee_policy: Optional[x509.verification.ExtensionPolicy] = None,
-        ca_policy: Optional[x509.verification.ExtensionPolicy] = None,
+        uri_resolver: Callable | None = None,
+        id_attribute: str | None = None,
+        expect_config: SignatureConfiguration = _DEFAULT_SIGNATURE_CONFIG,
+        ee_policy: x509.verification.ExtensionPolicy | None = None,
+        ca_policy: x509.verification.ExtensionPolicy | None = None,
         **deprecated_kwargs,
-    ) -> Union[VerifyResult, List[VerifyResult]]:
+    ) -> VerifyResult | list[VerifyResult]:
         """
         Verify the XML signature supplied in the data and return a list of :class:`VerifyResult` data structures
         representing the data signed by the signature, or raise an exception if the signature is not valid. By default,
@@ -610,7 +613,7 @@ class XMLVerifier(XMLSignatureProcessor):
             )
 
         verified_signed_info = self._fromstring(verified_signed_info_c14n)
-        verify_results: List[VerifyResult] = []
+        verify_results: list[VerifyResult] = []
         for idx, reference in enumerate(self._findall(verified_signed_info, "Reference")):
             verify_results.append(
                 self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature, key_used)
@@ -673,7 +676,7 @@ class XMLVerifier(XMLSignatureProcessor):
             try:
                 schema.assertValid(signature)
                 return
-            except Exception as e:
+            except etree.DocumentInvalid as e:
                 last_exception = e
         if last_exception is not None:
             raise last_exception

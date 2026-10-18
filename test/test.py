@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import datetime, timezone
 from glob import glob
+from typing import ClassVar
 from xml.etree import ElementTree as stdlibElementTree
 
 import cryptography.exceptions
@@ -21,8 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
 from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import signxml.processor as processor  # noqa:E402
-from signxml import (  # noqa:E402
+from signxml import (
     CanonicalizationMethod,
     DigestAlgorithm,
     InvalidCertificate,
@@ -39,9 +39,10 @@ from signxml import (  # noqa:E402
     XMLVerifier,
     methods,
     namespaces,
+    processor,
 )
-from signxml.util import ds_tag  # noqa:E402
-from signxml.xades import (  # noqa:E402
+from signxml.util import ds_tag
+from signxml.xades import (
     XAdESDataObjectFormat,
     XAdESSignatureConfiguration,
     XAdESSignaturePolicy,
@@ -119,7 +120,6 @@ def get_verifier_for_year(year: int):
 class URIResolver(etree.Resolver):
     def resolve(self, url, id, context):
         print(f"Resolving URL '{url}'")
-        return None
 
 
 parser = etree.XMLParser(load_dtd=True)
@@ -187,7 +187,7 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
 
     def test_schema_cache_is_thread_safe_on_first_access(self):
         class ThreadedProcessor(processor.XMLProcessor):
-            schema_files = ["schema-a.xsd", "schema-b.xsd"]
+            schema_files: ClassVar[list[str]] = ["schema-a.xsd", "schema-b.xsd"]
 
         original_get_schema = processor.get_schema
         original_schemas = processor.XMLProcessor._schemas
@@ -219,12 +219,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             os.path.join(os.path.dirname(__file__), "example.xml"),
             os.path.join(os.path.dirname(__file__), "example2.xml"),
         )
-        self.keys = dict(
-            hmac=b"secret",
-            rsa=rsa.generate_private_key(public_exponent=65537, key_size=2048),
-            dsa=dsa.generate_private_key(key_size=1024),
-            ecdsa=ec.generate_private_key(curve=ec.SECP384R1()),
-        )
+        self.keys = {
+            "hmac": b"secret",
+            "rsa": rsa.generate_private_key(public_exponent=65537, key_size=2048),
+            "dsa": dsa.generate_private_key(key_size=1024),
+            "ecdsa": ec.generate_private_key(curve=ec.SECP384R1()),
+        }
 
     def test_basic_signxml_statements(self):
         self.assertEqual(SignatureMethod.RSA_SHA256.value, "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
@@ -266,17 +266,20 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 # print(etree.tostring(signed))
                 hmac_key = self.keys["hmac"] if sig_alg_type == "hmac" else None
                 expect_config = hmac_only if sig_alg_type == "hmac" else sha1_ok
-                verify_kwargs = dict(
-                    require_x509=False, hmac_key=hmac_key, validate_schema=True, expect_config=expect_config
-                )
+                verify_kwargs = {
+                    "require_x509": False,
+                    "hmac_key": hmac_key,
+                    "validate_schema": True,
+                    "expect_config": expect_config,
+                }
 
                 if method == methods.detached:
 
-                    def resolver(uri):
-                        if isinstance(d, stdlibElementTree.Element):
-                            return etree.fromstring(stdlibElementTree.tostring(d))
+                    def resolver(uri, data=d):
+                        if isinstance(data, stdlibElementTree.Element):
+                            return etree.fromstring(stdlibElementTree.tostring(data))
                         else:
-                            return d
+                            return data
 
                     verify_kwargs["uri_resolver"] = resolver
 
@@ -503,9 +506,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             ([invalid_pem], "Invalid X.509 certificate"),
         ]
         for cert, message in invalid_cert_inputs:
-            with self.subTest(cert=repr(cert)):
-                with self.assertRaisesRegex(InvalidInput, message):
-                    XMLSigner().sign(data, key=key, cert=cert)
+            with self.subTest(cert=repr(cert)), self.assertRaisesRegex(InvalidInput, message):
+                XMLSigner().sign(data, key=key, cert=cert)
 
     def test_x509_cert_chain_requires_digital_signature_key_usage(self):
         def make_key_usage(digital_signature=False, key_cert_sign=False, crl_sign=False):
@@ -684,9 +686,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         ca_pem_file=get_ca_pem_file(signature_file),
                         expect_config=expect_config,
                     )
-                    decoded_sig = sig.decode("utf-8")
-                    if "HMACOutputLength" in decoded_sig or "bad" in signature_file or "expired" in signature_file:
-                        raise BaseException("Expected an exception to occur")
                 except Exception as e:
                     unsupported_cases = (
                         "xpath-transform",
@@ -709,9 +708,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         "enveloping-sha256-rsa-sha256",
                         "enveloping-sha384-rsa-sha384",
                     )
-                    if signature_file.endswith("expired-cert.xml") or signature_file.endswith(
-                        "wsfederation_metadata.xml"
-                    ):  # noqa
+                    if signature_file.endswith(("expired-cert.xml", "wsfederation_metadata.xml")):
                         with self.assertRaisesRegex(
                             InvalidCertificate,
                             "certificate (has expired|is not yet valid).*SignatureConfiguration",
@@ -736,33 +733,38 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         self.assertIsInstance(e, etree.DocumentInvalid)
                     elif signature_file.endswith("signature-x509-crt.xml"):
                         self.assertIsInstance(e, InvalidCertificate)
-                    elif signature_file.endswith("signature-keyname.xml"):
-                        self.assertIsInstance(e, InvalidInput)
-                    elif signature_file.endswith("signature-x509-sn.xml"):
+                    elif signature_file.endswith(("signature-keyname.xml", "signature-x509-sn.xml")):
                         self.assertIsInstance(e, InvalidInput)
                     elif signature_file.endswith("signature-x509-crt-crl.xml"):
                         self.assertIsInstance(e, InvalidCertificate)
-                    elif signature_file.endswith("signature-retrievalmethod-rawx509crt.xml"):
-                        self.assertIsInstance(e, InvalidInput)
-                    elif signature_file.endswith("merlin-xmldsig-twenty-three/signature.xml"):
+                    elif signature_file.endswith(
+                        (
+                            "signature-retrievalmethod-rawx509crt.xml",
+                            os.path.join("merlin-xmldsig-twenty-three", "signature.xml"),
+                        )
+                    ):
                         self.assertIsInstance(e, InvalidInput)
                     elif any(x in signature_file for x in unsupported_cases):
                         print("Unsupported test case:", type(e), e)
                     elif any(x in signature_file for x in bad_interop_cases) or "Unable to resolve reference" in str(e):
                         print("Bad interop test case:", type(e), e)
-                    elif "Certificate is missing required extension" in str(e):
-                        print("IGNORED:", type(e), e)
-                    elif "certificate must be an X509v3 certificate" in str(e):
-                        print("IGNORED:", type(e), e)
-                    elif "basicConstraints.cA must not be asserted in an EE certificate" in str(e):
+                    elif (
+                        "Certificate is missing required extension" in str(e)
+                        or "certificate must be an X509v3 certificate" in str(e)
+                        or "basicConstraints.cA must not be asserted in an EE certificate" in str(e)
+                    ):
                         print("IGNORED:", type(e), e)
                     elif "TR2012" not in signature_file:
                         raise
+                else:
+                    decoded_sig = sig.decode("utf-8")
+                    if "HMACOutputLength" in decoded_sig or "bad" in signature_file or "expired" in signature_file:
+                        self.fail("Expected an exception to occur")
 
     def test_changing_signature_namespace_prefix(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
-        signer.namespaces = dict(digi_sign=namespaces["ds"])
+        signer.namespaces = {"digi_sign": namespaces["ds"]}
         signed = signer.sign(data, key=self.keys["rsa"])
         signed_data = etree.tostring(signed)
         expected_match = f'<digi_sign:Signature xmlns:digi_sign="{namespaces["ds"]}">'
@@ -771,7 +773,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
     def test_changing_signature_namespace_prefix_to_default(self):
         data = etree.parse(self.example_xml_files[0]).getroot()
         signer = XMLSigner()
-        ns = dict()
+        ns = {}
         ns[None] = namespaces["ds"]
         signer.namespaces = ns
         signed = signer.sign(data, key=self.keys["rsa"])
@@ -807,7 +809,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         signer = XMLSigner()
         signer.sign(data, key=self.keys["rsa"])
 
-    saml_test_vectors = [
+    saml_test_vectors: ClassVar[list[str]] = [
         """<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
                             xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="responseId">
             <saml:Assertion xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -911,7 +913,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             c14n_algorithm=CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0,
             signature_algorithm=SignatureMethod.HMAC_SHA256,
         )
-        sign_args = dict(data=data, reference_uri=reference_uri, key=b"secret")
+        sign_args = {"data": data, "reference_uri": reference_uri, "key": b"secret"}
         signed_with_insp = signer.sign(inclusive_ns_prefixes=["saml", "samlp", "ds"], **sign_args)
         self.assertEqual(
             signed_with_insp.find(".//ds:SignatureValue", namespaces=namespaces).text,
@@ -926,7 +928,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         ref = SignatureReference(
             URI=reference_uri, c14n_method=CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0
         )
-        sign_args = dict(data=data, reference_uri=[ref], key=b"secret")
+        sign_args = {"data": data, "reference_uri": [ref], "key": b"secret"}
         signed = signer.sign(**sign_args)
         self.assertEqual(
             signed.find(".//ds:SignatureValue", namespaces=namespaces).text,
@@ -1119,9 +1121,8 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
     def test_xml_attacks(self):
         for filename in glob(os.path.join(os.path.dirname(__file__), "defusedxml-test-data", "*.xml")):
-            with open(filename, "rb") as fh:
-                with self.assertRaises((InvalidInput, etree.XMLSyntaxError)):
-                    XMLVerifier().verify(fh.read())
+            with open(filename, "rb") as fh, self.assertRaises((InvalidInput, etree.XMLSyntaxError)):
+                XMLVerifier().verify(fh.read())
 
     def test_signature_properties_with_detached_method(self):
         doc = etree.Element("Test", attrib={"Id": "mytest"})
@@ -1261,7 +1262,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
 
 class TestXAdES(unittest.TestCase, LoadExampleKeys):
-    expect_references = {
+    expect_references: ClassVar[dict[str, int]] = {
         "factura_ejemplo2_32v1.xml": 3,
         "dss1770.xml": 3,
         "xades-fake-counter-signature.xml": 3,
@@ -1284,7 +1285,7 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         DigestMethod=DigestAlgorithm.SHA256,
         DigestValue="sVHhN1eqNH/PZ1B6h//ehyC1OwRQOrz/tJ3ZYaRrBgA=",
     )
-    claimed_roles = ["signer"]
+    claimed_roles: ClassVar[list[str]] = ["signer"]
     data_object_format = XAdESDataObjectFormat(Description="Important Document", MimeType="text/xml")
 
     def test_xades_roundtrip(self):
@@ -1362,11 +1363,11 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             verification_time = get_cert_midpoint_verification_time(cert)
             if verification_time is not None:
                 expect_config = replace(expect_config, verification_time=verification_time)
-            kwargs = dict(
-                x509_cert=cert,
-                expect_references=self.expect_references.get(os.path.basename(sig_file), 2),
-                expect_config=expect_config,
-            )
+            kwargs = {
+                "x509_cert": cert,
+                "expect_references": self.expect_references.get(os.path.basename(sig_file), 2),
+                "expect_config": expect_config,
+            }
             if "nonconformant" in sig_file:
                 kwargs.update(validate_schema=False)
             if "sigPolStore" in sig_file:
