@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
 from enum import Enum
-from typing import Callable, Dict, Iterable, Type, Union, cast
+from typing import Callable, cast
 
 from cryptography.hazmat.primitives import hashes
 
@@ -40,8 +43,7 @@ class FragmentLookupMixin:
         for i in cast(Iterable[Enum], cls):
             if i.value.endswith("#" + fragment):
                 return i
-        else:
-            raise InvalidInput(f"Unrecognized {cls.__name__} identifier fragment: {fragment}")
+        raise InvalidInput(f"Unrecognized {cls.__name__} identifier fragment: {fragment}")
 
 
 class InvalidInputErrorMixin:
@@ -159,7 +161,7 @@ class CanonicalizationMethod(InvalidInputErrorMixin, Enum):
     # While it is supported by lxml, it's not in general use and not supported by SignXML
 
 
-digest_algorithm_implementations: Dict[Union[DigestAlgorithm, SignatureMethod], Type[hashes.HashAlgorithm]] = {
+digest_algorithm_implementations: dict[DigestAlgorithm | SignatureMethod, type[hashes.HashAlgorithm]] = {
     DigestAlgorithm.SHA1: hashes.SHA1,
     DigestAlgorithm.SHA224: hashes.SHA224,
     DigestAlgorithm.SHA384: hashes.SHA384,

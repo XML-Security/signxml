@@ -3,11 +3,11 @@ Use :class:`signxml.XMLSigner` and :class:`signxml.XMLVerifier` to sign and veri
 See `SignXML documentation <#synopsis>`_ for examples.
 """
 
-from .signer import XMLSigner, SignatureReference
-from .verifier import XMLVerifier, VerifyResult, SignatureConfiguration
-from .algorithms import DigestAlgorithm, SignatureMethod, CanonicalizationMethod, SignatureConstructionMethod
+from .algorithms import CanonicalizationMethod, DigestAlgorithm, SignatureConstructionMethod, SignatureMethod
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
 from .processor import XMLSignatureProcessor
+from .signer import SignatureReference, XMLSigner
 from .util import namespaces
+from .verifier import SignatureConfiguration, VerifyResult, XMLVerifier
 
 methods = SignatureConstructionMethod

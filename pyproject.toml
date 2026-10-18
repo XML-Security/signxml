@@ -69,6 +69,4 @@ skip_gitignore = true
 line-length = 120
 
 [tool.ruff.lint]
-# Preserve the rule set used before Ruff 0.16 expanded its defaults.
-select = ["E4", "E7", "E9", "F"]
 per-file-ignores = {"signxml/__init__.py" = ["F401"], "signxml/xades/__init__.py" = ["F401"], "signxml/verifier.py" = ["E721"]}

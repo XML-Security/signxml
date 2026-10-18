@@ -25,10 +25,10 @@ signatures, respectively. See `XAdES Signatures <#xades-signatures>`_ for exampl
 """
 
 from .xades import (
-    XAdESSigner,
     XAdESDataObjectFormat,
+    XAdESSignatureConfiguration,
     XAdESSignaturePolicy,
+    XAdESSigner,
     XAdESVerifier,
     XAdESVerifyResult,
-    XAdESSignatureConfiguration,
 )
