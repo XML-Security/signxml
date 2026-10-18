@@ -1038,6 +1038,60 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
         XMLVerifier().verify(signed_xml, x509_cert=crt, ignore_ambiguous_key_info=False)
 
+    def test_ecdsa_key_value_coordinate_padding(self):
+        # Fixed private scalars produce points with neither, only X, only Y, or both coordinates starting with zero.
+        cases = (
+            (ec.SECP256R1(), (1, 379, 43, 49350)),
+            (ec.SECP384R1(), (1, 197, 176, 6394)),
+            (ec.SECP521R1(), (3, 1, 9, 2)),
+        )
+        data = b"<root><a>1</a></root>"
+        verification_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        for curve, private_values in cases:
+            for private_value in private_values:
+                key = ec.derive_private_key(private_value, curve)
+                name = x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, "EC coordinate padding test")])
+                cert = (
+                    x509.CertificateBuilder()
+                    .subject_name(name)
+                    .issuer_name(name)
+                    .public_key(key.public_key())
+                    .serial_number(1)
+                    .not_valid_before(datetime(2024, 1, 1, tzinfo=timezone.utc))
+                    .not_valid_after(datetime(2026, 1, 1, tzinfo=timezone.utc))
+                    .sign(key, hashes.SHA256())
+                )
+                for signer_class, verifier_class, cert_chain, config in (
+                    (XMLSigner, XMLVerifier, None, SignatureConfiguration(require_x509=False)),
+                    (XMLSigner, XMLVerifier, [cert], SignatureConfiguration()),
+                    (XAdESSigner, XAdESVerifier, [cert], XAdESSignatureConfiguration()),
+                ):
+                    with self.subTest(
+                        curve=curve.name,
+                        private_value=private_value,
+                        signer=signer_class.__name__,
+                        with_certificate=cert_chain is not None,
+                    ):
+                        signed = signer_class(signature_algorithm=SignatureMethod.ECDSA_SHA256).sign(
+                            etree.fromstring(data), key=key, cert=cert_chain, always_add_key_value=True
+                        )
+                        public_key = signed.find(".//dsig11:ECKeyValue/dsig11:PublicKey", namespaces=namespaces)
+                        encoded_point = b64decode(public_key.text)
+                        self.assertEqual(len(encoded_point), 1 + 2 * ((curve.key_size + 7) // 8))
+                        self.assertEqual(encoded_point[0], 4)
+                        self.assertEqual(
+                            ec.EllipticCurvePublicKey.from_encoded_point(curve, encoded_point).public_numbers(),
+                            key.public_key().public_numbers(),
+                        )
+                        result = verifier_class().verify(
+                            etree.tostring(signed),
+                            x509_cert=cert if cert_chain is not None else None,
+                            expect_config=replace(config, verification_time=verification_time),
+                        )
+                        if isinstance(result, list):
+                            result = result[0]
+                        self.assertEqual(result.signed_data, data)
+
     def test_ws_security(self):
         wsse_dir = os.path.join(interop_dir, "ws-security", "ws.js")
         with open(os.path.join(wsse_dir, "examples", "server_public.pem"), "rb") as fh:
