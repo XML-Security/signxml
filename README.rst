@@ -333,15 +333,6 @@ recommended.
 
 License
 -------
-Copyright 2014-2024, Andrey Kislyuk and SignXML contributors. Licensed under the terms of the
+Copyright 2014-2026, Andrey Kislyuk and SignXML contributors. Licensed under the terms of the
 `Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>`_. Distribution of the LICENSE and NOTICE
 files with source copies of this package and derivative works is **REQUIRED** as specified by the Apache License.
-
-.. image:: https://github.com/XML-Security/signxml/workflows/Test%20suite/badge.svg
-        :target: https://github.com/XML-Security/signxml/actions
-.. image:: https://codecov.io/github/XML-Security/signxml/coverage.svg?branch=master
-        :target: https://codecov.io/github/XML-Security/signxml?branch=master
-.. image:: https://img.shields.io/pypi/v/signxml.svg
-        :target: https://pypi.python.org/pypi/signxml
-.. image:: https://img.shields.io/pypi/l/signxml.svg
-        :target: https://pypi.python.org/pypi/signxml
