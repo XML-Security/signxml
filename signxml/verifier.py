@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from base64 import b64decode
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Callable, cast
@@ -244,7 +245,10 @@ class XMLVerifier(XMLSignatureProcessor):
 
         for transform in transforms:
             if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#base64":
-                payload = b64decode(payload.text)
+                if isinstance(payload, etree._Element):
+                    # XMLDSig 6.6.2: concatenate text nodes in document order before decoding.
+                    payload = "".join(cast(Iterable[str], payload.itertext()))
+                payload = b64decode(payload)
 
         for transform in transforms:
             algorithm = transform.get("Algorithm")
