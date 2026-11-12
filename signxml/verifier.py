@@ -649,6 +649,9 @@ class XMLVerifier(XMLSignatureProcessor):
         digest_method_alg_name = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
         payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
+        if reference.get("URI") == "" or reference.get("URI").startswith("#"):
+            # XMLDSig 4.4.3.3: same-document references omit comments before applying transforms.
+            etree.strip_tags(payload, etree.Comment)
         payload_c14n = self._apply_transforms(
             payload,
             transforms_node=transforms,

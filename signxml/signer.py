@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from base64 import b64encode
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from typing import Optional, cast
 
@@ -9,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa, utils
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS, PKCS1v15
 from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_private_key
-from lxml.etree import Element, QName, SubElement, _Element
+from lxml.etree import Comment, Element, QName, SubElement, _Element, strip_tags
 
 from .algorithms import (
     CanonicalizationMethod,
@@ -497,8 +498,12 @@ class XMLSigner(XMLSignatureProcessor):
             )
             SubElement(reference_node, self._ds_tag("DigestMethod"), Algorithm=self.digest_alg.value)
             digest_value = SubElement(reference_node, self._ds_tag("DigestValue"))
+            payload = c14n_inputs[i]
+            if (reference.URI == "" or reference.URI.startswith("#")) and list(payload.iter(Comment)):
+                payload = deepcopy(payload)
+                strip_tags(payload, Comment)
             payload_c14n = self._c14n(
-                c14n_inputs[i], algorithm=reference.c14n_method, inclusive_ns_prefixes=reference.inclusive_ns_prefixes
+                payload, algorithm=reference.c14n_method, inclusive_ns_prefixes=reference.inclusive_ns_prefixes
             )
             digest = self._get_digest(payload_c14n, algorithm=self.digest_alg)
             digest_value.text = b64encode(digest).decode()
