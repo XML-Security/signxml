@@ -257,6 +257,7 @@ class XMLVerifier(XMLSignatureProcessor):
             # XMLDSig 4.4.3.2: XML transforms parse octet streams before processing.
             if isinstance(payload, (str, bytes)):
                 payload = self._fromstring(payload)
+                self._reject_manifests(payload)
                 if signature_index is not None:
                     signature = list(payload.iter(ds_tag("Signature")))[signature_index]
 
@@ -287,6 +288,10 @@ class XMLVerifier(XMLSignatureProcessor):
             payload = self._fromstring(self._tostring(payload))
             payload = self._c14n(payload, algorithm=self.config.default_reference_c14n_method)
         return payload
+
+    def _reject_manifests(self, root):
+        if next(root.iter(ds_tag("Manifest")), None) is not None:
+            raise InvalidInput("XMLDSig Manifest elements are not supported")
 
     def get_cert_chain_verifier(self, ca_pem_file, ee_policy, ca_policy):
         return X509CertChainVerifier(
@@ -391,6 +396,8 @@ class XMLVerifier(XMLSignatureProcessor):
         representing the data signed by the signature, or raise an exception if the signature is not valid. By default,
         this requires the signature to be generated using a valid X.509 certificate. To enable other means of signature
         validation, set ``expect_config`` to a configuration with the **require_x509** parameter set to `False`.
+
+        XMLDSig ``Manifest`` elements are not supported and are rejected, including in resolved reference data.
 
         .. admonition:: See what is signed
 
@@ -513,6 +520,7 @@ class XMLVerifier(XMLSignatureProcessor):
             self.id_attributes = (id_attribute,)
 
         root = self.get_root(data)
+        self._reject_manifests(root)
         signature_ref = self._get_signature(root)
 
         # We could do a deep copy here, but it wouldn't preserve root level namespaces
@@ -678,6 +686,8 @@ class XMLVerifier(XMLSignatureProcessor):
         digest_method_alg_name = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
         payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
+        if isinstance(payload, etree._Element):
+            self._reject_manifests(payload)
         if reference.get("URI") == "" or reference.get("URI").startswith("#"):
             # XMLDSig 4.4.3.3: same-document references omit comments before applying transforms.
             etree.strip_tags(payload, etree.Comment)
@@ -699,6 +709,8 @@ class XMLVerifier(XMLSignatureProcessor):
             payload_c14n_xml = self._fromstring(payload_c14n)
         except etree.XMLSyntaxError:
             payload_c14n_xml = None
+        if payload_c14n_xml is not None:
+            self._reject_manifests(payload_c14n_xml)
 
         if isinstance(signature_key_used, bytes):
             signature_key = signature_key_used
