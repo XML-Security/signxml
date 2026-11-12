@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import hashlib
 import itertools
 import os
 import re
@@ -9,22 +10,25 @@ import time
 import unittest
 from base64 import b64decode, b64encode
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
-from datetime import datetime, timezone
+from dataclasses import FrozenInstanceError, replace
+from datetime import datetime, timedelta, timezone
+from functools import partial
 from glob import glob
 from typing import ClassVar
+from unittest.mock import Mock
 from xml.etree import ElementTree as stdlibElementTree
 
 import cryptography.exceptions
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import dsa, ec, rsa
+from cryptography.hazmat.primitives.asymmetric import dsa, ec, padding, rsa, utils
 from lxml import etree
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from signxml import (
     CanonicalizationMethod,
     DigestAlgorithm,
+    ExternalSigningKey,
     InvalidCertificate,
     InvalidDigest,
     InvalidInput,
@@ -33,6 +37,7 @@ from signxml import (
     SignatureConstructionMethod,
     SignatureMethod,
     SignatureReference,
+    SigningRequest,
     VerifyResult,
     XMLSignatureProcessor,
     XMLSigner,
@@ -1297,6 +1302,209 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         with self.assertRaisesRegex(InvalidInput, "Signature method RSA_SHA1 forbidden by configuration"):
             verifier.verify(signed, x509_cert=cert)
         verifier.verify(signed, x509_cert=cert, expect_config=sha1_ok_example_cert)
+
+
+class TestExternalSigning(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        cls.other_rsa_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        cls.ec_key = ec.generate_private_key(ec.SECP256R1())
+        cls.dsa_key = dsa.generate_private_key(key_size=2048)
+        name = x509.Name([x509.NameAttribute(x509.oid.NameOID.COMMON_NAME, "External signing test")])
+        now = datetime.now(timezone.utc)
+        cls.cert = (
+            x509.CertificateBuilder()
+            .subject_name(name)
+            .issuer_name(name)
+            .public_key(cls.rsa_key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - timedelta(minutes=1))
+            .not_valid_after(now + timedelta(days=1))
+            .add_extension(x509.KeyUsage(True, False, False, False, False, False, False, None, None), critical=True)
+            .sign(cls.rsa_key, hashes.SHA256())
+        )
+
+    @staticmethod
+    def provider_sign(key, request, prehashed=False):
+        data = request.digest if prehashed else request.data
+        algorithm = utils.Prehashed(request.hash_algorithm) if prehashed else request.hash_algorithm
+        if isinstance(key, rsa.RSAPrivateKey):
+            rsa_padding = (
+                padding.PKCS1v15()
+                if request.signature_algorithm.name.startswith("RSA_")
+                else padding.PSS(
+                    mgf=padding.MGF1(request.hash_algorithm), salt_length=request.hash_algorithm.digest_size
+                )
+            )
+            return key.sign(data, rsa_padding, algorithm)
+        if isinstance(key, ec.EllipticCurvePrivateKey):
+            return key.sign(data, ec.ECDSA(algorithm))
+        return key.sign(data, algorithm)
+
+    def test_asymmetric_methods_with_message_and_digest_providers(self):
+        for algorithm in SignatureMethod:
+            if "SHA1" in algorithm.name or algorithm.name.startswith("HMAC_"):
+                continue
+            private_key = self.rsa_key
+            if algorithm.name.startswith("ECDSA_"):
+                private_key = self.ec_key
+            elif algorithm.name.startswith("DSA_"):
+                private_key = self.dsa_key
+            for prehashed in (False, True):
+                with self.subTest(algorithm=algorithm, prehashed=prehashed):
+                    callback = Mock(side_effect=partial(self.provider_sign, private_key, prehashed=prehashed))
+                    key = ExternalSigningKey(public_key=private_key.public_key(), signer=callback)
+                    signed = XMLSigner(signature_algorithm=algorithm, digest_algorithm=DigestAlgorithm.SHA512).sign(
+                        etree.fromstring(b'<Test Id="test"><Value>signed</Value></Test>'), key=key
+                    )
+                    verified = XMLVerifier().verify(etree.tostring(signed), require_x509=False)
+                    self.assertEqual(verified.signed_xml.find("Value").text, "signed")
+                    callback.assert_called_once()
+                    self.assertEqual(callback.call_args.args[0].signature_algorithm, algorithm)
+                    if algorithm == SignatureMethod.DSA_SHA256:
+                        signature = b64decode(signed.find("ds:Signature/ds:SignatureValue", namespaces).text)
+                        q = private_key.public_key().public_numbers().parameter_numbers.q
+                        self.assertEqual(len(signature), 2 * ((q.bit_length() + 7) // 8))
+                    signed.find("Value").text = "changed"
+                    with self.assertRaises(InvalidDigest):
+                        XMLVerifier().verify(etree.tostring(signed), require_x509=False)
+
+    def test_ec_signature_widths(self):
+        for curve, width in ((ec.SECP256R1(), 64), (ec.SECP384R1(), 96), (ec.SECP521R1(), 132)):
+            with self.subTest(curve=curve.name):
+                private_key = ec.generate_private_key(curve)
+                key = ExternalSigningKey(
+                    public_key=private_key.public_key(), signer=partial(self.provider_sign, private_key)
+                )
+                signed = XMLSigner(signature_algorithm=SignatureMethod.ECDSA_SHA512).sign(
+                    etree.fromstring(b"<Test/>"), key=key
+                )
+                signature = b64decode(signed.find("ds:Signature/ds:SignatureValue", namespaces).text)
+                self.assertEqual(len(signature), width)
+                XMLVerifier().verify(etree.tostring(signed), require_x509=False)
+
+    def test_local_and_external_rsa_match_for_all_constructions(self):
+        callback = Mock(side_effect=lambda request: self.provider_sign(self.rsa_key, request, prehashed=True))
+        key = ExternalSigningKey(public_key=self.rsa_key.public_key(), signer=callback)
+        for method in methods:
+            with self.subTest(method=method):
+                root = etree.fromstring(b'<Test Id="test"><Value>signed</Value></Test>')
+                local = XMLSigner(method=method).sign(root, key=self.rsa_key, cert=[self.cert])
+                remote = XMLSigner(method=method).sign(root, key=key, cert=[self.cert])
+                self.assertEqual(etree.tostring(local), etree.tostring(remote))
+                if method == methods.detached:
+                    envelope = etree.Element("Envelope")
+                    envelope.extend([root, remote])
+                    remote = envelope
+                XMLVerifier().verify(etree.tostring(remote), x509_cert=self.cert)
+        self.assertEqual(callback.call_count, 3)
+
+    def test_xades_request_contains_final_signed_info(self):
+        def sign(request):
+            self.assertIsInstance(request, SigningRequest)
+            self.assertEqual(request.signature_algorithm, SignatureMethod.RSA_SHA384)
+            self.assertEqual(request.digest, hashlib.sha384(request.data).digest())
+            self.assertIsInstance(request.hash_algorithm, hashes.SHA384)
+            info = etree.fromstring(request.data)
+            self.assertEqual(len(info.findall("ds:Reference", namespaces)), 3)
+            with self.assertRaises(FrozenInstanceError):
+                request.data = b"different"
+            return self.provider_sign(self.rsa_key, request, prehashed=True)
+
+        callback = Mock(side_effect=sign)
+        key = ExternalSigningKey(public_key=self.rsa_key.public_key(), signer=callback)
+        signed = XAdESSigner(signature_algorithm=SignatureMethod.RSA_SHA384).sign(
+            etree.fromstring(b"<Test/>"), key=key, cert=[self.cert]
+        )
+        self.assertEqual(len(XAdESVerifier().verify(etree.tostring(signed), x509_cert=self.cert)), 3)
+        self.assertIsNotNone(signed.find("ds:Signature/ds:KeyInfo/ds:KeyValue", namespaces))
+        callback.assert_called_once()
+
+    def test_certificate_formats_and_custom_key_info(self):
+        key = ExternalSigningKey(
+            public_key=self.rsa_key.public_key(), signer=lambda request: self.provider_sign(self.rsa_key, request)
+        )
+        pem = self.cert.public_bytes(serialization.Encoding.PEM)
+        for cert in (pem, pem.decode(), [pem], [pem.decode()], [self.cert]):
+            for custom_key_info in (False, True):
+                with self.subTest(cert_type=type(cert), custom_key_info=custom_key_info):
+                    key_info = None
+                    if custom_key_info:
+                        key_info = etree.fromstring(
+                            b'<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:KeyName>test</ds:KeyName></ds:KeyInfo>'
+                        )
+                    signed = XMLSigner().sign(etree.fromstring(b"<Test/>"), key=key, cert=cert, key_info=key_info)
+                    XMLVerifier().verify(etree.tostring(signed), x509_cert=self.cert)
+
+    def test_rejects_configuration_errors_before_provider_call(self):
+        callback = Mock()
+        for public_key, algorithm, kwargs, error in (
+            (self.rsa_key.public_key(), SignatureMethod.ECDSA_SHA256, {}, "incompatible"),
+            (self.ec_key.public_key(), SignatureMethod.RSA_SHA256, {}, "incompatible"),
+            (self.dsa_key.public_key(), SignatureMethod.RSA_SHA256, {}, "incompatible"),
+            (self.rsa_key.public_key(), SignatureMethod.HMAC_SHA256, {}, "incompatible"),
+            (self.rsa_key.public_key(), SignatureMethod.RSA_SHA256, {"passphrase": b""}, "passphrase"),
+            (self.other_rsa_key.public_key(), SignatureMethod.RSA_SHA256, {"cert": [self.cert]}, "certificate"),
+        ):
+            with self.subTest(algorithm=algorithm, error=error):
+                key = ExternalSigningKey(public_key=public_key, signer=callback)
+                with self.assertRaisesRegex(InvalidInput, error):
+                    XMLSigner(signature_algorithm=algorithm).sign(etree.fromstring(b"<Test/>"), key=key, **kwargs)
+        callback.assert_not_called()
+        with self.assertRaisesRegex(InvalidInput, "public key"):
+            ExternalSigningKey(public_key=self.rsa_key, signer=callback)
+        with self.assertRaisesRegex(InvalidInput, "callable"):
+            ExternalSigningKey(public_key=self.rsa_key.public_key(), signer=None)
+
+    def test_provider_errors_propagate_without_retry_or_input_mutation(self):
+        error = TimeoutError("provider timeout")
+        callback = Mock(side_effect=error)
+        key = ExternalSigningKey(public_key=self.rsa_key.public_key(), signer=callback)
+        root = etree.fromstring(b"<Test/>")
+        with self.assertRaises(TimeoutError) as raised:
+            XMLSigner().sign(root, key=key)
+        self.assertIs(raised.exception, error)
+        callback.assert_called_once()
+        self.assertEqual(etree.tostring(root), b"<Test/>")
+
+    def test_bad_provider_results_are_rejected(self):
+        callbacks = [
+            lambda request: b"invalid",
+            lambda request: self.provider_sign(self.other_rsa_key, request),
+            lambda request: self.rsa_key.sign(request.digest, padding.PKCS1v15(), request.hash_algorithm),
+            lambda request: self.rsa_key.sign(
+                request.data,
+                padding.PSS(mgf=padding.MGF1(request.hash_algorithm), salt_length=32),
+                request.hash_algorithm,
+            ),
+            lambda request: b64encode(self.provider_sign(self.rsa_key, request)),
+        ]
+        for callback in callbacks:
+            with self.subTest(callback=callback):
+                key = ExternalSigningKey(public_key=self.rsa_key.public_key(), signer=callback)
+                with self.assertRaisesRegex(InvalidSignature, "External signer returned"):
+                    XMLSigner().sign(etree.fromstring(b"<Test/>"), key=key)
+        for value in (None, "base64", bytearray(b"signature")):
+            with self.subTest(value=value):
+                key = ExternalSigningKey(public_key=self.rsa_key.public_key(), signer=Mock(return_value=value))
+                with self.assertRaisesRegex(InvalidInput, "signature bytes"):
+                    XMLSigner().sign(etree.fromstring(b"<Test/>"), key=key)
+
+    def test_wrong_pss_salt_length_and_malformed_der_are_rejected(self):
+        key = ExternalSigningKey(
+            public_key=self.rsa_key.public_key(),
+            signer=lambda request: self.rsa_key.sign(
+                request.data,
+                padding.PSS(mgf=padding.MGF1(request.hash_algorithm), salt_length=padding.PSS.MAX_LENGTH),
+                request.hash_algorithm,
+            ),
+        )
+        with self.assertRaises(InvalidSignature):
+            XMLSigner(signature_algorithm=SignatureMethod.SHA256_RSA_MGF1).sign(etree.fromstring(b"<Test/>"), key=key)
+        key = ExternalSigningKey(public_key=self.ec_key.public_key(), signer=lambda request: b"not DER")
+        with self.assertRaises(InvalidSignature):
+            XMLSigner(signature_algorithm=SignatureMethod.ECDSA_SHA256).sign(etree.fromstring(b"<Test/>"), key=key)
 
 
 class TestXAdES(unittest.TestCase, LoadExampleKeys):

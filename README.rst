@@ -57,6 +57,61 @@ To make this example self-sufficient for test purposes:
   the correct configuration for the trusted CA or certificate - this determines which signatures your application
   trusts.)
 
+Signing with external private keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``ExternalSigningKey`` to sign with a key held in a cloud service, HSM, hardware token, or OS keystore.
+Supply its public key and a synchronous callback; pass the resulting object through the usual ``key=`` argument.
+The callback receives an immutable ``SigningRequest`` with:
+
+* ``data``: canonicalized SignedInfo, after reference digests and annotations have been added.
+* ``signature_algorithm``: the requested ``SignatureMethod``, including hash and padding requirements.
+* ``hash_algorithm``: the corresponding cryptography hash algorithm.
+* ``digest``: the hash of ``data`` using the signature method's hash, independent of the document reference digest algorithm.
+
+Use ``data`` for message-mode providers or ``digest`` for digest-mode providers. Do not hash ``digest`` again.
+Return raw RSA signature bytes or ASN.1 DER signatures for ECDSA/DSA, following cryptography's conventions.
+SignXML handles XMLDSig encoding and base64. If a provider returns ECDSA/DSA in another format, its adapter must
+convert that format to DER before returning it. The callback must honor the requested algorithm or raise an error.
+
+For example, an application with an authenticated AWS KMS client and an RSA signing key can use the
+`KMS Sign API <https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html>`_ in digest mode:
+
+.. code-block:: python
+
+    from cryptography.hazmat.primitives.serialization import load_der_public_key
+    from signxml import ExternalSigningKey, SigningRequest, SignatureMethod, XMLSigner
+
+    # kms_client and key_id are supplied by the application.
+    public_key = load_der_public_key(kms_client.get_public_key(KeyId=key_id)["PublicKey"])
+
+    def sign_with_kms(request: SigningRequest) -> bytes:
+        if request.signature_algorithm != SignatureMethod.RSA_SHA256:
+            raise ValueError("This adapter supports RSA-SHA256 only")
+        response = kms_client.sign(
+            KeyId=key_id,
+            Message=request.digest,
+            MessageType="DIGEST",
+            SigningAlgorithm="RSASSA_PKCS1_V1_5_SHA_256",
+        )
+        return response["Signature"]
+
+    key = ExternalSigningKey(public_key=public_key, signer=sign_with_kms)
+    signed_root = XMLSigner().sign(root, key=key)
+
+Pass ``cert=`` as usual when embedding an X.509 certificate or chain. Its first certificate must match the
+external public key. Without ``cert=`` or custom ``key_info=``, SignXML includes the public key in KeyValue.
+``XAdESSigner`` accepts the same key object. External signing supports RSA PKCS#1 v1.5, RSA-PSS, ECDSA, and DSA;
+it does not support HMAC or use ``passphrase``. RSA-PSS requires MGF1 with the signature hash and a salt whose
+length equals that hash's digest size.
+
+SignXML verifies the callback's signature against the supplied public key before inserting it. This catches
+wrong-key responses, incorrect padding, and accidental double hashing; it does not validate certificate trust
+or EV status. The application remains responsible for custom KeyInfo content and selecting the intended provider/key.
+The callback is invoked once per signature. Provider exceptions propagate unchanged, with no automatic retries
+or fallback to a local key. Applications own authentication, provider SDKs, timeouts, retries, and response decoding.
+This interface is synchronous; it does not provide a persisted prepare/complete workflow for deferred approvals.
+
 .. _verifying-saml-assertions:
 
 Verifying SAML assertions
