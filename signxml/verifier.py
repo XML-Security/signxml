@@ -235,41 +235,55 @@ class XMLVerifier(XMLSignatureProcessor):
         transforms_node: etree._Element,
         signature: etree._Element,
     ):
-        transforms, c14n_applied = [], False
+        transforms = []
         if transforms_node is not None:
             transforms = self._findall(transforms_node, "Transform")
-
+        signature_index = None
         for transform in transforms:
-            if transform.get("Algorithm") == SignatureConstructionMethod.enveloped.value:
-                _remove_sig(signature, idempotent=True)
-
-        for transform in transforms:
-            if transform.get("Algorithm") == "http://www.w3.org/2000/09/xmldsig#base64":
+            algorithm = transform.get("Algorithm")
+            if algorithm == "http://www.w3.org/2000/09/xmldsig#base64":
                 if isinstance(payload, etree._Element):
                     # XMLDSig 6.6.2: concatenate text nodes in document order before decoding.
                     payload = "".join(cast(Iterable[str], payload.itertext()))
-                payload = b64decode(payload)
-
-        for transform in transforms:
-            algorithm = transform.get("Algorithm")
-            try:
-                c14n_algorithm_from_transform = CanonicalizationMethod(algorithm)
-            except ValueError:
+                payload = b64decode(payload or b"")
+                signature_index = None
                 continue
-            inclusive_ns_prefixes = self._get_inclusive_ns_prefixes(transform)
+            if algorithm != SignatureConstructionMethod.enveloped.value:
+                try:
+                    c14n_algorithm = CanonicalizationMethod(algorithm)
+                except ValueError:
+                    raise InvalidInput(f"Unsupported transform algorithm: {algorithm}")
 
-            # Create a separate copy of the node so we can modify the tree and avoid any c14n inconsistencies from
-            # namespaces propagating from parent nodes. The lxml docs recommend using copy.deepcopy for this, but it
-            # doesn't seem to preserve namespaces. It would be nice to find a less heavy-handed way of doing this.
-            payload = self._fromstring(self._tostring(payload))
+            # XMLDSig 4.4.3.2: XML transforms parse octet streams before processing.
+            if isinstance(payload, (str, bytes)):
+                payload = self._fromstring(payload)
+                if signature_index is not None:
+                    signature = list(payload.iter(ds_tag("Signature")))[signature_index]
 
-            payload = self._c14n(
-                payload, algorithm=c14n_algorithm_from_transform, inclusive_ns_prefixes=inclusive_ns_prefixes
-            )
-            c14n_applied = True
+            if algorithm == SignatureConstructionMethod.enveloped.value:
+                if payload is signature:
+                    payload = None  # The enveloped transform can produce an empty node-set.
+                elif signature in (() if payload is None else payload.iter(ds_tag("Signature"))):
+                    _remove_sig(signature, idempotent=True)
+                signature_index = None
+            elif payload is None:
+                payload = b""
+            else:
+                # Preserve the containing signature's identity across canonicalization and reparsing.
+                signature_index = next(
+                    (i for i, node in enumerate(payload.iter(ds_tag("Signature"))) if node is signature), None
+                )
+                # Retain the existing subtree-copy behavior for canonicalization.
+                payload = self._fromstring(self._tostring(payload))
+                payload = self._c14n(
+                    payload,
+                    algorithm=c14n_algorithm,
+                    inclusive_ns_prefixes=self._get_inclusive_ns_prefixes(transform),
+                )
 
-        if not c14n_applied and not isinstance(payload, (str, bytes)):
-            # Create a separate copy of the node, see above
+        if payload is None:
+            return b""
+        if not isinstance(payload, (str, bytes)):
             payload = self._fromstring(self._tostring(payload))
             payload = self._c14n(payload, algorithm=self.config.default_reference_c14n_method)
         return payload

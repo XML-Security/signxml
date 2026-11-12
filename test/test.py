@@ -151,6 +151,49 @@ class LoadExampleKeys:
 
 
 class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
+    def test_octet_stream_canonicalization(self):
+        # Independently signed by xmlsec 1.3.13, with HMAC key b"secret".
+        payload = b'<data b="2" a="1">hello</data>'
+        for filename, encoded in (("bytes-to-c14n.xml", payload), ("base64-to-c14n.xml", b64encode(payload))):
+            with self.subTest(filename=filename):
+                root = etree.parse(os.path.join(os.path.dirname(__file__), filename))
+                result = XMLVerifier().verify(
+                    root,
+                    hmac_key=b"secret",
+                    uri_resolver=Mock(return_value=encoded),
+                    expect_config=SignatureConfiguration(require_x509=False),
+                )
+                self.assertEqual(result.signed_data, b'<data a="1" b="2">hello</data>')
+
+    def test_transform_order_and_xml_parsing(self):
+        verifier = XMLVerifier()
+        verifier.config = SignatureConfiguration()
+        c14n = CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0_WITH_COMMENTS.value
+        transforms = etree.Element(ds_tag("Transforms"))
+        etree.SubElement(transforms, ds_tag("Transform"), Algorithm=c14n)
+        etree.SubElement(transforms, ds_tag("Transform"), Algorithm=methods.enveloped.value)
+        payload = etree.fromstring(
+            b'<data xmlns:ds="http://www.w3.org/2000/09/xmldsig#">'
+            b'<!--external comment--><ds:Signature Id="other"/><ds:Signature Id="active"/></data>'
+        )
+        result = verifier._apply_transforms(payload, transforms_node=transforms, signature=payload[-1])
+        self.assertIn(b'Id="other"', result)
+        self.assertNotIn(b'Id="active"', result)
+        # An explicit C14N before the enveloped transform still needs final implicit C14N.
+        self.assertNotIn(b"<!--", result)
+        transforms.remove(transforms[-1])
+        result = verifier._apply_transforms(payload, transforms_node=transforms, signature=payload[-1])
+        self.assertIn(b"<!--external comment-->", result)
+        with self.assertRaisesRegex(InvalidInput, "DTD"):
+            verifier._apply_transforms(
+                b'<!DOCTYPE data [<!ENTITY e "payload">]><data>&e;</data>',
+                transforms_node=transforms,
+                signature=payload[-1],
+            )
+        transforms[0].set("Algorithm", "urn:unsupported-transform")
+        with self.assertRaisesRegex(InvalidInput, "Unsupported transform"):
+            verifier._apply_transforms(payload, transforms_node=transforms, signature=payload[-1])
+
     def test_same_document_comments(self):
         # Independently signed by xmlsec 1.3.13, with HMAC key b"secret".
         config = SignatureConfiguration(require_x509=False)
@@ -1749,6 +1792,16 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
                 kwargs.update(validate_schema=False)
             if "sigPolStore" in sig_file:
                 kwargs.update(expect_signature_policy=self.signature_policy)
+            if (
+                doc.find(
+                    './/ds:Transform[@Algorithm="http://www.w3.org/TR/1999/REC-xpath-19991116"]',
+                    namespaces=namespaces,
+                )
+                is not None
+            ):
+                with self.assertRaisesRegex(InvalidInput, "Unsupported transform"):
+                    XAdESVerifier().verify(doc, **kwargs)
+                continue
             for condition, error in error_conditions.items():
                 if condition in sig_file:
                     with self.assertRaises(error):
