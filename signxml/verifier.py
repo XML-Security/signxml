@@ -234,6 +234,7 @@ class XMLVerifier(XMLSignatureProcessor):
         *,
         transforms_node: etree._Element,
         signature: etree._Element,
+        payload_is_parsed: bool = False,
     ):
         transforms = []
         if transforms_node is not None:
@@ -257,6 +258,7 @@ class XMLVerifier(XMLSignatureProcessor):
             # XMLDSig 4.4.3.2: XML transforms parse octet streams before processing.
             if isinstance(payload, (str, bytes)):
                 payload = self._fromstring(payload)
+                payload_is_parsed = True
                 self._reject_manifests(payload)
                 if signature_index is not None:
                     signature = list(payload.iter(ds_tag("Signature")))[signature_index]
@@ -274,8 +276,9 @@ class XMLVerifier(XMLSignatureProcessor):
                 signature_index = next(
                     (i for i, node in enumerate(payload.iter(ds_tag("Signature"))) if node is signature), None
                 )
-                # Retain the existing subtree-copy behavior for canonicalization.
-                payload = self._fromstring(self._tostring(payload))
+                # External resolver elements still need the configured parser's normalization.
+                if not payload_is_parsed:
+                    payload = self._fromstring(self._tostring(payload))
                 payload = self._c14n(
                     payload,
                     algorithm=c14n_algorithm,
@@ -285,7 +288,8 @@ class XMLVerifier(XMLSignatureProcessor):
         if payload is None:
             return b""
         if not isinstance(payload, (str, bytes)):
-            payload = self._fromstring(self._tostring(payload))
+            if not payload_is_parsed:
+                payload = self._fromstring(self._tostring(payload))
             payload = self._c14n(payload, algorithm=self.config.default_reference_c14n_method)
         return payload
 
@@ -692,13 +696,15 @@ class XMLVerifier(XMLSignatureProcessor):
         payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
         if isinstance(payload, etree._Element):
             self._reject_manifests(payload)
-        if reference.get("URI") == "" or reference.get("URI").startswith("#"):
+        same_document = reference.get("URI") == "" or reference.get("URI").startswith("#")
+        if same_document:
             # XMLDSig 4.4.3.3: same-document references omit comments before applying transforms.
             etree.strip_tags(payload, etree.Comment)
         payload_c14n = self._apply_transforms(
             payload,
             transforms_node=transforms,
             signature=signature_ref,
+            payload_is_parsed=same_document,
         )
         digest_alg = DigestAlgorithm(digest_method_alg_name)
         self.check_digest_alg_expected(digest_alg)
