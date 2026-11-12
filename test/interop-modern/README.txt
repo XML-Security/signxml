@@ -22,5 +22,3 @@ period; it tests signature interoperability, not certificate-chain policy.
 The X509Digest case additionally exercises the certificate resolver.
 Unsupported Manifest, XPath/XSLT and key lookup cases are explicit skips.
 Truncated HMAC and corrupted signatures must be rejected.
-The existing empty-namespace compatibility option is enabled for these fixtures;
-this suite does not claim that default namespace canonicalization is fixed.

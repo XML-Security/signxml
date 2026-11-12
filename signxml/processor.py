@@ -136,6 +136,10 @@ class XMLSignatureProcessor(XMLProcessor):
 
         c14n = b""
         for node in nodes:
+            if not exclusive:
+                # Reparse as a standalone document to avoid lxml's subtree namespace resets.
+                # XML serialization preserves inherited namespace bindings, including unused ones.
+                node = self._fromstring(self._tostring(node, with_tail=False))
             c14n += etree.tostring(
                 node,
                 method="c14n",

@@ -91,8 +91,6 @@ class TestModernInterop(unittest.TestCase):
                     else None,
                 )
                 verifier = XMLVerifier()
-                # Existing compatibility option; the default-namespace canonicalization issue is deferred.
-                verifier.excise_empty_xmlns_declarations = True
                 verify = partial(verifier.verify, root, expect_config=config, **kwargs)
                 if signature.find("ds:SignedInfo/ds:SignatureMethod/ds:HMACOutputLength", namespaces) is not None:
                     with self.assertRaises((InvalidInput, InvalidSignature)):

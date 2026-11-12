@@ -1091,7 +1091,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
         signed_data = etree.tostring(signed)
         verifier = XMLVerifier()
-        verifier.excise_empty_xmlns_declarations = True
         verifier.verify(signed_data, x509_cert=crt, expect_config=example_cert_config)
 
     def test_elementtree_compat(self):
@@ -1451,6 +1450,37 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             XMLSignatureProcessor()._c14n(doc, algorithm=CanonicalizationMethod.CANONICAL_XML_1_1),
             b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>',
         )
+
+    def test_subtree_c14n_namespaces(self):
+        cases = (
+            (
+                b'<r xmlns="urn:a" xmlns:p="urn:unused"><a><b><c/></b></a>tail</r>',
+                b'<a xmlns="urn:a" xmlns:p="urn:unused"><b><c></c></b></a>',
+            ),
+            (
+                b'<r xmlns="urn:a"><a><b xmlns=""><c/></b></a></r>',
+                b'<a xmlns="urn:a"><b xmlns=""><c></c></b></a>',
+            ),
+            (
+                b'<r xmlns="urn:a"><a><b xmlns="urn:b"><c/></b><d/></a></r>',
+                b'<a xmlns="urn:a"><b xmlns="urn:b"><c></c></b><d></d></a>',
+            ),
+            (
+                b'<r xmlns="urn:a" xmlns:p="urn:p"><a><p:b xmlns:p="urn:q"><c xmlns=""/></p:b></a></r>',
+                b'<a xmlns="urn:a" xmlns:p="urn:p"><p:b xmlns:p="urn:q"><c xmlns=""></c></p:b></a>',
+            ),
+        )
+        for source, expected in cases:
+            root = etree.fromstring(source)
+            for algorithm in (
+                CanonicalizationMethod.CANONICAL_XML_1_0,
+                CanonicalizationMethod.CANONICAL_XML_1_0_WITH_COMMENTS,
+                CanonicalizationMethod.CANONICAL_XML_1_1,
+                CanonicalizationMethod.CANONICAL_XML_1_1_WITH_COMMENTS,
+            ):
+                with self.subTest(source=source, algorithm=algorithm):
+                    self.assertEqual(XMLSignatureProcessor()._c14n(root[0], algorithm=algorithm), expected)
+                    self.assertEqual(etree.tostring(root), source)
 
     def test_xmlns_insulation_of_reference_c14n(self):
         cert, key = self.load_example_keys()
