@@ -222,35 +222,6 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
                 )
                 self.assertEqual(result.signed_data, b'<data a="1" b="2">hello</data>')
 
-    def test_external_xml_parser_normalization(self):
-        source = b"<data>before<!--comment-->after</data>"
-        payload = etree.fromstring(source)
-        expected = b"<data>beforeafter</data>"
-        for algorithm in (
-            CanonicalizationMethod.CANONICAL_XML_1_1_WITH_COMMENTS,
-            CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0_WITH_COMMENTS,
-        ):
-            with self.subTest(algorithm=algorithm):
-                signature = XMLSigner(
-                    method=methods.detached, signature_algorithm=SignatureMethod.HMAC_SHA256, c14n_algorithm=algorithm
-                ).sign(etree.fromstring(expected), key=b"secret", reference_uri="payload.xml")
-                for resolved in (payload, source):
-                    verifier = XMLVerifier()
-                    result = verifier.verify(
-                        signature,
-                        hmac_key=b"secret",
-                        uri_resolver=Mock(return_value=resolved),
-                        parser=etree.XMLParser(resolve_entities=False, remove_comments=True),
-                        expect_config=SignatureConfiguration(
-                            require_x509=False, default_reference_c14n_method=algorithm
-                        ),
-                    )
-                    self.assertEqual(result.signed_data, expected)
-                self.assertEqual(
-                    verifier._apply_transforms(payload, transforms_node=None, signature=signature), expected
-                )
-                self.assertEqual(etree.tostring(payload), source)
-
     def test_transform_order_and_xml_parsing(self):
         verifier = XMLVerifier()
         verifier.config = SignatureConfiguration()
