@@ -1021,9 +1021,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         self.assertIsInstance(e, InvalidInput)
                     elif signature_file.endswith("signature-x509-crt-crl.xml"):
                         self.assertIsInstance(e, InvalidCertificate)
-                    elif signature_file.endswith("signature-retrievalmethod-rawx509crt.xml"):
-                        self.assertIsInstance(e, InvalidInput)
-                    elif signature_file.endswith(os.path.join("merlin-xmldsig-twenty-three", "signature.xml")):
+                    elif signature_file.endswith(
+                        (
+                            "signature-retrievalmethod-rawx509crt.xml",
+                            os.path.join("merlin-xmldsig-twenty-three", "signature.xml"),
+                        )
+                    ):
                         self.assertIsInstance(e, InvalidInput)
                     elif any(x in signature_file for x in unsupported_cases):
                         print("Unsupported test case:", type(e), e)
