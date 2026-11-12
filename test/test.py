@@ -164,17 +164,15 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
                 manifest, key=b"secret", reference_uri="manifest.xml" if method == methods.detached else None
             )
             for resolved in (manifest, etree.tostring(manifest)):
-                with (
-                    self.subTest(method=method, resolved_type=type(resolved)),
-                    self.assertRaisesRegex(InvalidInput, "Manifest elements are not supported"),
-                ):
-                    XMLVerifier().verify(
-                        signed,
-                        hmac_key=b"secret",
-                        expect_config=config,
-                        uri_resolver=Mock(return_value=resolved),
-                        validate_schema=False,
-                    )
+                with self.subTest(method=method, resolved_type=type(resolved)):
+                    with self.assertRaisesRegex(InvalidInput, "Manifest elements are not supported"):
+                        XMLVerifier().verify(
+                            signed,
+                            hmac_key=b"secret",
+                            expect_config=config,
+                            uri_resolver=Mock(return_value=resolved),
+                            validate_schema=False,
+                        )
         # Unrelated application elements named Manifest remain ordinary signed data.
         for xml in (b"<Manifest/>", b'<Manifest xmlns="urn:application"/>'):
             signed = XMLSigner(signature_algorithm=SignatureMethod.HMAC_SHA256).sign(
@@ -707,14 +705,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         )
 
         verifier = XMLVerifier()
-        verifier.excise_empty_xmlns_declarations = True
         with self.assertRaisesRegex(
             InvalidCertificate, "provided x509_cert.*certificate has expired.*SignatureConfiguration"
         ):
             verifier.verify(signed_xml, x509_cert=signing_cert, expect_config=config)
 
         verifier = XMLVerifier()
-        verifier.excise_empty_xmlns_declarations = True
         result = verifier.verify(
             signed_xml,
             x509_cert=signing_cert,
@@ -809,7 +805,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
     def test_xmldsig_interop_examples(self):
         verifier = get_verifier_for_year(2010)
-        verifier.excise_empty_xmlns_declarations = True
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
@@ -966,7 +961,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     elif "pyXMLSecurity" in signature_file:
                         verification_time = datetime(2009, 10, 15, tzinfo=timezone.utc)
                     verifier = get_no_dsig_key_usage_ee_policy_verifier_at_time(verification_time)
-                    verifier.excise_empty_xmlns_declarations = True
                     verifier.verify(
                         sig,
                         require_x509=False,
@@ -1091,7 +1085,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
         signed_data = etree.tostring(signed)
         verifier = XMLVerifier()
-        verifier.excise_empty_xmlns_declarations = True
         verifier.verify(signed_data, x509_cert=crt, expect_config=example_cert_config)
 
     def test_elementtree_compat(self):
@@ -1451,6 +1444,47 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             XMLSignatureProcessor()._c14n(doc, algorithm=CanonicalizationMethod.CANONICAL_XML_1_1),
             b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>',
         )
+
+    def test_excise_empty_xmlns_declarations_is_deprecated_noop(self):
+        source = b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>'
+        doc = etree.fromstring(source)
+        processor = XMLSignatureProcessor()
+        processor.excise_empty_xmlns_declarations = True
+        for algorithm in CanonicalizationMethod:
+            with self.subTest(algorithm=algorithm):
+                with self.assertWarnsRegex(DeprecationWarning, "excise_empty_xmlns_declarations is deprecated"):
+                    self.assertEqual(processor._c14n(doc, algorithm=algorithm), source)
+
+    def test_subtree_c14n_namespaces(self):
+        cases = (
+            (
+                b'<r xmlns="urn:a" xmlns:p="urn:unused"><a><b><c/></b></a>tail</r>',
+                b'<a xmlns="urn:a" xmlns:p="urn:unused"><b><c></c></b></a>',
+            ),
+            (
+                b'<r xmlns="urn:a"><a><b xmlns=""><c/></b></a></r>',
+                b'<a xmlns="urn:a"><b xmlns=""><c></c></b></a>',
+            ),
+            (
+                b'<r xmlns="urn:a"><a><b xmlns="urn:b"><c/></b><d/></a></r>',
+                b'<a xmlns="urn:a"><b xmlns="urn:b"><c></c></b><d></d></a>',
+            ),
+            (
+                b'<r xmlns="urn:a" xmlns:p="urn:p"><a><p:b xmlns:p="urn:q"><c xmlns=""/></p:b></a></r>',
+                b'<a xmlns="urn:a" xmlns:p="urn:p"><p:b xmlns:p="urn:q"><c xmlns=""></c></p:b></a>',
+            ),
+        )
+        for source, expected in cases:
+            root = etree.fromstring(source)
+            for algorithm in (
+                CanonicalizationMethod.CANONICAL_XML_1_0,
+                CanonicalizationMethod.CANONICAL_XML_1_0_WITH_COMMENTS,
+                CanonicalizationMethod.CANONICAL_XML_1_1,
+                CanonicalizationMethod.CANONICAL_XML_1_1_WITH_COMMENTS,
+            ):
+                with self.subTest(source=source, algorithm=algorithm):
+                    self.assertEqual(XMLSignatureProcessor()._c14n(root[0], algorithm=algorithm), expected)
+                    self.assertEqual(etree.tostring(root), source)
 
     def test_xmlns_insulation_of_reference_c14n(self):
         cert, key = self.load_example_keys()
