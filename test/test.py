@@ -151,6 +151,34 @@ class LoadExampleKeys:
 
 
 class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
+    def test_hmac_output_length(self):
+        config = SignatureConfiguration(require_x509=False)
+        for length in ("256", " +0256 ", "40", "160", "257", "0", "-1", "2_56", "256.0", "", "invalid"):
+            with self.subTest(length=length):
+                signer = XMLSigner(signature_algorithm=SignatureMethod.HMAC_SHA256)
+                root = signer.sign(etree.fromstring(b"<data/>"), key=b"secret")
+                info = root.find("ds:Signature/ds:SignedInfo", namespaces)
+                etree.SubElement(info.find("ds:SignatureMethod", namespaces), ds_tag("HMACOutputLength")).text = length
+                # Authenticate the declared length so rejection cannot be attributed to a stale SignatureValue.
+                mac = cryptography.hazmat.primitives.hmac.HMAC(b"secret", hashes.SHA256())
+                mac.update(signer._c14n(info, algorithm=signer.c14n_alg))
+                root.find("ds:Signature/ds:SignatureValue", namespaces).text = b64encode(mac.finalize()).decode()
+                if length in ("256", " +0256 "):
+                    XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config)
+                else:
+                    with self.assertRaisesRegex(InvalidInput, "HMACOutputLength"):
+                        XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config, validate_schema=False)
+
+        method = info.find("ds:SignatureMethod", namespaces)
+        etree.SubElement(method, ds_tag("HMACOutputLength")).text = "256"
+        with self.assertRaisesRegex(InvalidInput, "HMACOutputLength"):
+            XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config, validate_schema=False)
+        method.remove(method[-1])
+        method[0].text = "256"
+        method.set("Algorithm", SignatureMethod.RSA_SHA256.value)
+        with self.assertRaisesRegex(InvalidInput, "only supported for HMAC"):
+            XMLVerifier().verify(root, expect_config=config, validate_schema=False)
+
     def test_octet_stream_canonicalization(self):
         # Independently signed by xmlsec 1.3.13, with HMAC key b"secret".
         payload = b'<data b="2" a="1">hello</data>'
@@ -950,7 +978,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         # with self.assertRaisesRegex(InvalidInput, "Algorithm .+ is not recognized"):
                         #    raise
                     elif "HMACOutputLength" in sig.decode("utf-8"):
-                        self.assertIsInstance(e, (InvalidSignature, InvalidDigest))
+                        self.assertIsInstance(e, (InvalidInput, InvalidSignature))
                     elif signature_file.endswith("signature-rsa-enveloped-bad-digest-val.xml"):
                         # self.assertIsInstance(e, InvalidDigest)
                         self.assertIsInstance(e, InvalidCertificate)

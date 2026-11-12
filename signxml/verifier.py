@@ -454,7 +454,9 @@ class XMLVerifier(XMLSignatureProcessor):
         :param ca_pem_file:
             Filename of a PEM file containing certificate authority information to use when verifying certificate-based
             signatures.
-        :param hmac_key: If using HMAC, a string containing the shared secret.
+        :param hmac_key:
+            If using HMAC, a string containing the shared secret. Only full-length HMAC signatures are supported;
+            an explicit ``HMACOutputLength`` must equal the hash output size in bits.
         :param validate_schema: Whether to validate **data** against the XML Signature schema.
         :param parser:
             Custom XML parser instance to use when parsing **data**. The default parser arguments used by SignXML are:
@@ -527,6 +529,19 @@ class XMLVerifier(XMLSignatureProcessor):
         signature_value = self._find(signature, "SignatureValue")
         signature_alg = SignatureMethod(signature_method.get("Algorithm"))
         self.check_signature_alg_expected(signature_alg)
+        hmac_output_lengths = self._findall(signature_method, "HMACOutputLength")
+        if hmac_output_lengths:
+            # Validate the XML Schema integer syntax and cardinality even if general schema validation is disabled.
+            try:
+                self.validate_schema(signature_method)
+            except etree.DocumentInvalid as exc:
+                raise InvalidInput("Invalid HMACOutputLength") from exc
+            if not signature_alg.name.startswith("HMAC_"):
+                raise InvalidInput("HMACOutputLength is only supported for HMAC signatures")
+            output_length = int(hmac_output_lengths[0].text)
+            hash_bits = digest_algorithm_implementations[signature_alg]().digest_size * 8
+            if output_length != hash_bits:
+                raise InvalidInput(f"HMACOutputLength must be {hash_bits} bits; truncated HMAC is not supported")
         raw_signature = b64decode(signature_value.text)
         x509_data = signature.find("ds:KeyInfo/ds:X509Data", namespaces=namespaces)
         key_value = signature.find("ds:KeyInfo/ds:KeyValue", namespaces=namespaces)
