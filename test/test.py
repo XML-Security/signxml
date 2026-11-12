@@ -151,6 +151,37 @@ class LoadExampleKeys:
 
 
 class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
+    def test_reject_manifests(self):
+        config = SignatureConfiguration(require_x509=False)
+        manifest = etree.fromstring(
+            b'<ds:Manifest xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="manifest">'
+            b'<ds:Reference URI="unchecked.xml"><ds:DigestMethod '
+            b'Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>'
+            b"<ds:DigestValue>AA==</ds:DigestValue></ds:Reference></ds:Manifest>"
+        )
+        for method in methods:
+            signed = XMLSigner(method=method, signature_algorithm=SignatureMethod.HMAC_SHA256).sign(
+                manifest, key=b"secret", reference_uri="manifest.xml" if method == methods.detached else None
+            )
+            for resolved in (manifest, etree.tostring(manifest)):
+                with (
+                    self.subTest(method=method, resolved_type=type(resolved)),
+                    self.assertRaisesRegex(InvalidInput, "Manifest elements are not supported"),
+                ):
+                    XMLVerifier().verify(
+                        signed,
+                        hmac_key=b"secret",
+                        expect_config=config,
+                        uri_resolver=Mock(return_value=resolved),
+                        validate_schema=False,
+                    )
+        # Unrelated application elements named Manifest remain ordinary signed data.
+        for xml in (b"<Manifest/>", b'<Manifest xmlns="urn:application"/>'):
+            signed = XMLSigner(signature_algorithm=SignatureMethod.HMAC_SHA256).sign(
+                etree.fromstring(xml), key=b"secret"
+            )
+            XMLVerifier().verify(signed, hmac_key=b"secret", expect_config=config)
+
     def test_hmac_output_length(self):
         config = SignatureConfiguration(require_x509=False)
         for length in ("256", " +0256 ", "40", "160", "257", "0", "-1", "2_56", "256.0", "", "invalid"):
@@ -922,6 +953,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
+                    if etree.fromstring(sig).find(".//ds:Manifest", namespaces) is not None:
+                        with self.assertRaisesRegex(
+                            InvalidInput, "(Manifest elements|DTD declarations) are not supported"
+                        ):
+                            XMLVerifier().verify(sig)
+                        continue
                     verification_time = datetime(2010 if "phaos" in signature_file else 2014, 1, 1, tzinfo=timezone.utc)
                     if filename in pinned_cert_cases:
                         _, year = pinned_cert_cases[filename]
@@ -1806,6 +1843,10 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
             print("Verifying", sig_file)
             with open(sig_file, "rb") as fh:
                 doc = etree.parse(fh)
+            if doc.find(".//ds:Manifest", namespaces) is not None:
+                with self.assertRaisesRegex(InvalidInput, "Manifest elements are not supported"):
+                    XAdESVerifier().verify(doc)
+                continue
             cert = doc.find(".//{http://www.w3.org/2000/09/xmldsig#}X509Certificate").text
             expect_config = xades_sha1_ok
             verification_time = get_cert_midpoint_verification_time(cert)
