@@ -5,6 +5,7 @@ See `SignXML documentation <#synopsis>`_ for examples.
 
 from .algorithms import CanonicalizationMethod, DigestAlgorithm, SignatureConstructionMethod, SignatureMethod
 from .exceptions import InvalidCertificate, InvalidDigest, InvalidInput, InvalidSignature
+from .external import ExternalSigningKey, SigningRequest
 from .processor import XMLSignatureProcessor
 from .signer import SignatureReference, XMLSigner
 from .util import namespaces

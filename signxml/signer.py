@@ -19,6 +19,7 @@ from .algorithms import (
     digest_algorithm_implementations,
 )
 from .exceptions import InvalidInput
+from .external import ExternalSigningKey, SigningRequest
 from .processor import XMLSignatureProcessor
 from .util import (
     SigningSettings,
@@ -144,7 +145,13 @@ class XMLSigner(XMLSignatureProcessor):
         self,
         data,
         *,
-        key: str | bytes | rsa.RSAPrivateKey | dsa.DSAPrivateKey | ec.EllipticCurvePrivateKey | None = None,
+        key: str
+        | bytes
+        | rsa.RSAPrivateKey
+        | dsa.DSAPrivateKey
+        | ec.EllipticCurvePrivateKey
+        | ExternalSigningKey
+        | None = None,
         passphrase: bytes | None = None,
         cert: str | list[str] | list[x509.Certificate] | None = None,
         reference_uri: str | list[str] | list[SignatureReference] | None = None,
@@ -166,7 +173,9 @@ class XMLSigner(XMLSignatureProcessor):
             containing a PEM-formatted key, or a :class:`cryptography.hazmat.primitives.asymmetric.rsa.RSAPrivateKey`,
             :class:`cryptography.hazmat.primitives.asymmetric.dsa.DSAPrivateKey`, or
             :class:`cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey` object. When signing with a
-            HMAC, this should be a string containing the shared secret.
+            HMAC, this should be a string containing the shared secret. For a private key held by an external provider,
+            pass an :class:`signxml.ExternalSigningKey`. Its public key must match the first certificate in ``cert``,
+            if supplied. External signing does not use ``passphrase`` and does not support HMAC.
         :param passphrase: Passphrase to use to decrypt the key, if any.
         :param cert:
             X.509 certificate to use for signing. This should be a string containing a PEM-formatted certificate, or an
@@ -221,6 +230,18 @@ class XMLSigner(XMLSignatureProcessor):
             self.id_attributes = (id_attribute,)
 
         cert_chain = self._get_cert_chain(cert)
+        if isinstance(key, ExternalSigningKey):
+            key._check_signature_algorithm(self.sign_alg)
+            if passphrase is not None:
+                raise InvalidInput("passphrase cannot be used with ExternalSigningKey")
+            if cert_chain is not None:
+                certificate = cert_chain[0]
+                if not isinstance(certificate, x509.Certificate):
+                    certificate = x509.load_pem_x509_certificate(add_pem_header(certificate))
+                certificate_key = certificate.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+                external_key = key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+                if certificate_key != external_key:
+                    raise InvalidInput("The signing certificate does not match the external public key")
 
         input_references = self._preprocess_reference_uri(reference_uri)
 
@@ -274,7 +295,9 @@ class XMLSigner(XMLSignatureProcessor):
             sig_root.append(signature_value_node)
         elif any(self.sign_alg.name.startswith(i) for i in ["DSA_", "RSA_", "ECDSA_", "SHA"]):
             hash_alg = digest_algorithm_implementations[self.sign_alg]()
-            if self.sign_alg.name.startswith("DSA_"):
+            if isinstance(signing_settings.key, ExternalSigningKey):
+                signature = signing_settings.key.sign(SigningRequest(signed_info_c14n, self.sign_alg))
+            elif self.sign_alg.name.startswith("DSA_"):
                 signature = signing_settings.key.sign(signed_info_c14n, algorithm=hash_alg)
             elif self.sign_alg.name.startswith("ECDSA_"):
                 signature = signing_settings.key.sign(
@@ -503,16 +526,17 @@ class XMLSigner(XMLSignatureProcessor):
         """
         Add the public components of the key to the signature (see https://www.w3.org/TR/xmldsig-core2/#sec-KeyValue).
         """
+        public_key = key.public_key()
         key_value = SubElement(key_info_node, self._ds_tag("KeyValue"))
         if self.sign_alg.name.startswith("RSA_") or self.sign_alg.name.startswith("SHA"):
             rsa_key_value = SubElement(key_value, self._ds_tag("RSAKeyValue"))
             modulus = SubElement(rsa_key_value, self._ds_tag("Modulus"))
-            modulus.text = b64encode(long_to_bytes(key.public_key().public_numbers().n)).decode()
+            modulus.text = b64encode(long_to_bytes(public_key.public_numbers().n)).decode()
             exponent = SubElement(rsa_key_value, self._ds_tag("Exponent"))
-            exponent.text = b64encode(long_to_bytes(key.public_key().public_numbers().e)).decode()
+            exponent.text = b64encode(long_to_bytes(public_key.public_numbers().e)).decode()
         elif self.sign_alg.name.startswith("DSA_"):
             dsa_key_value = SubElement(key_value, self._ds_tag("DSAKeyValue"))
-            public_numbers = key.public_key().public_numbers()
+            public_numbers = public_key.public_numbers()
             parameters = public_numbers.parameter_numbers
             for field, value in (
                 ("p", parameters.p),
@@ -525,9 +549,9 @@ class XMLSigner(XMLSignatureProcessor):
         elif self.sign_alg.name.startswith("ECDSA_"):
             ec_key_value = SubElement(key_value, dsig11_tag("ECKeyValue"), nsmap={"dsig11": namespaces.dsig11})
             named_curve = SubElement(  # noqa:F841
-                ec_key_value, dsig11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[key.curve.name]
+                ec_key_value, dsig11_tag("NamedCurve"), URI=self.known_ecdsa_curve_oids[public_key.curve.name]
             )
-            public_key = SubElement(ec_key_value, dsig11_tag("PublicKey"))
-            public_key.text = b64encode(
-                key.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+            public_key_node = SubElement(ec_key_value, dsig11_tag("PublicKey"))
+            public_key_node.text = b64encode(
+                public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
             ).decode()
