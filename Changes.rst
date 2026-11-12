@@ -1,3 +1,22 @@
+Changes for v5.3.0 (2026-11-11)
+===============================
+
+-  Preserve default namespaces during inclusive canonicalization (#305)
+
+-  Reject XMLDSig Manifest elements during validation
+
+-  Validate declared HMAC output lengths before signature verification
+
+-  Apply reference transforms in order with XML input conversion
+
+-  Remove comments when resolving same-document references
+
+-  Fix Base64 transforms of byte inputs (#302)
+
+-  Add an external signing key API (#299)
+
+-  Fix DSA signature component widths (#300)
+
 Changes for v5.2.0 (2026-10-18)
 ===============================
 
