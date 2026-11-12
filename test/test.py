@@ -99,7 +99,8 @@ def get_no_dsig_key_usage_ee_policy_verifier_at_time(verification_time):
             return super().verify(data, expect_config=expect_config, **kwargs)
 
         def get_cert_chain_verifier(self, ca_pem_file, ee_policy, ca_policy):
-            ee_policy = x509.verification.ExtensionPolicy.webpki_defaults_ee()
+            if ee_policy is None:
+                ee_policy = x509.verification.ExtensionPolicy.webpki_defaults_ee()
             return super().get_cert_chain_verifier(ca_pem_file, ee_policy, ca_policy)
 
     return _Verifier()
@@ -150,6 +151,50 @@ class LoadExampleKeys:
 
 
 class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
+    # Base64 fixtures were signed with xmlsec 1.3.12, HMAC key b"demo-key", and decoded payload b"Hello".
+    def test_base64_transform_octet_stream(self):
+        with open(os.path.join(os.path.dirname(__file__), "base64-detached.xml"), "rb") as fh:
+            signature = fh.read()
+        config = SignatureConfiguration(require_x509=False, signature_methods=frozenset({SignatureMethod.HMAC_SHA256}))
+        for encoded in (b"SGVsbG8=", b"SGVs\nbG8="):
+            with self.subTest(encoded=encoded):
+                resolver = Mock(return_value=encoded)
+                result = XMLVerifier().verify(signature, hmac_key=b"demo-key", uri_resolver=resolver, expect_config=config)
+                resolver.assert_called_once_with("payload.b64")
+                self.assertEqual(result.signed_data, b"Hello")
+                self.assertIsNone(result.signed_xml)
+
+        with self.assertRaises(InvalidDigest):
+            XMLVerifier().verify(
+                signature, hmac_key=b"demo-key", uri_resolver=lambda uri: b"SGVsbG8h", expect_config=config
+            )
+
+    def test_base64_transform_xml_text_nodes(self):
+        with open(os.path.join(os.path.dirname(__file__), "base64-subtree.xml"), "rb") as fh:
+            signature = fh.read()
+        config = SignatureConfiguration(require_x509=False, signature_methods=frozenset({SignatureMethod.HMAC_SHA256}))
+        for payload_xml in (
+            b'<data Id="payload">SGVsbG8=</data>',
+            b'<data Id="payload">SGVs<part>bG8=</part></data>',
+            b'<data Id="payload">S<part>G<inner>Vs</inner>b</part>G8=</data>',
+            b'<data Id="payload"><part>SGVs</part><part>bG8=</part></data>',
+            b'<data Id="payload" ignored="attribute">SGVs<!--comment--><?pi ignored?>bG8=</data>',
+            b'<data Id="payload">SGVs\n<part>bG8=</part>\n</data>',
+        ):
+            with self.subTest(payload=payload_xml):
+                root = etree.fromstring(signature)
+                payload = etree.fromstring(payload_xml)
+                payload.tail = "outside the referenced subtree"
+                root.replace(root.find("data"), payload)
+                result = XMLVerifier().verify(root, hmac_key=b"demo-key", expect_config=config)
+                self.assertEqual(result.signed_data, b"Hello")
+                self.assertIsNone(result.signed_xml)
+
+        root = etree.fromstring(signature)
+        root.replace(root.find("data"), etree.fromstring(b'<data Id="payload">SGVs<part>bG8h</part></data>'))
+        with self.assertRaises(InvalidDigest):
+            XMLVerifier().verify(root, hmac_key=b"demo-key", expect_config=config)
+
     def test_example_multi(self):
         cert, _ = self.load_example_keys()
         with open(os.path.join(os.path.dirname(__file__), "example.pem")) as fh:
@@ -622,24 +667,29 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 verifier.verify(etree.tostring(signed), ca_pem_file=ca_pem_file)
 
     def test_xmldsig_interop_examples(self):
-        ca_pem_file = os.path.join(os.path.dirname(__file__), "interop", "cacert.pem").encode("utf-8")
-
-        verifier = get_no_dsig_key_usage_ee_policy_verifier_for_year(2015)
+        verifier = get_verifier_for_year(2010)
+        verifier.excise_empty_xmlns_declarations = True
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
-                msg = "basicConstraints.cA must not be asserted in an EE certificate"
-                with self.assertRaisesRegex(InvalidCertificate, msg):
-                    verifier.verify(fh.read(), ca_pem_file=ca_pem_file, expect_config=sha1_ok)
+                sig = fh.read()
+            cert = etree.fromstring(sig).findall(".//ds:X509Certificate", namespaces=namespaces)[-1].text
+            verifier.verify(sig, x509_cert=cert, expect_config=sha1_ok)
 
     def test_xmldsig_interop_TR2012(self):
         def get_x509_cert(**kwargs):
             with open(os.path.join(interop_dir, "TR2012", "rsa-cert.der"), "rb") as fh:
-                return [x509.load_der_x509_certificate(fh.read())]
+                cert = fh.read()
+            self.assertEqual(kwargs["x509_digest"], b64encode(hashlib.sha256(cert).digest()).decode("ascii"))
+            return [x509.load_der_x509_certificate(cert)]
 
         signature_files = glob(os.path.join(interop_dir, "TR2012", "signature*.xml"))
         for signature_file in signature_files:
             print("Verifying", signature_file)
+            x509_digest_case = os.path.basename(signature_file) == "signature-enveloping-x509digest-rsa.xml"
+            expect_config = hmac_only if "hmac" in signature_file else sha1_ok
+            if x509_digest_case:
+                expect_config = replace(expect_config, verification_time=datetime(2005, 1, 1, tzinfo=timezone.utc))
             with open(signature_file, "rb") as fh:
                 try:
                     sig = fh.read()
@@ -648,30 +698,72 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         require_x509=False,
                         hmac_key=b"testkey" if "hmac" in signature_file else None,
                         validate_schema=True,
-                        cert_resolver=get_x509_cert if "x509digest" in signature_file else None,
-                        expect_config=hmac_only if "hmac" in signature_file else sha1_ok,
+                        cert_resolver=get_x509_cert if x509_digest_case else None,
+                        # The DER fixture is the same legacy certificate as Phaos's RSA PEM fixture.
+                        ca_pem_file=(
+                            os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-cert.pem")
+                            if x509_digest_case
+                            else None
+                        ),
+                        ee_policy=x509.verification.ExtensionPolicy.permit_all() if x509_digest_case else None,
+                        expect_config=expect_config,
                     )
                     sig.decode("utf-8")
                 except Exception as e:
                     if "keyinforeference" in signature_file:
                         print("Unsupported test case:", type(e), e)
-                    elif "x509digest" in signature_file:
-                        assert isinstance(e, InvalidCertificate)
                     else:
                         raise
 
     def test_xmldsig_interop(self):
-        def resolver(uri):
+        # These fixtures test XML signatures using known keys, independently of legacy certificate-chain policies.
+        # Values are the signing certificate's index in X509Data and a verification year.
+        pinned_cert_cases = {
+            "enveloping-dsa-x509chain.xml": (-1, 2015),
+            "enveloping-rsa-x509chain.xml": (-1, 2015),
+            **{f"enveloping-sha{bits}-rsa-sha{bits}.xml": (-1, 2015) for bits in (1, 224, 256, 384, 512)},
+            **{f"enveloped-sha256-rsa-sha256-test-{i}.xml": (0, 2017) for i in range(1, 9)},
+            "enveloping-expired-cert.xml": (-1, 2015),
+            "signature-x509-crt.xml": (0, 2005),
+            "signature_with_inclusivenamespaces.xml": (0, 2015),
+            "wsfederation_metadata.xml": (0, 2015),
+        }
+        # Trust the Phaos signing certificates directly, retaining X509Data and issuer/serial resolution coverage.
+        phaos_cert_cases = {
+            **{
+                f"signature-{algorithm}-{method}.xml": f"{algorithm}-cert.pem"
+                for algorithm in ("rsa", "dsa")
+                for method in ("detached", "enveloped", "enveloping")
+            },
+            **{
+                f"signature-rsa-manifest-x509-data{suffix}.xml": "rsa-cert.pem"
+                for suffix in ("", "-cert", "-cert-chain", "-issuer-serial")
+            },
+        }
+
+        def resolver(uri, signature_file):
             if uri == "document.xml":
                 with open(os.path.join(interop_dir, "phaos-xmldsig-three", uri), "rb") as fh:
                     return fh.read()
             elif uri == "http://www.ietf.org/rfc/rfc3161.txt":
                 with open(os.path.join(os.path.dirname(__file__), "rfc3161.txt"), "rb") as fh:
                     return fh.read()
+            elif uri == "http://www.w3.org/TR/xml-stylesheet" and signature_file.endswith("signature-x509-crt.xml"):
+                # Historical response:
+                # https://github.com/lsh123/xmlsec/blob/master/tests/external-data/xml-stylesheet-2005
+                with open(
+                    os.path.join(interop_dir, "merlin-xmldsig-twenty-three", "xml-stylesheet-2005.html"),
+                    encoding="utf-8",
+                ) as fh:
+                    return fh.read().encode("utf-8")
             return None
 
-        def get_x509_cert(signature_file):
-            if "windows_store_signature" in signature_file:
+        def get_x509_cert(signature_file, sig):
+            filename = os.path.basename(signature_file)
+            if filename in pinned_cert_cases:
+                cert_index, _ = pinned_cert_cases[filename]
+                return etree.fromstring(sig).findall(".//ds:X509Certificate", namespaces=namespaces)[cert_index].text
+            elif "windows_store_signature" in signature_file:
                 return open(os.path.join(interop_dir, "xml-crypto", "windows_store_certificate.pem")).read()
             elif "pyXMLSecurity" in signature_file:
                 return open(os.path.join(interop_dir, "pyXMLSecurity", "test.pem")).read()
@@ -679,7 +771,10 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 return None
 
         def get_ca_pem_file(signature_file):
-            if "signature-dsa" in signature_file:
+            filename = os.path.basename(signature_file)
+            if filename in phaos_cert_cases:
+                ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", phaos_cert_cases[filename])
+            elif "signature-dsa" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "dsa-ca-cert.pem")
             elif "signature-rsa" in signature_file:
                 ca_pem_file = os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-ca-cert.pem")
@@ -696,8 +791,11 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             return ca_pem_file.encode("utf-8")
 
         def cert_resolver(x509_issuer_name, x509_serial_number, x509_digest):
-            with open(os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-cert.pem")) as fh:
-                return [fh.read()]
+            with open(os.path.join(interop_dir, "phaos-xmldsig-three", "certs", "rsa-cert.pem"), "rb") as fh:
+                cert = x509.load_pem_x509_certificate(fh.read())
+            self.assertEqual(x509_issuer_name, cert.issuer.rfc4514_string())
+            self.assertEqual(x509_serial_number, str(cert.serial_number))
+            return [cert]
 
         signature_files = glob(os.path.join(interop_dir, "*", "signature*.xml"))
         signature_files += glob(os.path.join(interop_dir, "aleksey*", "*.xml"))
@@ -705,6 +803,7 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         signature_files += glob(os.path.join(interop_dir, "pyXMLSecurity", "*.xml"))
         for signature_file in signature_files:
             print("Verifying", signature_file)
+            filename = os.path.basename(signature_file)
             hmac_key = None
             expect_config = sha1_ok
             if "hmac" in signature_file:
@@ -714,7 +813,10 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                 try:
                     sig = fh.read()
                     verification_time = datetime(2010 if "phaos" in signature_file else 2014, 1, 1, tzinfo=timezone.utc)
-                    if "pyXMLSecurity" in signature_file:
+                    if filename in pinned_cert_cases:
+                        _, year = pinned_cert_cases[filename]
+                        verification_time = datetime(year, 1, 1, tzinfo=timezone.utc)
+                    elif "pyXMLSecurity" in signature_file:
                         verification_time = datetime(2009, 10, 15, tzinfo=timezone.utc)
                     verifier = get_no_dsig_key_usage_ee_policy_verifier_at_time(verification_time)
                     verifier.excise_empty_xmlns_declarations = True
@@ -723,13 +825,20 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         require_x509=False,
                         hmac_key=hmac_key,
                         validate_schema=True,
-                        uri_resolver=resolver,
-                        x509_cert=get_x509_cert(signature_file),
+                        uri_resolver=partial(resolver, signature_file=signature_file),
+                        x509_cert=get_x509_cert(signature_file, sig),
                         cert_resolver=cert_resolver if "issuer-serial" in signature_file else None,
                         ca_pem_file=get_ca_pem_file(signature_file),
+                        ee_policy=(
+                            x509.verification.ExtensionPolicy.permit_all() if filename in phaos_cert_cases else None
+                        ),
                         expect_config=expect_config,
                     )
                 except Exception as e:
+                    if filename != "enveloping-expired-cert.xml" and (
+                        filename in pinned_cert_cases or filename in phaos_cert_cases
+                    ):
+                        raise
                     unsupported_cases = (
                         "xpath-transform",
                         "xslt-transform",
@@ -742,19 +851,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     )
                     bad_interop_cases = (
                         "signature-big",
-                        "enveloping-dsa-x509chain",
                         "enveloping-sha512-hmac-sha512",
-                        "enveloping-sha512-rsa-sha512",
-                        "enveloping-rsa-x509chain",
-                        "enveloping-sha1-rsa-sha1",
-                        "enveloping-sha224-rsa-sha224",
-                        "enveloping-sha256-rsa-sha256",
-                        "enveloping-sha384-rsa-sha384",
                     )
-                    if signature_file.endswith(("expired-cert.xml", "wsfederation_metadata.xml")):
+                    if signature_file.endswith("expired-cert.xml"):
                         with self.assertRaisesRegex(
                             InvalidCertificate,
-                            "certificate (has expired|is not yet valid).*SignatureConfiguration",
+                            "certificate has expired.*SignatureConfiguration",
                         ):
                             raise
                     elif signature_file.endswith("invalid_enveloped_transform.xml"):
@@ -774,8 +876,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         self.assertIsInstance(e, InvalidInput)
                     elif signature_file.endswith("signature-rsa-enveloped-bad-sig.xml"):
                         self.assertIsInstance(e, etree.DocumentInvalid)
-                    elif signature_file.endswith("signature-x509-crt.xml"):
-                        self.assertIsInstance(e, InvalidCertificate)
                     elif signature_file.endswith(("signature-keyname.xml", "signature-x509-sn.xml")):
                         self.assertIsInstance(e, InvalidInput)
                     elif signature_file.endswith("signature-x509-crt-crl.xml"):
