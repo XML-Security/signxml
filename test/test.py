@@ -151,6 +151,43 @@ class LoadExampleKeys:
 
 
 class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
+    def test_same_document_comments(self):
+        # Independently signed by xmlsec 1.3.13, with HMAC key b"secret".
+        config = SignatureConfiguration(require_x509=False)
+        for filename in ("short-id-comments.xml", "empty-uri-comments.xml"):
+            with self.subTest(filename=filename):
+                root = etree.parse(os.path.join(os.path.dirname(__file__), filename)).getroot()
+                result = XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config)
+                self.assertNotIn(b"<!--", result.signed_data)
+                self.assertEqual(len(root.xpath("//comment()")), 1)
+                root.xpath("//comment()")[0].text = "unsigned comment"
+                XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config)
+                root.find("data").text = "tampered"
+                with self.assertRaises(InvalidDigest):
+                    XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config)
+
+    def test_signing_same_document_comments(self):
+        for method in methods:
+            with self.subTest(method=method):
+                root = etree.fromstring(b'<data Id="p">before<!--comment-->after</data>')
+                signed = XMLSigner(
+                    method=method,
+                    signature_algorithm=SignatureMethod.HMAC_SHA256,
+                    c14n_algorithm=CanonicalizationMethod.EXCLUSIVE_XML_CANONICALIZATION_1_0_WITH_COMMENTS,
+                ).sign(root, key=b"secret")
+                if method == methods.detached:
+                    container = etree.Element("root")
+                    container.extend([root, signed])
+                    signed = container
+                result = XMLVerifier().verify(
+                    signed,
+                    hmac_key=b"secret",
+                    expect_config=SignatureConfiguration(require_x509=False),
+                )
+                self.assertNotIn(b"<!--", result.signed_data)
+                self.assertIn(b"beforeafter", result.signed_data)
+                self.assertEqual(len(root.xpath("//comment()")), 1)
+
     # Base64 fixtures were signed with xmlsec 1.3.12, HMAC key b"demo-key", and decoded payload b"Hello".
     def test_base64_transform_octet_stream(self):
         with open(os.path.join(os.path.dirname(__file__), "base64-detached.xml"), "rb") as fh:
@@ -1345,17 +1382,9 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             doc, cert=cert, key=key, reference_uri="#target", exclude_c14n_transform_element=True
         )
 
-        # The default to use is CANONICAL_XML_1_1 (no comments), and since it's not specified in Transforms,
-        # verification without specifying the reference canonicalization algorithm should fail.
-        self.assertRaises(
-            InvalidDigest,
-            XMLVerifier().verify,
-            root,
-            x509_cert=cert,
-            expect_config=example_cert_config,
-        )
+        # Same-document dereferencing removes comments before either canonicalization method.
+        XMLVerifier().verify(root, x509_cert=cert, expect_config=example_cert_config)
 
-        # However, if we use the right configuration, it should verify correctly
         config = SignatureConfiguration(
             default_reference_c14n_method=CanonicalizationMethod.CANONICAL_XML_1_0_WITH_COMMENTS,
             verification_time=example_cert_verification_time,
