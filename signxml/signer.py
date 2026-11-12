@@ -292,6 +292,10 @@ class XMLSigner(XMLSignatureProcessor):
                 # Note: The output of the DSA and ECDSA signers is a DER-encoded ASN.1 sequence of two DER integers.
                 (r, s) = utils.decode_dss_signature(signature)
                 int_len = bits_to_bytes_unit(signing_settings.key.key_size)
+                if self.sign_alg.name.startswith("DSA_"):
+                    # DSA components are sized to q, not the public-key modulus p.
+                    q = signing_settings.key.public_key().public_numbers().parameter_numbers.q
+                    int_len = bits_to_bytes_unit(q.bit_length())
                 signature = long_to_bytes(r, blocksize=int_len) + long_to_bytes(s, blocksize=int_len)
 
             signature_value_node.text = b64encode(signature).decode()

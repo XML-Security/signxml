@@ -213,6 +213,44 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
         self.assertTrue(all(result is results[0] for result in results))
 
 
+class TestDSASignatureEncoding(unittest.TestCase):
+    def test_dsa_sha1_matches_phaos_signature_width(self):
+        # Phaos XML Toolkit supplies a signed document and its private key.
+        # Use its wire format as an independent oracle: our verifier also accepts
+        # oversized, zero-padded components, so a round trip alone misses this bug.
+        fixture_dir = os.path.join(interop_dir, "phaos-xmldsig-three")
+        root = etree.parse(os.path.join(fixture_dir, "signature-dsa-enveloped.xml")).getroot()
+        with open(os.path.join(fixture_dir, "certs", "enc-dsa-key.der"), "rb") as fh:
+            key = serialization.load_der_private_key(fh.read(), password=b"test")
+        with open(os.path.join(fixture_dir, "certs", "dsa-cert.pem"), "rb") as fh:
+            cert = fh.read()
+        fixture_signature = b64decode(root.find(".//ds:SignatureValue", namespaces).text)
+        self.assertEqual(len(fixture_signature), 40)
+        config = replace(sha1_ok, verification_time=datetime(2005, 1, 1, tzinfo=timezone.utc))
+        XMLVerifier().verify(root, x509_cert=cert, expect_config=config)
+
+        root.remove(root.find("ds:Signature", namespaces))
+        signed = XMLSignerWithSHA1(
+            signature_algorithm=SignatureMethod.DSA_SHA1,
+            digest_algorithm=DigestAlgorithm.SHA1,
+            c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_0,
+        ).sign(root, key=key, cert=cert)
+        signature = b64decode(signed.find(".//ds:SignatureValue", namespaces).text)
+        self.assertEqual(len(signature), len(fixture_signature))
+        XMLVerifier().verify(signed, x509_cert=cert, expect_config=config)
+
+    def test_dsa_sha256_signature_width(self):
+        key = dsa.generate_private_key(key_size=2048)
+        self.assertEqual(key.public_key().public_numbers().parameter_numbers.q.bit_length(), 256)
+        signed = XMLSigner(signature_algorithm=SignatureMethod.DSA_SHA256).sign(
+            etree.fromstring(b"<root>DSA-SHA256</root>"), key=key
+        )
+        signature = b64decode(signed.find(".//ds:SignatureValue", namespaces).text)
+        # Two 32-byte components; the 2048-bit modulus must not determine their width.
+        self.assertEqual(len(signature), 64)
+        XMLVerifier().verify(signed, require_x509=False)
+
+
 class TestSignXML(unittest.TestCase, LoadExampleKeys):
     def setUp(self):
         self.example_xml_files = (
