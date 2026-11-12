@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Modernized xmlsec vectors; unsupported features are reported as skips."""
 
 import sys
