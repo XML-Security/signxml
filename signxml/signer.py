@@ -407,10 +407,11 @@ class XMLSigner(XMLSignatureProcessor):
             if isinstance(data, (str, bytes)):
                 raise InvalidInput("When using enveloped signature, **data** must be an XML element")
             doc_root = self.get_root(data)
-            c14n_inputs = [self.get_root(data)]
             if references is not None:
                 # Only sign the referenced element(s)
                 c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
+            else:
+                c14n_inputs = [self.get_root(data)]
 
             signature_placeholders = self._findall(doc_root, "Signature[@Id='placeholder']", xpath=".//")
             if len(signature_placeholders) == 0:
@@ -438,7 +439,6 @@ class XMLSigner(XMLSignatureProcessor):
             if references is None:
                 uri = "#{}".format(data.get("Id", data.get("ID", "object")))
                 references = [SignatureReference(URI=uri)]
-                c14n_inputs = [self.get_root(data)]
             try:
                 c14n_inputs, references = self._get_c14n_inputs_from_references(doc_root, references)
             except InvalidInput:  # Dummy reference URI
