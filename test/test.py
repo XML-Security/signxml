@@ -159,7 +159,9 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
         for encoded in (b"SGVsbG8=", b"SGVs\nbG8="):
             with self.subTest(encoded=encoded):
                 resolver = Mock(return_value=encoded)
-                result = XMLVerifier().verify(signature, hmac_key=b"demo-key", uri_resolver=resolver, expect_config=config)
+                result = XMLVerifier().verify(
+                    signature, hmac_key=b"demo-key", uri_resolver=resolver, expect_config=config
+                )
                 resolver.assert_called_once_with("payload.b64")
                 self.assertEqual(result.signed_data, b"Hello")
                 self.assertIsNone(result.signed_xml)
