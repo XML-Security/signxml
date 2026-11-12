@@ -70,4 +70,9 @@ skip_gitignore = true
 line-length = 120
 
 [tool.ruff.lint]
+ignore = [
+    "SIM102",  # Allow nested if statements.
+    "SIM114",  # Allow separate branches with the same body.
+    "SIM117",  # Allow nested with statements.
+]
 per-file-ignores = {"signxml/__init__.py" = ["F401"], "signxml/xades/__init__.py" = ["F401"], "signxml/verifier.py" = ["E721"]}

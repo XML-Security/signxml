@@ -164,17 +164,15 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
                 manifest, key=b"secret", reference_uri="manifest.xml" if method == methods.detached else None
             )
             for resolved in (manifest, etree.tostring(manifest)):
-                with (
-                    self.subTest(method=method, resolved_type=type(resolved)),
-                    self.assertRaisesRegex(InvalidInput, "Manifest elements are not supported"),
-                ):
-                    XMLVerifier().verify(
-                        signed,
-                        hmac_key=b"secret",
-                        expect_config=config,
-                        uri_resolver=Mock(return_value=resolved),
-                        validate_schema=False,
-                    )
+                with self.subTest(method=method, resolved_type=type(resolved)):
+                    with self.assertRaisesRegex(InvalidInput, "Manifest elements are not supported"):
+                        XMLVerifier().verify(
+                            signed,
+                            hmac_key=b"secret",
+                            expect_config=config,
+                            uri_resolver=Mock(return_value=resolved),
+                            validate_schema=False,
+                        )
         # Unrelated application elements named Manifest remain ordinary signed data.
         for xml in (b"<Manifest/>", b'<Manifest xmlns="urn:application"/>'):
             signed = XMLSigner(signature_algorithm=SignatureMethod.HMAC_SHA256).sign(
@@ -1023,12 +1021,9 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                         self.assertIsInstance(e, InvalidInput)
                     elif signature_file.endswith("signature-x509-crt-crl.xml"):
                         self.assertIsInstance(e, InvalidCertificate)
-                    elif signature_file.endswith(
-                        (
-                            "signature-retrievalmethod-rawx509crt.xml",
-                            os.path.join("merlin-xmldsig-twenty-three", "signature.xml"),
-                        )
-                    ):
+                    elif signature_file.endswith("signature-retrievalmethod-rawx509crt.xml"):
+                        self.assertIsInstance(e, InvalidInput)
+                    elif signature_file.endswith(os.path.join("merlin-xmldsig-twenty-three", "signature.xml")):
                         self.assertIsInstance(e, InvalidInput)
                     elif any(x in signature_file for x in unsupported_cases):
                         print("Unsupported test case:", type(e), e)
@@ -1453,11 +1448,9 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         processor = XMLSignatureProcessor()
         processor.excise_empty_xmlns_declarations = True
         for algorithm in CanonicalizationMethod:
-            with (
-                self.subTest(algorithm=algorithm),
-                self.assertWarnsRegex(DeprecationWarning, "excise_empty_xmlns_declarations is deprecated"),
-            ):
-                self.assertEqual(processor._c14n(doc, algorithm=algorithm), source)
+            with self.subTest(algorithm=algorithm):
+                with self.assertWarnsRegex(DeprecationWarning, "excise_empty_xmlns_declarations is deprecated"):
+                    self.assertEqual(processor._c14n(doc, algorithm=algorithm), source)
 
     def test_subtree_c14n_namespaces(self):
         cases = (
