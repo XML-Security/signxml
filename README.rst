@@ -236,11 +236,6 @@ when generating a signature, set the ``XMLSigner.namespaces`` attribute:
     signer.namespaces = {None: signxml.namespaces.ds}
     signed_root = signer.sign(...)
 
-The ``excise_empty_xmlns_declarations`` option on signers and verifiers is deprecated and has no effect. Remove any
-assignments to this option. Setting it to ``True`` emits a ``DeprecationWarning`` during canonicalization. Empty default
-namespace declarations (``xmlns=""``) are preserved where required; signatures that depended on their removal may no
-longer verify.
-
 Similarly, whitespace in the signed document is significant for XML canonicalization and signature purposes. Do not
 pretty-print the XML after generating the signature, since this can unfortunately render the signature invalid.
 
