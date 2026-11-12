@@ -655,9 +655,14 @@ class XMLVerifier(XMLSignatureProcessor):
 
         verified_signed_info = self._fromstring(verified_signed_info_c14n)
         verify_results: list[VerifyResult] = []
-        for idx, reference in enumerate(self._findall(verified_signed_info, "Reference")):
+        references = self._findall(verified_signed_info, "Reference")
+        for idx, reference in enumerate(references):
+            # get_root() already isolated the input; multiple references need independent trees for their transforms.
+            root_to_verify = self._fromstring(self._tostring(root)) if len(references) > 1 else root
             verify_results.append(
-                self._verify_reference(reference, idx, root, uri_resolver, c14n_algorithm, signature, key_used)
+                self._verify_reference(
+                    reference, idx, root_to_verify, uri_resolver, c14n_algorithm, signature, key_used
+                )
             )
 
         if type(self.config.expect_references) is int and len(verify_results) != self.config.expect_references:
@@ -680,12 +685,11 @@ class XMLVerifier(XMLSignatureProcessor):
         signature,
         signature_key_used,
     ):
-        copied_root = self._fromstring(self._tostring(root))
-        copied_signature_ref = self._get_signature(copied_root)
+        signature_ref = self._get_signature(root)
         transforms = self._find(reference, "Transforms", require=False)
         digest_method_alg_name = self._find(reference, "DigestMethod").get("Algorithm")
         digest_value = self._find(reference, "DigestValue")
-        payload = self._resolve_reference(copied_root, reference, uri_resolver=uri_resolver)
+        payload = self._resolve_reference(root, reference, uri_resolver=uri_resolver)
         if isinstance(payload, etree._Element):
             self._reject_manifests(payload)
         if reference.get("URI") == "" or reference.get("URI").startswith("#"):
@@ -694,7 +698,7 @@ class XMLVerifier(XMLSignatureProcessor):
         payload_c14n = self._apply_transforms(
             payload,
             transforms_node=transforms,
-            signature=copied_signature_ref,
+            signature=signature_ref,
         )
         digest_alg = DigestAlgorithm(digest_method_alg_name)
         self.check_digest_alg_expected(digest_alg)

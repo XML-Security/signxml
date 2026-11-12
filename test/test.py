@@ -266,6 +266,31 @@ class TestVerifyXML(unittest.TestCase, LoadExampleKeys):
                 with self.assertRaises(InvalidDigest):
                     XMLVerifier().verify(root, hmac_key=b"secret", expect_config=config)
 
+    def test_reference_transform_isolation(self):
+        source = (
+            b'<data xmlns:ds="http://www.w3.org/2000/09/xmldsig#" ID="data">'
+            b'<ds:Signature Id="placeholder"/><item ID="item">'
+            b'<!--unsigned comment--><ds:Signature Id="other"/></item></data>'
+        )
+        for references in (["data"], ["data", "item"]):
+            with self.subTest(references=references):
+                root = etree.fromstring(source)
+                signed = XMLSigner(signature_algorithm=SignatureMethod.HMAC_SHA256).sign(
+                    root, key=b"secret", reference_uri=references
+                )
+                self.assertEqual(etree.tostring(root), source)
+                serialized = etree.tostring(signed)
+                result = XMLVerifier().verify(
+                    signed,
+                    hmac_key=b"secret",
+                    expect_config=SignatureConfiguration(require_x509=False, expect_references=len(references)),
+                )
+                self.assertEqual(etree.tostring(signed), serialized)
+                for verified in result if isinstance(result, list) else [result]:
+                    self.assertIsNotNone(verified.signature_xml.find("ds:SignedInfo", namespaces))
+                    self.assertEqual(verified.signed_xml.find(".//ds:Signature", namespaces).get("Id"), "other")
+                    self.assertEqual(verified.signed_xml.xpath(".//comment()"), [])
+
     def test_signing_same_document_comments(self):
         for method in methods:
             with self.subTest(method=method):
