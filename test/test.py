@@ -1453,9 +1453,11 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         processor = XMLSignatureProcessor()
         processor.excise_empty_xmlns_declarations = True
         for algorithm in CanonicalizationMethod:
-            with self.subTest(algorithm=algorithm):
-                with self.assertWarnsRegex(DeprecationWarning, "excise_empty_xmlns_declarations is deprecated"):
-                    self.assertEqual(processor._c14n(doc, algorithm=algorithm), source)
+            with (
+                self.subTest(algorithm=algorithm),
+                self.assertWarnsRegex(DeprecationWarning, "excise_empty_xmlns_declarations is deprecated"),
+            ):
+                self.assertEqual(processor._c14n(doc, algorithm=algorithm), source)
 
     def test_subtree_c14n_namespaces(self):
         cases = (
