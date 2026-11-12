@@ -707,14 +707,12 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
         )
 
         verifier = XMLVerifier()
-        verifier.excise_empty_xmlns_declarations = True
         with self.assertRaisesRegex(
             InvalidCertificate, "provided x509_cert.*certificate has expired.*SignatureConfiguration"
         ):
             verifier.verify(signed_xml, x509_cert=signing_cert, expect_config=config)
 
         verifier = XMLVerifier()
-        verifier.excise_empty_xmlns_declarations = True
         result = verifier.verify(
             signed_xml,
             x509_cert=signing_cert,
@@ -809,7 +807,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
 
     def test_xmldsig_interop_examples(self):
         verifier = get_verifier_for_year(2010)
-        verifier.excise_empty_xmlns_declarations = True
         for signature_file in glob(os.path.join(os.path.dirname(__file__), "interop", "*.xml")):
             print("Verifying", signature_file)
             with open(signature_file, "rb") as fh:
@@ -966,7 +963,6 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
                     elif "pyXMLSecurity" in signature_file:
                         verification_time = datetime(2009, 10, 15, tzinfo=timezone.utc)
                     verifier = get_no_dsig_key_usage_ee_policy_verifier_at_time(verification_time)
-                    verifier.excise_empty_xmlns_declarations = True
                     verifier.verify(
                         sig,
                         require_x509=False,
@@ -1450,6 +1446,16 @@ class TestSignXML(unittest.TestCase, LoadExampleKeys):
             XMLSignatureProcessor()._c14n(doc, algorithm=CanonicalizationMethod.CANONICAL_XML_1_1),
             b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>',
         )
+
+    def test_excise_empty_xmlns_declarations_is_deprecated_noop(self):
+        source = b'<abc xmlns="http://example.com"><foo xmlns="">bar</foo></abc>'
+        doc = etree.fromstring(source)
+        processor = XMLSignatureProcessor()
+        processor.excise_empty_xmlns_declarations = True
+        for algorithm in CanonicalizationMethod:
+            with self.subTest(algorithm=algorithm):
+                with self.assertWarnsRegex(DeprecationWarning, "excise_empty_xmlns_declarations is deprecated"):
+                    self.assertEqual(processor._c14n(doc, algorithm=algorithm), source)
 
     def test_subtree_c14n_namespaces(self):
         cases = (

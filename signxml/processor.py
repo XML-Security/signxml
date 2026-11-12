@@ -5,6 +5,7 @@ import logging
 import threading
 from functools import lru_cache
 from typing import Any, ClassVar
+from warnings import warn
 from xml.etree import ElementTree as stdlibElementTree
 
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -97,6 +98,10 @@ class XMLSignatureProcessor(XMLProcessor):
     known_ecdsa_curve_oids: ClassVar[dict[str, str]] = {curve.name: oid for oid, curve in known_ecdsa_curves.items()}
 
     excise_empty_xmlns_declarations = False
+    """
+    Deprecated compatibility option with no effect on canonicalization. Setting it to ``True`` emits a
+    :class:`DeprecationWarning` when canonicalizing. Empty default namespace declarations are preserved where required.
+    """
 
     id_attributes: tuple[str, ...] = ("Id", "ID", "id", "xml:id")
 
@@ -147,12 +152,12 @@ class XMLSignatureProcessor(XMLProcessor):
                 with_comments=with_comments,
                 inclusive_ns_prefixes=inclusive_ns_prefixes,
             )
-        if exclusive is False and self.excise_empty_xmlns_declarations is True:
-            # Incorrect legacy behavior. See also:
-            # - https://github.com/XML-Security/signxml/issues/193
-            # - http://www.w3.org/TR/xml-c14n, "namespace axis"
-            # - http://www.w3.org/TR/xml-c14n2/#sec-Namespace-Processing
-            c14n = c14n.replace(b' xmlns=""', b"")
+        if self.excise_empty_xmlns_declarations is True:
+            warn(
+                "excise_empty_xmlns_declarations is deprecated and has no effect; remove this setting.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         logger.debug("Canonicalized string (exclusive=%s, with_comments=%s): %s", exclusive, with_comments, c14n)
         return c14n
 
