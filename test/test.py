@@ -1888,6 +1888,19 @@ class TestXAdES(unittest.TestCase, LoadExampleKeys):
         self.assertIsInstance(verify_results[1], XAdESVerifyResult)
         self.assertTrue(hasattr(verify_results[1], "signed_properties"))
 
+    def test_expected_signature_policy_requires_explicit_policy(self):
+        for policy, fixture in (("absent", "xades-extended-t.xml"), ("implied", "xades-extended-epes.xml")):
+            with self.subTest(policy=policy):
+                doc = etree.parse(os.path.join(os.path.dirname(__file__), "xades", fixture))
+                cert = doc.find(".//ds:X509Certificate", namespaces).text
+                config = XAdESSignatureConfiguration(
+                    expect_references=2, verification_time=get_cert_midpoint_verification_time(cert)
+                )
+                with self.assertRaisesRegex(InvalidInput, "SignaturePolicyId"):
+                    XAdESVerifier().verify(
+                        doc, x509_cert=cert, expect_config=config, expect_signature_policy=self.signature_policy
+                    )
+
     def test_xades_interop_examples(self):
         error_conditions = {
             "altered": InvalidSignature,
