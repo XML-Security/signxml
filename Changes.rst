@@ -1,3 +1,8 @@
+Changes for v5.3.1 (2026-11-21)
+===============================
+
+Require an explicit XAdES policy when one is expected (#307)
+
 Changes for v5.3.0 (2026-11-11)
 ===============================
 
