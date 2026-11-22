@@ -395,32 +395,31 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
 
     def _verify_signature_policy(self, verify_result: VerifyResult, expect_signature_policy: XAdESSignaturePolicy):
         signed_signature_props = self._find(verify_result.signed_xml, "xades:SignedSignatureProperties")
-        signature_policy_id = signed_signature_props.find(
-            "xades:SignaturePolicyIdentifier/xades:SignaturePolicyId", namespaces=namespaces
+        signature_policy_id = self._find(
+            signed_signature_props, "xades:SignaturePolicyIdentifier/xades:SignaturePolicyId"
         )
-        if signature_policy_id is not None:
-            sig_policy_id = self._find(signature_policy_id, "xades:SigPolicyId")
-            identifier = self._find(sig_policy_id, "xades:Identifier")
-            if identifier.text != expect_signature_policy.Identifier:
-                raise InvalidInput(
-                    f"Expected to find signature policy identifier {expect_signature_policy.Identifier}, "
-                    f"but found {identifier.text}"
-                )
-            sig_policy_hash = self._find(signature_policy_id, "xades:SigPolicyHash")
-            digest_alg = DigestAlgorithm(self._find(sig_policy_hash, "DigestMethod").get("Algorithm"))
-            if digest_alg != expect_signature_policy.DigestMethod:
-                raise InvalidInput(
-                    f"Expected to find signature digest algorithm {expect_signature_policy.DigestMethod}, "
-                    f"but found {digest_alg}"
-                )
-            digest_value = self._find(sig_policy_hash, "DigestValue")
-            if b64decode(digest_value.text) != b64decode(expect_signature_policy.DigestValue):
-                raise InvalidInput("Digest mismatch for signature policy hash")
+        sig_policy_id = self._find(signature_policy_id, "xades:SigPolicyId")
+        identifier = self._find(sig_policy_id, "xades:Identifier")
+        if identifier.text != expect_signature_policy.Identifier:
+            raise InvalidInput(
+                f"Expected to find signature policy identifier {expect_signature_policy.Identifier}, "
+                f"but found {identifier.text}"
+            )
+        sig_policy_hash = self._find(signature_policy_id, "xades:SigPolicyHash")
+        digest_alg = DigestAlgorithm(self._find(sig_policy_hash, "DigestMethod").get("Algorithm"))
+        if digest_alg != expect_signature_policy.DigestMethod:
+            raise InvalidInput(
+                f"Expected to find signature digest algorithm {expect_signature_policy.DigestMethod}, "
+                f"but found {digest_alg}"
+            )
+        digest_value = self._find(sig_policy_hash, "DigestValue")
+        if b64decode(digest_value.text) != b64decode(expect_signature_policy.DigestValue):
+            raise InvalidInput("Digest mismatch for signature policy hash")
 
     def _verify_signed_properties(self, verify_result):
         self._verify_signing_time(verify_result)
         self._verify_cert_digests(verify_result)
-        if self.expect_signature_policy:
+        if self.expect_signature_policy is not None:
             self._verify_signature_policy(
                 verify_result=verify_result, expect_signature_policy=self.expect_signature_policy
             )
