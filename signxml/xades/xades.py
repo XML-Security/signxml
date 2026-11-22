@@ -440,9 +440,9 @@ class XAdESVerifier(XAdESProcessor, XMLVerifier):
         supports.
 
         :param expect_signature_policy:
-            Require an explicit signature policy matching the identifier, digest method, and digest value of the
-            supplied :class:`XAdESSignaturePolicy`. An absent or implied policy raises
-            :exc:`signxml.exceptions.InvalidInput`.
+            If you need to assert that the verified XAdES signature carries specific data in the
+            **SignaturePolicyIdentifier** element, use this parameter to pass a :class:`XAdESSignaturePolicy` object
+            carrying strings and the digest method identifier for the element.
         :param expect_config:
             Expected signature configuration. Pass a :class:`XAdESSignatureConfiguration` object to describe expected
             properties of the verified signature. Signatures with unexpected configurations will fail validation.
